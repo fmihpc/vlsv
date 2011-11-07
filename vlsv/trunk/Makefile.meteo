@@ -1,0 +1,48 @@
+CMP=CC
+CXXFLAGS=-O3 -DMPICH_IGNORE_CXX_SEEK
+FLAGS=
+
+CC_BRAND=gcc
+CC_BRAND_VERSION=4.5.2
+MPT_VERSION=3.4.1
+SILO_VERSION=4.8
+LIBRARY_PREFIX=/stornext/field/users/honkonen/libraries
+
+INC_SILO=-I$(LIBRARY_PREFIX)/mpt/$(MPT_VERSION)/$(CC_BRAND)/$(CC_BRAND_VERSION)/silo/$(SILO_VERSION)/include
+LIB_SILO=-L$(LIBRARY_PREFIX)/mpt/$(MPT_VERSION)/$(CC_BRAND)/$(CC_BRAND_VERSION)/silo/$(SILO_VERSION)/lib -lsilo
+
+INC=-I/home/users/sandroos/codes/util
+
+AR = ar
+
+default: lib vlsv2silo
+
+clean:
+	rm -rf *~ *.o *.a vlsv2silo
+
+DEPS_COMMON = muxml.h vlsv_common.h
+DEPS_MUXML = muxml.h muxml.cpp
+DEPS_VLSVCOMMON = vlsv_common.h vlsv_common.cpp
+DEPS_READER = ${DEPS_VLSCOMMON} vlsvreader.h vlsvreader2.cpp
+DEPS_WRITER = ${DEPS_VLSCOMMON} vlsvwriter.h vlsvwriter2.cpp
+DEPS_VLSV2SILO = vlsvreader.o muxml.o vlsv_common.o vlsv2silo.cpp
+
+OBJS = muxml.o vlsv_common.o vlsvreader.o vlsvwriter.o
+
+lib: ${OBJS}
+	${AR} r libvlsv.a ${OBJS}
+
+muxml.o: ${DEPS_MUXML}
+	${CMP} ${CXXFLAGS} ${FLAGS} -o muxml.o -c muxml.cpp
+
+vlsv_common.o: ${DEPS_VLSVCOMMON}
+	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsv_common.o -c vlsv_common.cpp
+
+vlsvreader.o: ${DEPS_READER}
+	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsvreader.o -c vlsvreader2.cpp ${INC}
+
+vlsvwriter.o: ${DEPS_WRITER}
+	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsvwriter.o -c vlsvwriter2.cpp ${INC}
+
+vlsv2silo: ${DEPS_VLSV2SILO}
+	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsv2silo vlsv2silo.cpp -L${CURDIR} ${INC_SILO} -lvlsv ${LIB_SILO} -lsilo
