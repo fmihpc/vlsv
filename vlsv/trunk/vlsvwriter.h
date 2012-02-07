@@ -27,16 +27,25 @@ namespace VLSV {
    };
 }
 
-/**
- * In order to enable multithreading the probram must be compiled with -DTHREADING 
- * preprocessor flag enabled.
+/** VLSV file format writer.
  * 
- * TODO list for VLSVWriter:
- * endMultiwrite: reduction could be used to calculate N_multiwriteUnits
- * endMultiwrite: In MPI_THREAD_SERIALIZED or MPI_THREAD_MULTIPLE modes it may be more efficient 
- * to call MPI functions from all threads.
- * startMultiwrite: in MPI_THREAD_SERIALIZED or MPI_THREAD_MULTIPLE the first thread to enter the 
- * function could be allowed to do the initialization instead of master thread.
+ * List of currently supported XML attributes (vlsv2silo knows what to do with these):
+ * MESH (Quad,Point):
+ * xlabel (string)               Name of x-coordinate, displayed in VisIt coordinate labels.
+ * ylabel (string)               Name of y-coordinate, displayed in VisIt coordinate labels.
+ * zlabel (string)               Name of z-coordinate, displayed in VisIt coordinate labels.
+ * xunit (string)                Unit of x-coordinate, displayed in VisIt coordinate labels.
+ * yunit (string)                Unit of y-coordinate, displayed in VisIt coordinate labels.
+ * zunit (string)                Unit of z-coordinate, displayed in VisIt coordinate labels.
+ * xscaling (float)              Scale factor for x-coordinate. For example value "1.0e-3" converts meters into kilometers.
+ * yscaling (float)              Scale factor for y-coordinate. For example value "1.0e-3" converts meters into kilometers.
+ * zscaling (float)              Scale factor for z-coordinate. For example value "1.0e-3" converts meters into kilometers.
+ * meshinfo (string)             If defined, mesh information (labels,units,scaling) is read from a mesh with given name.
+ * 
+ * PARAMETER:
+ * These are used to pass parameters (=single values) to VisIt. These should only be written by the master process.
+ * time                          Simulation time of the VLSV file, VisIt shows this value as 'Time'.
+ * timestep                      Current value of time step, VisIt shows this value as 'Timestep'.
  */
 class VLSVWriter {
  public:

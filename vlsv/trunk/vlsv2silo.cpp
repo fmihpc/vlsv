@@ -20,6 +20,13 @@ static int timestep = 0;
 static float time_float = 0.0;
 static double time_double = 0.0;
 
+static string label_x = "x-coordinate";
+static string label_y = "y-coordinate";
+static string label_z = "z-coordinate";
+static string units_x = "m";
+static string units_y = "m";
+static string units_z = "m";
+
 static DBfile* fileptr = NULL; // Pointer to file opened by SILO
 
 static set<string> directories; /**< List of directories created to output SILO file. If one tries to 
@@ -111,18 +118,21 @@ template<typename REAL> struct NodeCrd {
       if (fabs(z) < EPS) z = 0.0;
    }
   
-   void xcopy(char* target) const {
-      const char* ptr = reinterpret_cast<const char*>(&x);
+   void xcopy(char* target,REAL scaling=1.0) const {
+      const REAL tmp = x*scaling;
+      const char* ptr = reinterpret_cast<const char*>(&tmp);
       for (int i=0; i<sizeof(REAL); ++i) target[i] = ptr[i];
    }
 
-   char ycopy(char* target) const {
-      const char* ptr = reinterpret_cast<const char*>(&y);
+   char ycopy(char* target,REAL scaling=1.0) const {
+      const REAL tmp = y*scaling;
+      const char* ptr = reinterpret_cast<const char*>(&tmp);
       for (int i=0; i<sizeof(REAL); ++i) target[i] = ptr[i];
    }
 
-   char zcopy(char* target) const {
-      const char* ptr = reinterpret_cast<const char*>(&z);
+   char zcopy(char* target,REAL scaling=1.0) const {
+      const REAL tmp = z*scaling;
+      const char* ptr = reinterpret_cast<const char*>(&tmp);
       for (int i=0; i<sizeof(REAL); ++i) target[i] = ptr[i];
    }
 
@@ -225,7 +235,6 @@ DBoptlist* getOptionList(VLSVReader& vlsvReader,const int& N_extra=0) {
    if (parameterNames.find("timestep") != parameterNames.end()) ++N_options;
    
    if (N_options == 0) return NULL;
-   //cerr << "making optlist for " << N_options << " options" << endl;
    optlist = DBMakeOptlist(N_options);
    
    // Read time value from file:
@@ -271,6 +280,32 @@ DBoptlist* getOptionList(VLSVReader& vlsvReader,const int& N_extra=0) {
       delete [] valbuffer; valbuffer = NULL;
    }   
    return optlist;
+}
+
+void parseCoordinateNames(DBoptlist* optlist,map<string,string>& attribsOut) {
+   // Default values for coordinate names & units:
+   label_x = "x-coordinate";
+   label_y = "y-coordinate";
+   label_z = "z-coordinate";
+   units_x = "m";
+   units_y = "m";
+   units_z = "m";
+   
+   // Coordinate names & units in XML tag overwrite the default ones:
+   if (attribsOut.find("xlabel") != attribsOut.end()) label_x = attribsOut["xlabel"];
+   if (attribsOut.find("ylabel") != attribsOut.end()) label_y = attribsOut["ylabel"];
+   if (attribsOut.find("zlabel") != attribsOut.end()) label_z = attribsOut["zlabel"];
+   if (attribsOut.find("xunit") != attribsOut.end()) units_x = attribsOut["xunit"];
+   if (attribsOut.find("yunit") != attribsOut.end()) units_y = attribsOut["yunit"];
+   if (attribsOut.find("zunit") != attribsOut.end()) units_z = attribsOut["zunit"];
+
+   // Add coordinate names & units to option list:
+   DBAddOption(optlist,DBOPT_XLABEL,const_cast<char*>(label_x.c_str()));
+   DBAddOption(optlist,DBOPT_YLABEL,const_cast<char*>(label_y.c_str()));
+   DBAddOption(optlist,DBOPT_ZLABEL,const_cast<char*>(label_z.c_str()));
+   DBAddOption(optlist,DBOPT_XUNITS,const_cast<char*>(units_x.c_str()));
+   DBAddOption(optlist,DBOPT_YUNITS,const_cast<char*>(units_y.c_str()));
+   DBAddOption(optlist,DBOPT_ZUNITS,const_cast<char*>(units_z.c_str()));
 }
 
 bool convertMeshVariable(VLSVReader& vlsvReader,const string& meshName,const string& varName) {
@@ -408,7 +443,6 @@ bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName) {
    // Fetch mesh coordinate array info and do sanity check on values:
    list<pair<string,string> > attributes;
    attributes.push_back(make_pair("name",meshName));
-   //attributes.push_back(make_pair("type",VLSV::MESH_POINT));
    uint64_t arraySize,vectorSize,dataSize;
    VLSV::datatype dataType;
    if (vlsvReader.getArrayInfo("MESH",attributes,arraySize,vectorSize,dataType,dataSize) == false) {
@@ -430,9 +464,25 @@ bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName) {
    }
    
    if (arraySize == 0 || vectorSize == 0 || dataSize == 0) return true;
+
+   // Read array XML attributes:
+   map<string,string> attribsOut;
+   if (vlsvReader.getArrayAttributes("MESH",attributes,attribsOut) == false) {
+      cerr << "\t\tERROR: Failed to obtain XML tags of MESH array!" << endl;
+   }
+   // If XML tag has attribute 'meshinfo', read mesh information from that mesh instead of this point mesh:
+   if (attribsOut.find("meshinfo") != attribsOut.end()) {
+      list<pair<string,string> > tmp;
+      const string meshInfoName = attribsOut["meshinfo"];
+      tmp.push_back(make_pair("name",meshInfoName));
+      if (vlsvReader.getArrayAttributes("MESH",tmp,attribsOut) == false) {
+	 cerr << "\t\tERROR: Could not fetch mesh info from '" << meshInfoName << "' for point mesh '" << meshName << "'" << endl;
+	 attribsOut.clear();
+      }
+   }
    
    const uint64_t N_points = arraySize;
-   const uint64_t N_dims = vectorSize;
+   const uint64_t N_dims   = vectorSize;
    
    // Read all points from file:
    char* inbuffer = new char[arraySize*vectorSize*dataSize];
@@ -442,33 +492,89 @@ bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName) {
       return false;
    }
    
-   // Copy values from inbuffer to arrays which are passed to SILO:
-   char** coordinateArrays = new char*[N_dims];
-   for (uint64_t i=0; i<N_dims; ++i) coordinateArrays[i] = new char[N_points*dataSize];
+   // Create x,y,z coordinate arrays for output (three pointers per possible floating point type).
+   // Only the pointers with the same datatype as in VLSV file have arrays allocated to them.
+   char* coordinateArrays[3];   
+   float* xout4 = NULL; float* yout4 = NULL; float* zout4 = NULL;
+   double* xout8 = NULL; double* yout8 = NULL; double* zout8 = NULL;
+   long double* xout12 = NULL; long double* yout12 = NULL; long double* zout12 = NULL;
+   switch (dataSize) {
+    case (sizeof(float)):
+      xout4 = new float[N_points];
+      yout4 = new float[N_points];
+      zout4 = new float[N_points];
+      break;
+    case (sizeof(double)):
+      xout8 = new double[N_points];
+      yout8 = new double[N_points];
+      zout8 = new double[N_points];
+      break;
+    case (sizeof(long double)):
+      xout12 = new long double[N_points];
+      yout12 = new long double[N_points];
+      zout12 = new long double[N_points];
+      break;
+   }
+
+   // Apply scale factors to coordinate points:
+   float xscale4 = 1.0; float yscale4 = 1.0; float zscale4 = 1.0;
+   double xscale8 = 1.0; double yscale8 = 1.0; double zscale8 = 1.0;
+   long double xscale12 = 1.0; long double yscale12 = 1.0; long double zscale12 = 1.0;
    
-   uint64_t index = 0;
-   for (uint64_t point=0; point<N_points; ++point) {
-      for (uint64_t crd=0; crd<N_dims; ++crd) {
-	 for (uint64_t i=0; i<dataSize; ++i) coordinateArrays[crd][point*dataSize+i] = inbuffer[index+i];
-	 index += dataSize;
+   switch (dataSize) {
+    case (sizeof(float)):
+      if (attribsOut.find("xscaling") != attribsOut.end()) xscale4 = atof(attribsOut["xscaling"].c_str());
+      if (attribsOut.find("yscaling") != attribsOut.end()) yscale4 = atof(attribsOut["yscaling"].c_str());
+      if (attribsOut.find("zscaling") != attribsOut.end()) zscale4 = atof(attribsOut["zscaling"].c_str());
+      
+      for (uint64_t point=0; point<N_points; ++point) {
+	 xout4[point] = reinterpret_cast<float*>(inbuffer)[point*N_dims+0] * xscale4;
+	 yout4[point] = reinterpret_cast<float*>(inbuffer)[point*N_dims+1] * yscale4;
+	 zout4[point] = reinterpret_cast<float*>(inbuffer)[point*N_dims+2] * zscale4;	 
       }
+      
+      coordinateArrays[0] = reinterpret_cast<char*>(xout4);
+      coordinateArrays[1] = reinterpret_cast<char*>(yout4);
+      coordinateArrays[2] = reinterpret_cast<char*>(zout4);      
+      break;
+    case (sizeof(double)):
+      if (attribsOut.find("xscaling") != attribsOut.end()) xscale8 = atof(attribsOut["xscaling"].c_str());
+      if (attribsOut.find("yscaling") != attribsOut.end()) yscale8 = atof(attribsOut["yscaling"].c_str());
+      if (attribsOut.find("zscaling") != attribsOut.end()) zscale8 = atof(attribsOut["zscaling"].c_str());
+
+      for (uint64_t point=0; point<N_points; ++point) {
+	 xout8[point] = reinterpret_cast<double*>(inbuffer)[point*N_dims+0] * xscale8;
+	 yout8[point] = reinterpret_cast<double*>(inbuffer)[point*N_dims+1] * xscale8;
+	 zout8[point] = reinterpret_cast<double*>(inbuffer)[point*N_dims+2] * xscale8;
+      }
+      
+      coordinateArrays[0] = reinterpret_cast<char*>(xout8);
+      coordinateArrays[1] = reinterpret_cast<char*>(yout8);
+      coordinateArrays[2] = reinterpret_cast<char*>(zout8);
+      break;
+    case (sizeof(long double)):
+      if (attribsOut.find("xscaling") != attribsOut.end()) xscale12 = atof(attribsOut["xscaling"].c_str());
+      if (attribsOut.find("yscaling") != attribsOut.end()) yscale12 = atof(attribsOut["yscaling"].c_str());
+      if (attribsOut.find("zscaling") != attribsOut.end()) zscale12 = atof(attribsOut["zscaling"].c_str());
+      
+      for (uint64_t point=0; point<N_points; ++point) {
+	 xout12[point] = reinterpret_cast<long double*>(inbuffer)[point*N_dims+0] * xscale12;
+	 yout12[point] = reinterpret_cast<long double*>(inbuffer)[point*N_dims+1] * yscale12;
+	 zout12[point] = reinterpret_cast<long double*>(inbuffer)[point*N_dims+2] * zscale12;
+      }
+      
+      coordinateArrays[0] = reinterpret_cast<char*>(xout12);
+      coordinateArrays[1] = reinterpret_cast<char*>(yout12);
+      coordinateArrays[2] = reinterpret_cast<char*>(zout12);
+      break;
    }
    delete [] inbuffer; inbuffer = NULL;
 
+   // Make an option list and insert simulation time and timestep, if they are available:
    DBoptlist* optlist = getOptionList(vlsvReader,6);
-   
-   const string label_x = "x-coordinate";
-   const string label_y = "y-coordinate";
-   const string label_z = "z-coordinate";
-   const string units_x = "m";
-   const string units_y = "m";
-   const string units_z = "m";
-   DBAddOption(optlist,DBOPT_XLABEL,const_cast<char*>(label_x.c_str()));
-   DBAddOption(optlist,DBOPT_YLABEL,const_cast<char*>(label_y.c_str()));
-   DBAddOption(optlist,DBOPT_ZLABEL,const_cast<char*>(label_z.c_str()));
-   DBAddOption(optlist,DBOPT_XUNITS,const_cast<char*>(units_x.c_str()));
-   DBAddOption(optlist,DBOPT_YUNITS,const_cast<char*>(units_y.c_str()));
-   DBAddOption(optlist,DBOPT_ZUNITS,const_cast<char*>(units_z.c_str()));
+
+   // Get coordinate names & units from VLSV file if available, otherwise use default values:
+   parseCoordinateNames(optlist,attribsOut);
 
    if (DBPutPointmesh(fileptr,meshName.c_str(),N_dims,coordinateArrays,N_points,SiloType(dataType,dataSize),optlist) < 0) {
       cerr << "Failed to write the point mesh to file!" << endl;
@@ -477,8 +583,9 @@ bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName) {
    if (optlist != NULL) DBFreeOptlist(optlist);
 
    // Deallocate memory and exit:
-   for (uint64_t i=0; i<N_dims; ++i) {delete [] coordinateArrays[i]; coordinateArrays[i] = NULL;}
-   delete [] coordinateArrays; coordinateArrays = NULL;
+   delete [] xout4; delete [] yout4; delete [] zout4;
+   delete [] xout8; delete [] yout8; delete [] zout8;
+   delete [] xout12; delete [] yout12; delete [] zout12;
    return success;
 }
 
@@ -497,12 +604,9 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    VLSV::datatype dataType;
    uint64_t arraySize,vectorSize,dataSize;
    list<pair<string,string> > attributes;
-   //attributes.push_back(make_pair("mesh",meshName));
    attributes.push_back(make_pair("name",meshName));
    attributes.push_back(make_pair("type",VLSV::MESH_QUAD));
    if (vlsvReader.getArrayInfo("MESH",attributes,arraySize,vectorSize,dataType,dataSize) == false) {
-   //if (vlsvReader.getArrayInfo("COORDS",attributes,arraySize,vectorSize,dataType,dataSize) == false) {
-      //cerr << "Array COORDS info could not be obtained!" << endl;
       cerr << "Array MESH info could not be obtained!" << endl;
       return false;
    }   
@@ -513,8 +617,23 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    if (dataSize != sizeof(float) && (dataSize != sizeof(double) && dataSize != sizeof(long double))) {
       cerr << "Mesh coordinates have unsupported floating point byte size!" << endl;
       cerr << "\t byte size obtained: " << dataSize << endl;
-      //cerr << "\t " << sizeof(float) << ' ' << sizeof(double) << ' ' << sizeof(long double) << endl;
       return false;
+   }
+   
+   // Get array XML attributes:
+   map<string,string> attribsOut;
+   if (vlsvReader.getArrayAttributes("MESH",attributes,attribsOut) == false) {
+      cerr << "\t\tERROR: Failed to obtain XML tags of MESH array!" << endl;
+   }
+   // If XML tag has attribute 'meshinfo', read mesh information from that mesh instead of this quad mesh:
+   if (attribsOut.find("meshinfo") != attribsOut.end()) {
+      list<pair<string,string> > tmp;
+      const string meshInfoName = attribsOut["meshinfo"];
+      tmp.push_back(make_pair("name",meshInfoName));
+      if (vlsvReader.getArrayAttributes("MESH",tmp,attribsOut) == false) {
+	 cerr << "\t\tERROR: Could not fetch mesh info from '" << meshInfoName << "' for point quad '" << meshName << "'" << endl;
+	 attribsOut.clear();
+      }
    }
    
    // Read the coordinate array one node (of a spatial cell) at a time
@@ -548,7 +667,6 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
     case (sizeof(float)):
       for (uint64_t i=0; i<arraySize; ++i) {
 	 if (vlsvReader.readArray("MESH",attributes,i,1,ptr) == false) {success = false;}
-	 //if (vlsvReader.readArray("COORDS",attributes,i,1,ptr) == false) {success = false;}
 	 nodes4.insert(make_pair(NodeCrd<float>(ptr+0*ds,ptr+1*ds,ptr+2*ds, zeroPtr, zeroPtr, zeroPtr),0));
 	 nodes4.insert(make_pair(NodeCrd<float>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds, zeroPtr, zeroPtr),0));
 	 nodes4.insert(make_pair(NodeCrd<float>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds,ptr+4*ds, zeroPtr),0));
@@ -562,7 +680,6 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
     case (sizeof(double)):
       for (uint64_t i=0; i<arraySize; ++i) {
 	 if (vlsvReader.readArray("MESH",attributes,i,1,ptr) == false) {success = false;}
-	 //if (vlsvReader.readArray("COORDS",attributes,i,1,ptr) == false) {success = false;}
 	 nodes8.insert(make_pair(NodeCrd<double>(ptr+0*ds,ptr+1*ds,ptr+2*ds, zeroPtr, zeroPtr, zeroPtr),0));
 	 nodes8.insert(make_pair(NodeCrd<double>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds, zeroPtr, zeroPtr),0));
 	 nodes8.insert(make_pair(NodeCrd<double>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds,ptr+4*ds, zeroPtr),0));
@@ -571,20 +688,11 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
 	 nodes8.insert(make_pair(NodeCrd<double>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds, zeroPtr,ptr+5*ds),0));
 	 nodes8.insert(make_pair(NodeCrd<double>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds,ptr+4*ds,ptr+5*ds),0));
 	 nodes8.insert(make_pair(NodeCrd<double>(ptr+0*ds,ptr+1*ds,ptr+2*ds, zeroPtr,ptr+4*ds,ptr+5*ds),0));
-	 /*
-	 cerr << *reinterpret_cast<double*>(ptr+0*ds) << ' ';
-	 cerr << *reinterpret_cast<double*>(ptr+1*ds) << ' ';
-	 cerr << *reinterpret_cast<double*>(ptr+2*ds) << ' ';
-	 cerr << *reinterpret_cast<double*>(ptr+3*ds) << ' ';
-	 cerr << *reinterpret_cast<double*>(ptr+4*ds) << ' ';
-	 cerr << *reinterpret_cast<double*>(ptr+5*ds) << ' ';
-	 cerr << endl;*/
       }
       break;
     case (sizeof(long double)):
       for (uint64_t i=0; i<arraySize; ++i) {
 	 if (vlsvReader.readArray("MESH",attributes,i,1,ptr) == false) {success = false;}
-	 //if (vlsvReader.readArray("COORDS",attributes,i,1,ptr) == false) {success = false;}
 	 nodes12.insert(make_pair(NodeCrd<long double>(ptr+0*ds,ptr+1*ds,ptr+2*ds, zeroPtr, zeroPtr, zeroPtr),0));
 	 nodes12.insert(make_pair(NodeCrd<long double>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds, zeroPtr, zeroPtr),0));
 	 nodes12.insert(make_pair(NodeCrd<long double>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds,ptr+4*ds, zeroPtr),0));
@@ -603,6 +711,11 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    if (dataSize == sizeof(float)) N_nodes = nodes4.size();
    if (dataSize == sizeof(double)) N_nodes = nodes8.size();
    if (dataSize == sizeof(long double)) N_nodes = nodes12.size();
+
+   // Scale factors for coordinates:
+   float xscale4 = 1.0; float yscale4 = 1.0; float zscale4 = 1.0;
+   double xscale8 = 1.0; double yscale8 = 1.0; double zscale8 = 1.0;
+   long double xscale12 = 1.0; long double yscale12 = 1.0; long double zscale12 = 1.0;
    
    uint64_t counter = 0;
    char* xcrds = new char[N_nodes*dataSize];
@@ -610,29 +723,38 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    char* zcrds = new char[N_nodes*dataSize];
    switch (dataSize) {
     case (sizeof(float)):
+      if (attribsOut.find("xscaling") != attribsOut.end()) xscale4 = atof(attribsOut["xscaling"].c_str());
+      if (attribsOut.find("yscaling") != attribsOut.end()) yscale4 = atof(attribsOut["yscaling"].c_str());
+      if (attribsOut.find("zscaling") != attribsOut.end()) zscale4 = atof(attribsOut["zscaling"].c_str());
       for (map<NodeCrd<float>,uint64_t>::iterator it=nodes4.begin(); it!=nodes4.end(); ++it) {
 	 it->second = counter;
-	 it->first.xcopy(xcrds + counter*dataSize);
-	 it->first.ycopy(ycrds + counter*dataSize);
-	 it->first.zcopy(zcrds + counter*dataSize);
+	 it->first.xcopy(xcrds + counter*dataSize,xscale4);
+	 it->first.ycopy(ycrds + counter*dataSize,yscale4);
+	 it->first.zcopy(zcrds + counter*dataSize,zscale4);
 	 ++counter;
       }
       break;
     case (sizeof(double)):
+      if (attribsOut.find("xscaling") != attribsOut.end()) xscale8 = atof(attribsOut["xscaling"].c_str());
+      if (attribsOut.find("yscaling") != attribsOut.end()) yscale8 = atof(attribsOut["yscaling"].c_str());
+      if (attribsOut.find("zscaling") != attribsOut.end()) zscale8 = atof(attribsOut["zscaling"].c_str());
       for (map<NodeCrd<double>,uint64_t>::iterator it=nodes8.begin(); it!=nodes8.end(); ++it) {
 	 it->second = counter;
-	 it->first.xcopy(xcrds + counter*dataSize);
-	 it->first.ycopy(ycrds + counter*dataSize);
-	 it->first.zcopy(zcrds + counter*dataSize);
+	 it->first.xcopy(xcrds + counter*dataSize,xscale8);
+	 it->first.ycopy(ycrds + counter*dataSize,yscale8);
+	 it->first.zcopy(zcrds + counter*dataSize,zscale8);
 	 ++counter;
       }
       break;
     case (sizeof(long double)):
+      if (attribsOut.find("xscaling") != attribsOut.end()) xscale12 = atof(attribsOut["xscaling"].c_str());
+      if (attribsOut.find("yscaling") != attribsOut.end()) yscale12 = atof(attribsOut["yscaling"].c_str());
+      if (attribsOut.find("zscaling") != attribsOut.end()) zscale12 = atof(attribsOut["zscaling"].c_str());
       for (map<NodeCrd<long double>,uint64_t>::iterator it=nodes12.begin(); it!=nodes12.end(); ++it) {
 	 it->second = counter;
-	 it->first.xcopy(xcrds + counter*dataSize);
-	 it->first.ycopy(ycrds + counter*dataSize);
-	 it->first.zcopy(zcrds + counter*dataSize);
+	 it->first.xcopy(xcrds + counter*dataSize,xscale12);
+	 it->first.ycopy(ycrds + counter*dataSize,yscale12);
+	 it->first.zcopy(zcrds + counter*dataSize,zscale12);
 	 ++counter;
       }
       break;
@@ -651,7 +773,6 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
     case (sizeof(float)):
       for (uint64_t i=0; i<arraySize; ++i) {
 	 if (vlsvReader.readArray("MESH",attributes,i,1,ptr) == false) {success = false;}
-	 //if (vlsvReader.readArray("COORDS",attributes,i,1,ptr) == false) {success = false;}	 
 	 it4 = nodes4.find(NodeCrd<float>(ptr+0*ds,ptr+1*ds,ptr+2*ds, zeroPtr, zeroPtr, zeroPtr)); nodeList[i*8+0] = it4->second;
 	 it4 = nodes4.find(NodeCrd<float>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds, zeroPtr, zeroPtr)); nodeList[i*8+1] = it4->second;
 	 it4 = nodes4.find(NodeCrd<float>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds,ptr+4*ds, zeroPtr)); nodeList[i*8+2] = it4->second;
@@ -665,7 +786,6 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
     case (sizeof(double)):
       for (uint64_t i=0; i<arraySize; ++i) {
 	 if (vlsvReader.readArray("MESH",attributes,i,1,ptr) == false) {success = false;}
-	 //if (vlsvReader.readArray("COORDS",attributes,i,1,ptr) == false) {success = false;}
 	 it8 = nodes8.find(NodeCrd<double>(ptr+0*ds,ptr+1*ds,ptr+2*ds, zeroPtr, zeroPtr, zeroPtr)); nodeList[i*8+0] = it8->second;
 	 it8 = nodes8.find(NodeCrd<double>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds, zeroPtr, zeroPtr)); nodeList[i*8+1] = it8->second;
 	 it8 = nodes8.find(NodeCrd<double>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds,ptr+4*ds, zeroPtr)); nodeList[i*8+2] = it8->second;
@@ -679,7 +799,6 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
     case (sizeof(long double)):
       for (uint64_t i=0; i<arraySize; ++i) {
 	 if (vlsvReader.readArray("MESH",attributes,i,1,ptr) == false) {success = false;}
-	 //if (vlsvReader.readArray("COORDS",attributes,i,1,ptr) == false) {success = false;}
 	 it12 = nodes12.find(NodeCrd<long double>(ptr+0*ds,ptr+1*ds,ptr+2*ds, zeroPtr, zeroPtr, zeroPtr)); nodeList[i*8+0] = it12->second;
 	 it12 = nodes12.find(NodeCrd<long double>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds, zeroPtr, zeroPtr)); nodeList[i*8+1] = it12->second;
 	 it12 = nodes12.find(NodeCrd<long double>(ptr+0*ds,ptr+1*ds,ptr+2*ds,ptr+3*ds,ptr+4*ds, zeroPtr)); nodeList[i*8+2] = it12->second;
@@ -709,21 +828,11 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    const string zoneListName = meshName + "Zones";
    if (DBPutZonelist2(fileptr,zoneListName.c_str(),N_zones,N_dims,nodeList,8*arraySize,0,0,0,shapeTypes,shapeSizes,shapeCnt,N_shapes,NULL) < 0) success = false;
 
-   // Make option list containing time and timestep, if they are available:
+   // Make an option list and insert simulation time and timestep, if they are available:
    DBoptlist* optlist = getOptionList(vlsvReader,6);
-
-   const string label_x = "x-coordinate";
-   const string label_y = "y-coordinate";
-   const string label_z = "z-coordinate";
-   const string units_x = "m";
-   const string units_y = "m";
-   const string units_z = "m";
-   DBAddOption(optlist,DBOPT_XLABEL,const_cast<char*>(label_x.c_str()));
-   DBAddOption(optlist,DBOPT_YLABEL,const_cast<char*>(label_y.c_str()));
-   DBAddOption(optlist,DBOPT_ZLABEL,const_cast<char*>(label_z.c_str()));
-   DBAddOption(optlist,DBOPT_XUNITS,const_cast<char*>(units_x.c_str()));
-   DBAddOption(optlist,DBOPT_YUNITS,const_cast<char*>(units_y.c_str()));
-   DBAddOption(optlist,DBOPT_ZUNITS,const_cast<char*>(units_z.c_str()));
+   
+   // Get coordinate names & units from VLSV file if available, otherwise use default values:
+   parseCoordinateNames(optlist,attribsOut);
    
    // Write grid into silo file:
    if (DBPutUcdmesh(fileptr,meshName.c_str(),N_dims,NULL,coords,N_nodes,N_zones,zoneListName.c_str(),NULL,SiloType(dataType,dataSize),optlist) < 0) success = false;
