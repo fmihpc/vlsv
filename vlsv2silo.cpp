@@ -6,6 +6,8 @@
 #include <silo.h>
 #include <sstream>
 #include <dirent.h>
+#include <vector>
+#include <map>
 
 #include "vlsvreader.h"
 
@@ -34,6 +36,9 @@ static set<string> directories; /**< List of directories created to output SILO 
 				 * console. Similarly attempting to cd into a non-existing directory 
 				 * throws errors to console. In order to avoid these errors, currently 
 				 * existing directories are stored in this set.*/
+
+static map<string,map<double,double> > curves; /**< Container for all curve data stored to VLSV file(s).
+						* map<double,double> is for sorting data by ascending x values.*/
 
 int64_t convInt(const char* ptr,const VLSV::datatype& dataType,const uint64_t& dataSize) {
    switch(dataSize) {
@@ -274,9 +279,7 @@ DBoptlist* getOptionList(VLSVReader& vlsvReader,const int& N_extra=0) {
 	 cerr << "timestep given in unsupported datatype!" << endl;
       }
       
-      //cerr << "adding cycle " << timestep << endl;
       DBAddOption(optlist,DBOPT_CYCLE,&timestep);
-      //cerr << "\t done" << endl;
       delete [] valbuffer; valbuffer = NULL;
    }   
    return optlist;
@@ -860,6 +863,74 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    return success;
 }
 
+/** Append curve (x,y) data pair to map curves. VLSV file array that contains 
+ * data for y points must be of type VLSV::FLOAT. Furthermore, array and vector sizes 
+ * must equal unity, i.e. only single x-value and a single y-value. Finally, (x,y) values 
+ * are written as doubles to the SILO file irrespective of their actual floating point types.
+ * @param vlsvReader VLSV file reader that is used to read data.
+ * @param varName Name of the array containing the curve data in VLSV file.
+ * @param isTimeSeries If true, curve is a time series, i.e. time is used as x-value.
+ * @param If true, curve data was successfully extracted from the file.*/
+bool appendCurveValue(VLSVReader& vlsvReader,const string& varName,bool isTimeSeries) {
+   bool success = true;
+
+   VLSV::datatype xDataType;
+   uint64_t xArraySize,xVectorSize,xDataSize;
+   list<pair<string,string> > attribs;
+   
+   // Buffer for reading data:
+   char buffer[sizeof(long double)];
+   
+   // Get x value from VLSV file:
+   attribs.push_back(make_pair("name","time"));
+   if (vlsvReader.getArrayInfo("PARAMETER",attribs,xArraySize,xVectorSize,xDataType,xDataSize) == false) return false;
+   if (xDataType != VLSV::FLOAT) return false;
+   if (xArraySize != 1 || xVectorSize != 1) return false;
+   if (vlsvReader.readArray("PARAMETER",attribs,0,xArraySize,buffer) == false) return false;
+
+   // Convert x value to double:
+   double x;
+   switch (xDataSize) {
+    case (sizeof(float)):
+      x = *reinterpret_cast<float*>(buffer);
+      break;
+    case (sizeof(double)):
+      x = *reinterpret_cast<double*>(buffer);
+      break;
+    case (sizeof(long double)):
+      x = *reinterpret_cast<long double*>(buffer);
+      break;
+   }
+   
+   // Get y value from VLSV file:
+   attribs.clear();
+   attribs.push_back(make_pair("name",varName));
+   if (vlsvReader.getArrayInfo("TIMESERIES",attribs,xArraySize,xVectorSize,xDataType,xDataSize) == false) return false;
+   if (xDataType != VLSV::FLOAT) return false;
+   if (xArraySize != 1 || xVectorSize != 1) return false;
+   if (vlsvReader.readArray("TIMESERIES",attribs,0,xArraySize,buffer) == false) return false;
+
+   // Convert y value to double:
+   double y;
+   switch (xDataSize) {
+    case (sizeof(float)):
+      y = *reinterpret_cast<float*>(buffer);
+      break;
+    case (sizeof(double)):
+      y = *reinterpret_cast<double*>(buffer);
+      break;
+    case (sizeof(long double)):
+      y = *reinterpret_cast<long double*>(buffer);
+      break;
+   }
+
+   // Store (x,y) value pair to map curves. Note that the VLSV files are not read in 
+   // chronological order. Thus, the (x,y) pairs are also read in unspecified order 
+   // and need to be sorted by ascending x-value. The sort is done here:
+   curves[varName][x] = y;
+   return success;
+}
+
 bool convertSILO(const string& fname) {
    bool success = true;
    
@@ -903,7 +974,61 @@ bool convertSILO(const string& fname) {
       }
    }
    vlsvReader.close();
-   DBClose(fileptr);
+   DBClose(fileptr); fileptr = NULL;
+   return success;
+}
+
+/** Convert curve data from VLSV files into SILO format. Curve data is here understood to 
+ * consist of (x,y) value pairs, one pair per VLSV file.
+ * @param fname Name of a VLSV file to read.
+ * @param lastFile If true, all VLSV files have been read and curve data should be written to SILO file.
+ * @return If true, curve data was converted successfully.*/
+bool convertCurveSILO(const string& fname,bool lastFile) {
+   bool success = true;
+   
+   // Open VLSV file for reading:
+   VLSVReader vlsvReader;
+   if (lastFile == false) {
+      if (vlsvReader.open(fname) == false) {
+	 cerr << "Failed to open '" << fname << "'" << endl;
+	 return false;
+      }
+   
+      set<string> parameterNames;
+      if (vlsvReader.getUniqueAttributeValues("TIMESERIES","name",parameterNames) == false) {
+	 vlsvReader.close();
+	 return false;
+      }
+
+      for (set<string>::const_iterator it=parameterNames.begin(); it!=parameterNames.end(); ++it) {
+	 appendCurveValue(vlsvReader,*it,true);
+      }
+   
+      vlsvReader.close();
+   }
+   
+   if (lastFile == true) {
+      cerr << "Writing file curves.silo" << endl;
+      string outName = "curves.silo";
+      fileptr = DBCreate(outName.c_str(),DB_CLOBBER,DB_LOCAL,"VLSV curve data",DB_PDB);
+      if (fileptr == NULL) return false;
+
+      for (map<string,map<double,double> >::const_iterator it=curves.begin(); it!=curves.end(); ++it) {
+	 vector<double> x(it->second.size());
+	 vector<double> y(it->second.size());
+	 size_t index = 0;
+	 for (map<double,double>::const_iterator jt=it->second.begin(); jt!=it->second.end(); ++jt) {
+	    x[index] = jt->first;
+	    y[index] = jt->second;
+	    ++index;
+	 }
+	 
+	 if (DBPutCurve(fileptr,it->first.c_str(),&(x[0]),&(y[0]),DB_DOUBLE,x.size(),NULL) < 0) {
+	    cerr << "Failed to write curve '" << it->first << "'" << endl; success = false;
+	 }
+      }
+      DBClose(fileptr); fileptr = NULL;
+   }
    return success;
 }
 
@@ -946,14 +1071,27 @@ int main(int argn,char* args[]) {
 	 entry = readdir(dir);
       }
       closedir(dir);
+
+      // Convert curve(s) stored to VLSV files, these include time series:
+      dir = opendir(directory.c_str());
+      if (dir == NULL) continue;
+      
+      entry = readdir(dir);
+      while (entry != NULL) {
+	 const string entryName = entry->d_name;
+	 // Compare entry name against given mask and file suffix ".vlsv":
+	 if (entryName.find(masks[mask]) == string::npos || entryName.find(suffix) == string::npos) {
+	    entry = readdir(dir);
+	    continue;
+	 }
+	 directories.clear();
+	 convertCurveSILO(entryName,false);
+	 entry = readdir(dir);	 
+      }
+      closedir(dir);
+      convertCurveSILO(string(""),true);
       
       if (filesConverted == 0) cout << "\t no matches found" << endl;
    }
    return 0;
 }
-
-
-
-
-
-

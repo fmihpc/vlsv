@@ -61,75 +61,7 @@ bool VLSVReader::getUniqueAttributeValues(const string& tagName,const string& at
    }   
    return true;
 }
-/*
-bool VLSVReader::getMeshNames(list<string>& meshNames) const {
-   meshNames.clear();
-   if (fileOpen == false) return false;
-   
-   XMLNode* node = xmlReader.find("VLSV");
-   for (multimap<string,XMLNode*>::const_iterator it=node->children.lower_bound("MESH"); it!=node->children.upper_bound("MESH"); ++it) {
-      map<string,string>::const_iterator tmp = it->second->attributes.find("name");
-      if (tmp == it->second->attributes.end()) {
-	 cerr << "VLSVReader ERROR: XML tag does not contain attribute name!" << endl;
-	 return false;
-      }
-      meshNames.push_back(tmp->second);
-   }   
-   return true;
-}
 
-bool VLSVReader::getBlockVariableNames(const std::string& meshName,std::list<std::string>& varNames) const {
-   varNames.clear();
-   if (fileOpen == false) return false;
-   
-   XMLNode* node = xmlReader.find("VLSV");
-   if (node == NULL) return false;
-   
-   for (multimap<string,XMLNode*>::const_iterator it=node->children.lower_bound("BLOCKVARIABLE"); it!=node->children.upper_bound("BLOCKVARIABLE"); ++it) {
-      map<string,string>::const_iterator tmp = it->second->attributes.find("mesh");
-      if (tmp == it->second->attributes.end()) {
-	 cerr << "VLSVReader ERROR: XML tag does not contain attribute mesh!" << endl;
-	 return false;
-      }
-      
-      if (tmp->second == meshName) {
-	 tmp = it->second->attributes.find("name");
-	 if (tmp == it->second->attributes.end()) {
-	    cerr << "VLSVReader ERROR: XML tag does not contain attribute name!" << endl;
-	 } else {
-	    varNames.push_back(tmp->second);
-	 }
-      }
-   }
-   return true;
-}   
-
-bool VLSVReader::getVariableNames(const std::string& meshName,std::list<std::string>& varNames) const {
-   varNames.clear();
-   if (fileOpen == false) return false;
-   
-   XMLNode* node = xmlReader.find("VLSV");
-   if (node == NULL) return false;
-   
-   for (multimap<string,XMLNode*>::const_iterator it=node->children.lower_bound("VARIABLE"); it!=node->children.upper_bound("VARIABLE"); ++it) {
-      map<string,string>::const_iterator tmp = it->second->attributes.find("mesh");
-      if (tmp == it->second->attributes.end()) {
-	 cerr << "VLSVReader ERROR: XML tag does not contain attribute mesh!" << endl;
-	 return false;
-      }
-      
-      if (tmp->second == meshName) {
-	 tmp = it->second->attributes.find("name");
-	 if (tmp == it->second->attributes.end()) {
-	    cerr << "VLSVReader ERROR: XML tag does not contain attribute name!" << endl;
-	 } else {
-	    varNames.push_back(tmp->second);
-	 }
-      }
-   }
-   return true;
-}
-*/
 bool VLSVReader::loadArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {
    if (fileOpen == false) return false;
    
@@ -137,22 +69,9 @@ bool VLSVReader::loadArray(const std::string& tagName,const std::list<std::pair<
    XMLNode* node = xmlReader.find(tagName,attribs);
    if (node == NULL) return false;
 
-   /*
-   // Find array name:
-   list<pair<string,string> >::const_iterator arrayName = attribs.end();
-   for (list<pair<string,string> >::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
-      if (it->first == "name") arrayName = it;
-   }
-   if (arrayName == attribs.end()) {
-      cerr << "VLSVReader ERROR: attribs does not contain array name!" << endl;
-      return false;
-   }
-   */
-
    // Copy array information from tag:
    arrayOpen.offset = atoi(node->value.c_str());
    arrayOpen.tagName = tagName;
-   //arrayOpen.arrayName = arrayName->second;
    arrayOpen.arraySize = atoi(node->attributes["arraysize"].c_str());
    arrayOpen.vectorSize = atoi(node->attributes["vectorsize"].c_str());
    arrayOpen.dataSize = atoi(node->attributes["datasize"].c_str());
@@ -200,10 +119,6 @@ bool VLSVReader::open(const std::string& fname) {
    filein.clear();
    filein.seekg(16);
    
-   //xmlReader.print(cout);
-
-   
-   
    return success;
 }
 
@@ -213,56 +128,41 @@ bool VLSVReader::readArray(const std::string& tagName,const std::list<std::pair<
       cerr << "VLSVReader ERROR: readArray called but a file is not open!" << endl;
       return false;
    }
-   /*
-   // If array info has not been loaded, find it from XML tree:
-   list<pair<string,string> >::const_iterator arrayName = attribs.end();
-   for (list<pair<string,string> >::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
-      if (it->first == "name") arrayName = it;
-   }
-   if (arrayName == attribs.end()) {
-      cerr << "VLSVReader ERROR: attribs does not contain array name!" << endl;
+   
+   // Find tag corresponding to given array:
+   XMLNode* node = xmlReader.find(tagName,attribs);
+   if (node == NULL) {
+      cerr << "VLSVReader ERROR: Failed to find tag='" << tagName << "' attribs:" << endl;
+      for (list<pair<string,string> >::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
+	 cerr << '\t' << it->first << " = '" << it->second << "'" << endl;
+      }
       return false;
    }
-   */
-   
-   //if (arrayOpen.tagName != tagName) {
-   //if (arrayOpen.tagName != tagName || arrayOpen.arrayName != arrayName->second) {
-      // Find tag corresponding to given array:
-      XMLNode* node = xmlReader.find(tagName,attribs);
-      if (node == NULL) {
-	 cerr << "VLSVReader ERROR: Failed to find tag='" << tagName << "' attribs:" << endl;
-	 for (list<pair<string,string> >::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
-	    cerr << '\t' << it->first << " = '" << it->second << "'" << endl;
-	 }
-	 return false;
-      }
-      
-      // Copy array information from tag:
-      arrayOpen.offset = atoi(node->value.c_str());
-      arrayOpen.tagName = tagName;
-      //arrayOpen.arrayName = arrayName->second;
-      arrayOpen.arraySize = atoi(node->attributes["arraysize"].c_str());
-      arrayOpen.vectorSize = atoi(node->attributes["vectorsize"].c_str());
-      arrayOpen.dataSize = atoi(node->attributes["datasize"].c_str());
-      if (node->attributes["datatype"] == "int") arrayOpen.dataType = VLSV::INT;
-      else if (node->attributes["datatype"] == "uint") arrayOpen.dataType = VLSV::UINT;
-      else if (node->attributes["datatype"] == "float") arrayOpen.dataType = VLSV::FLOAT;
-      else {
-	 cerr << "VLSVReader ERROR: Unknown datatype in tag!" << endl;
-	 return false;
-      }
-      
-      if (arrayOpen.arraySize == 0) return false;
-      if (arrayOpen.vectorSize == 0) return false;
-      if (arrayOpen.dataSize == 0) return false;
-   //}
+
+   // Copy array information from tag:
+   arrayOpen.offset = atoi(node->value.c_str());
+   arrayOpen.tagName = tagName;
+   arrayOpen.arraySize = atoi(node->attributes["arraysize"].c_str());
+   arrayOpen.vectorSize = atoi(node->attributes["vectorsize"].c_str());
+   arrayOpen.dataSize = atoi(node->attributes["datasize"].c_str());
+   if (node->attributes["datatype"] == "int") arrayOpen.dataType = VLSV::INT;
+   else if (node->attributes["datatype"] == "uint") arrayOpen.dataType = VLSV::UINT;
+   else if (node->attributes["datatype"] == "float") arrayOpen.dataType = VLSV::FLOAT;
+   else {
+      cerr << "VLSVReader ERROR: Unknown datatype in tag!" << endl;
+      return false;
+   }
+
+   if (arrayOpen.arraySize == 0) return false;
+   if (arrayOpen.vectorSize == 0) return false;
+   if (arrayOpen.dataSize == 0) return false;
    
    // Sanity check on values:
    if (begin + amount > arrayOpen.arraySize) {
       cerr << "VLSVReader ERROR: Requested read exceeds array size. begin: " << begin << " amount: " << amount << " size: " << arrayOpen.arraySize << endl;
       return false;
    }
-   
+
    streamoff start = arrayOpen.offset + begin*arrayOpen.vectorSize*arrayOpen.dataSize;
    streamsize readBytes = amount*arrayOpen.vectorSize*arrayOpen.dataSize;
    filein.clear();
@@ -306,7 +206,6 @@ bool VLSVParReader::getArrayInfoMaster(const std::string& tagName,const std::lis
 bool VLSVParReader::getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {
    bool success = true;
    if (myRank == masterRank) {
-      //success = getArrayInfoMaster(tagName,attribs,arrayOpen.arraySize,arrayOpen.vectorSize,arrayOpen.dataType,arrayOpen.dataSize);
       success = VLSVReader::loadArray(tagName,attribs);
    }
    // Check that master read array info correctly:
@@ -359,26 +258,12 @@ bool VLSVParReader::multiReadEnd(const uint64_t& offset) {
    blockLengths[0] = multiReadUnits.begin()->second;
    map<char*,uint64_t>::const_iterator it = multiReadUnits.begin();
    ++it;
-   /*
-   int myrank;
-   MPI_Comm_rank(MPI_COMM_WORLD,&myrank);
-   if (myrank == 0) cerr << "read vector size = " << vectorExtent << endl;
-   if (myrank == 0) cerr << "0" << '\t' << multiReadUnits.begin()->first << '\t' << displacements[0] << '\t' << blockLengths[0] << endl;
-   cerr << "offset: " << offset << " arrayOpen.offset: " << arrayOpen.offset << endl;
-   */
+
    uint64_t counter = 1;
    while (it != multiReadUnits.end()) {
       // Note: MPI_Type_indexed takes displacements in ints
-      //const int baseOffset    = reinterpret_cast<size_t>(multiReadUnits.begin()->first);
-      //const size_t offset     = reinterpret_cast<size_t>(it->first);
-      
       blockLengths[counter]  = it->second;
       displacements[counter] = it->first - multiReadUnits.begin()->first;
-      /*
-      if (myrank == 0) {
-	 cerr << counter << '\t' << it->first << '\t' << displacements[counter] << '\t' << blockLengths[counter] << endl;
-      }
-      */
       ++it;
       ++counter;
    }
@@ -389,9 +274,8 @@ bool VLSVParReader::multiReadEnd(const uint64_t& offset) {
    // Commit datatype and read everything in parallel:
    MPI_Type_commit(&readType);
    const uint64_t byteOffset = arrayOpen.offset + offset*arrayOpen.vectorSize*arrayOpen.dataSize;
-   //cerr << "Proc #" << myrank << " reading from byte offset #" << byteOffset << endl;
    if (MPI_File_read_at_all(filePtr,byteOffset,multiReadUnits.begin()->first,1,readType,MPI_STATUS_IGNORE) != MPI_SUCCESS) {
-      //cerr << "ERROR in read!" << endl;
+      success = false;
    }
    MPI_Type_free(&readType);
    
