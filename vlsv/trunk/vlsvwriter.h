@@ -73,6 +73,10 @@ class VLSVWriter {
    bool writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,
 		   const uint64_t& arraySize,const uint64_t& vectorSize,T* array,const int& threadID=0);
 
+   template<typename T>
+   bool writeWithReduction(const std::string& arrayName,const std::map<std::string,std::string>& attribs,
+			   const uint64_t& arraySize,T* array,MPI_Op operation);
+   
  private:
 
    uint64_t arraySize;                     /**< Number of array elements this process will write.*/
@@ -207,6 +211,30 @@ template<typename T>
 inline bool VLSVWriter::writeArray(const std::string& tagName,const std::map<std::string,std::string>& attribs,
 				   const uint64_t& arraySize,const uint64_t& vectorSize,T* array,const int& threadID) {
    return writeArray(tagName,attribs,arrayDataType<T>(),arraySize,vectorSize,sizeof(T),reinterpret_cast<char*>(array),threadID);
+}
+
+template<typename T>
+bool VLSVWriter::writeWithReduction(const std::string& arrayName,const std::map<std::string,std::string>& attribs,
+				    const uint64_t& arraySize,T* array,MPI_Op operation) {
+   // Master process allocates a receive buffer for reduction:
+   T* recvBuffer = NULL;
+   if (myrank == masterRank) recvBuffer = new T[arraySize];
+
+   // Reduce result to master:
+   if (MPI_Reduce(array,recvBuffer,arraySize,MPI_Type<T>(),operation,masterRank,comm) != MPI_SUCCESS) {
+      delete [] recvBuffer; return false;
+   }
+
+   // Write result to file. Only master process has a non-zero array length, 
+   // all other processes write a zero-length array:
+   if (myrank == masterRank) {
+      writeArray(arrayName,attribs,1,arraySize,recvBuffer);
+   } else {
+      writeArray(arrayName,attribs,0,0,recvBuffer);
+   }
+   
+   delete [] recvBuffer; recvBuffer = NULL;
+   return true;
 }
 
 #endif

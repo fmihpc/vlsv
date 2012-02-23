@@ -34,18 +34,6 @@ VLSVWriter::VLSVWriter() {
    offsets = NULL;
    types = NULL;
    xmlWriter = NULL;
-
-   // Init mutexes etc.
-   #ifdef THREADING
-      pthread_cond_init(&closeCond,NULL);
-      pthread_mutex_init(&closeLock,NULL);
-      pthread_cond_init(&endMultiwriteCond,NULL);
-      pthread_mutex_init(&endMultiwriteLock,NULL);
-      pthread_cond_init(&multiwriteStartCond,NULL);
-      pthread_mutex_init(&multiwriteStartLock,NULL);
-      pthread_cond_init(&openCond,NULL);
-      pthread_mutex_init(&openLock,NULL);
-   #endif
 }
 
 /** Destructor for VLSVWriter. Deallocates XML writer.
@@ -68,17 +56,6 @@ VLSVWriter::~VLSVWriter() {
    delete [] offsets; offsets = NULL;
    delete [] types; types = NULL;
    delete xmlWriter; xmlWriter = NULL;
-   
-   #ifdef THREADING
-      pthread_cond_destroy(&closeCond);
-      pthread_mutex_destroy(&closeLock);
-      pthread_cond_destroy(&endMultiwriteCond);
-      pthread_mutex_destroy(&endMultiwriteLock);
-      pthread_cond_destroy(&multiwriteStartCond);
-      pthread_mutex_destroy(&multiwriteStartLock);
-      pthread_cond_destroy(&openCond);
-      pthread_mutex_destroy(&openLock);
-   #endif
 }
 
 bool VLSVWriter::addMultiwriteUnit(char* array,const uint64_t& arrayElements,const int& threadID) {
@@ -106,34 +83,10 @@ bool VLSVWriter::addMultiwriteUnit(char* array,const uint64_t& arrayElements,con
  * have been opened successfully by VLSVWriter::open.
  */
 bool VLSVWriter::close(const int& threadID) {
-   #ifdef THREADING
-   // Only the master thread is allowed to close the file and write 
-   // footer. All other threads will block here and wait for a 
-   // wake-up signal from master thread:
-      if (threadID != masterThreadID) {
-	 pthread_mutex_lock(&closeLock);
-	 while (fileOpen == true) {
-	    pthread_cond_wait(&closeCond,&closeLock);
-	 }
-	 pthread_mutex_unlock(&closeLock);
-	 return true;
-      }
-   #endif
-   
    // If a file was never opened, exit immediately:
    if (fileOpen == false) {
-      #ifdef THREADING
-         pthread_mutex_lock(&closeLock);
-         pthread_cond_broadcast(&closeCond);
-         pthread_mutex_unlock(&closeLock);
-      #endif
       return false;
    }
-
-   // Destroy barrier:
-   #ifdef THREADING
-      pthread_barrier_destroy(&barrier);
-   #endif
    
    // Close MPI file:
    MPI_Barrier(comm);
@@ -168,14 +121,7 @@ bool VLSVWriter::close(const int& threadID) {
    MPI_Barrier(comm);
    
    // Wake up other threads (multithreaded mode only):
-   #ifdef THREADING
-      pthread_mutex_lock(&closeLock);
-      fileOpen = false;
-      pthread_cond_broadcast(&closeCond);
-      pthread_mutex_unlock(&closeLock);
-   #else
-      fileOpen = false;
-   #endif
+   fileOpen = false;
    return true;
 }
 
@@ -257,24 +203,6 @@ VLSV::datatype VLSVWriter::getVLSVDatatype(const string& s) {
  */
 bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,
 		      const int& mpiThreadingLevel,const int& N_threads,const int& threadID,const int& masterThreadID) {
-   #ifdef THREADING
-   // Only the master thread is allowed to open a file, all other threads 
-   // will block here and wait for a wake-up signal from the master thread.
-      if (threadID != masterThreadID) {
-	 pthread_mutex_lock(&openLock);
-	 while (initialized == false) {
-	    pthread_cond_wait(&openCond,&openLock);
-	 }
-	 pthread_mutex_unlock(&openLock);
-	 return fileOpen;
-      }
-   #endif
-   
-   // Init barrier:
-   #ifdef THREADING
-      pthread_barrier_init(&barrier,NULL,N_threads);
-   #endif
-   
    MPI_Comm_dup(comm,&(this->comm));
    masterRank              = masterProcessID;
    this->masterThreadID    = masterThreadID;
@@ -294,14 +222,6 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
    fileName = fname;
    MPI_File_delete(const_cast<char*>(fname.c_str()),MPI_INFO_NULL);
    if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,MPIinfo,&fileptr) != MPI_SUCCESS) {
-      #ifdef THREADING
-         // Master thread signals all other threads that file opening
-         // process is complete and that it is safe to read variable fileOpen:
-         pthread_mutex_lock(&openLock);
-         initialized = true;
-         pthread_cond_broadcast(&openCond);
-         pthread_mutex_unlock(&openLock);
-      #endif
       return fileOpen;
    }   
    
@@ -344,19 +264,9 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
       delete [] offsets; offsets = NULL;
       delete [] bytesPerProcess; bytesPerProcess = NULL;
    }
-   
-   #ifdef THREADING
-   // Master thread signals all other threads that file opening 
-   // process is complete and that it is safe to read variable fileOpen.
-      pthread_mutex_lock(&openLock);
-      initialized = true;
-      fileOpen    = success;
-      pthread_cond_broadcast(&openCond);
-      pthread_mutex_unlock(&openLock);
-   #else
-      initialized = true;
-      fileOpen    = success;
-   #endif
+
+   initialized = true;
+   fileOpen    = success;
    return fileOpen;
 }
 
@@ -364,21 +274,6 @@ bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySiz
    // Clear per-thread storage:
    multiwriteUnits[threadID].clear();
    multiwriteOffsets[threadID] = std::numeric_limits<unsigned int>::max();
-   
-   #ifdef THREADING
-      // In multithreaded mode only the master thread is allowed to
-      // participate in initialization process.
-      // TODO: in MPI_THREAD_SERIALIZED or MPI_THREAD_MULTIPLE the first
-      // thread to enter this function could be allowed to do the initialization.
-      if (threadID != masterThreadID) {
-	 pthread_mutex_lock(&multiwriteStartLock);
-	 while (multiwriteInitialized == false) {
-	    pthread_cond_wait(&multiwriteStartCond,&multiwriteStartLock);
-	 }
-	 pthread_mutex_unlock(&multiwriteStartLock);
-	 return multiwriteInitialized;
-      }
-   #endif
    
    // Array datatype and byte size of each vector element are determined 
    // from the template parameter, other values are copied from parameters:
@@ -403,17 +298,8 @@ bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySiz
    
    // MPI master scatters offsets:
    MPI_Scatter(offsets,1,MPI_Type<uint64_t>(),&offset,1,MPI_Type<uint64_t>(),masterRank,comm);
-      
-   #ifdef THREADING
-      // Wake up all threads waiting for multiwrite mode to initialize:
-      pthread_mutex_lock(&multiwriteStartLock);
-      multiwriteInitialized = true;
-      pthread_cond_broadcast(&multiwriteStartCond);
-      pthread_mutex_unlock(&multiwriteStartLock);
-   #else
-      multiwriteInitialized = true;
-   #endif
-   
+
+   multiwriteInitialized = true;
    return multiwriteInitialized;
 }
 
@@ -456,29 +342,6 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
 	 if (multiwriteUnits[i].size() == 0) continue;
 	 multiwriteOffsetPointer = multiwriteUnits[i].begin()->array;
       }
-      /*
-      cerr << "N_multiwriteUnits = " << multiwriteUnits.size() << " offset pointer: " << (size_t)multiwriteOffsetPointer << endl;
-      cerr << "offsets:" << endl;
-      for (size_t i=0; i<multiwriteUnits.size(); ++i) {
-	 cerr << "TID#" << i << " : " << multiwriteOffsets[i] << endl;
-      }
-      */
-      #ifdef THREADING
-      // Wake up other threads:
-         pthread_mutex_lock(&endMultiwriteLock);
-         endMultiwriteCounter = 1;
-         pthread_cond_broadcast(&endMultiwriteCond);
-         pthread_mutex_unlock(&endMultiwriteLock);
-      #endif
-   } else {
-      #ifdef THREADING
-      // Block until master thread has allocated memory and calculated offsets:
-         pthread_mutex_lock(&endMultiwriteLock);
-         while (endMultiwriteCounter != 1) {
-	    pthread_cond_wait(&endMultiwriteCond,&endMultiwriteLock);
-	 }
-         pthread_mutex_unlock(&endMultiwriteLock);
-      #endif
    }
    
    // Every thread copies its multiwrite units into a global MPI struct:
@@ -518,23 +381,6 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
       delete [] blockLengths; blockLengths = NULL;
       delete [] displacements; displacements = NULL;
       delete [] types; types = NULL;
-      
-      #ifdef THREADING
-      // Wake up other threads:
-         pthread_mutex_lock(&endMultiwriteLock);
-         endMultiwriteCounter = 2;
-         pthread_cond_broadcast(&endMultiwriteCond);
-         pthread_mutex_unlock(&endMultiwriteLock);
-      #endif
-   } else {
-      #ifdef THREADING
-      // Wait for master thread to write data over MPI:
-         pthread_mutex_lock(&endMultiwriteLock);
-         while (endMultiwriteCounter != 2) {
-	    pthread_cond_wait(&endMultiwriteCond,&endMultiwriteLock);
-	 }
-         pthread_mutex_unlock(&endMultiwriteLock);
-      #endif
    }
 
    // MPI master process writes footer tag:
@@ -558,23 +404,6 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
 	 
 	 // Update global file offset:
 	 offset +=totalBytes;
-	 
-	 #ifdef THREADING
-	 // Wake up other threads:
-	    pthread_mutex_lock(&endMultiwriteLock);
-	    endMultiwriteCounter = 3;
-	    pthread_cond_broadcast(&endMultiwriteCond);
-	    pthread_mutex_unlock(&endMultiwriteLock);
-	 #endif
-      } else {
-	 #ifdef THREADING
-	 // Wait for master thread to update footer:
-	    pthread_mutex_lock(&endMultiwriteLock);
-	    while (endMultiwriteCounter != 3) {
-	       pthread_cond_wait(&endMultiwriteCond,&endMultiwriteLock);
-	    }
-	    pthread_mutex_unlock(&endMultiwriteLock);
-	 #endif
       }
    }
    
@@ -591,12 +420,6 @@ bool VLSVWriter::writeArray(const std::string& arrayName,const std::map<std::str
    if (addMultiwriteUnit(array,arraySize,threadID) == false) {
       success = false; return success;
    }
-   
-   // Must wait for all threads to finish adding their multiwrite units before
-   // writing data to file:
-   #ifdef THREADING
-      pthread_barrier_wait(&barrier);
-   #endif
    
    if (endMultiwrite(arrayName,attribs,threadID) == false) {
       success = false; return success;
