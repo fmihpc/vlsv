@@ -52,26 +52,25 @@ class VLSVWriter {
    VLSVWriter();
    ~VLSVWriter();
 
-   bool addMultiwriteUnit(char* array,const uint64_t& arrayElements,const int& threadID=0);
-   bool close(const int& threadID=0);
-   bool endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs,const int& threadID=0);
-   bool open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,
-	     const int& mpiThreadingLevel=MPI_THREAD_SINGLE,const int& N_threads=1,const int& threadID=0,const int& masterThreadID=0);
-   bool startMultiwrite(const std::string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const int& threadID);
+   bool addMultiwriteUnit(char* array,const uint64_t& arrayElements);
+   bool close();
+   bool endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs);
+   bool open(const std::string& fname,MPI_Comm comm,const int& masterProcessID);
+   bool startMultiwrite(const std::string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize);
    bool writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
-		   const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,char* array,const int& threadID=0);
+		   const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,char* array);
    
    // ***** TEMPLATE WRAPPER FUNCTIONS ***** //
 
    template<typename T> 
-   bool addMultiwriteUnit(T* array,const uint64_t& arrayElements,const int& threadID=0);
+   bool addMultiwriteUnit(T* array,const uint64_t& arrayElements);
 
    template<typename T>
-   bool startMultiwrite(const uint64_t& arraySize,const uint64_t& vectorSize,const int& threadID=0);
+   bool startMultiwrite(const uint64_t& arraySize,const uint64_t& vectorSize);
    
    template<typename T> 
    bool writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,
-		   const uint64_t& arraySize,const uint64_t& vectorSize,T* array,const int& threadID=0);
+		   const uint64_t& arraySize,const uint64_t& vectorSize,T* array);
 
    template<typename T>
    bool writeWithReduction(const std::string& arrayName,const std::map<std::string,std::string>& attribs,
@@ -94,10 +93,6 @@ class VLSVWriter {
    MPI_File fileptr;                       /**< MPI file pointer to the output file.*/
    bool initialized;                       /**< If true, VLSV Writer initialization is complete, does not tell if it was successful.*/
    int masterRank;                         /**< Rank of master process in communicator comm.*/
-   int masterThreadID;                     /**< ID of the master thread. In certain MPI threading levels
-					    * only the master thread is allowed to call MPI routines.*/
-   int mpiThreadingLevel;                  /**< Threading level supported by the underlying MPI library,
-					    * obtained from MPI_Init_thread.*/
    bool multiwriteFinalized;               /**< If true, multiwrite array writing mode has finalized correctly. 
 					    This variable is used to synchronize threads in endMultiwrite function..*/
    bool multiwriteInitialized;             /**< If true, multiwrite array writing mode has initialized correctly. 
@@ -116,7 +111,6 @@ class VLSVWriter {
    unsigned int N_multiwriteUnits;         /**< Total number of multiwrite units this process has. In multithreaded mode 
 					    * this is equal to the sum of multiwrite units over all threads.*/
    int N_processes;                        /**< Number of processes in communicator comm.*/
-   int N_threads;                          /**< Total number of threads using VLSV writer.*/
    MPI_Offset offset;                      /**< MPI offset into output file for this process.*/
    MPI_Offset* offsets;                    /**< Array with N_processes elements. Used to scatter file offsets.*/
    MPI_Datatype* types;                    /**< Used in creation of an MPI_Struct in endMultiwrite.*/
@@ -124,24 +118,6 @@ class VLSVWriter {
 					    * must have the same value on all participating processes.*/
    VLSV::datatype vlsvType;                /**< Same as dataType but in an integer representation.*/
    MuXML* xmlWriter;                       /**< Pointer to XML writer, used for writing a footer to the VLSV file.*/
-   
-   // ***** VARIABLES ONLY USED IN MULTITHREADED MODE *****
-   
-   #ifdef THREADING
-   pthread_barrier_t  barrier;             /**< Barrier, used to sync all threads using VLSVWriter.*/
-   pthread_cond_t     closeCond;           /**< Conditional lock used in VLSVWriter::close to sync threads.*/
-   pthread_mutex_t    closeLock;           /**< Mutex used in VLSVWriter::close to sync threads.
-					    * Used together with VLSVWriter::closeCond.*/
-   pthread_cond_t     endMultiwriteCond;   /**< Conditional lock used in VLSVWriter::endMultiwrite to sync threads.*/
-   pthread_mutex_t    endMultiwriteLock;   /**< Mutex used in VLSVWriter::endMultiwrite to sync threads.
-					    * Used together with VLSVWriter::endMultiwriteCond.*/
-   pthread_cond_t     multiwriteStartCond; /**< Conditional lock used in VLSVWriter::multiwriteStart to sync threads.*/
-   pthread_mutex_t    multiwriteStartLock; /**< Mutex used in VLSVWriter::multiwriteStart to sync threads. 
-					    *Used together with VLSVWriter::multiwriteStartCond.*/
-   pthread_cond_t     openCond;            /**< Conditional lock used in VLSVWriter::open to sync threads.*/
-   pthread_mutex_t    openLock;            /**< Mutex used in VLSVWriter::open to sync threads.
-					    * Used together with VLSVWriter::openCond.*/
-   #endif
    
    /** Returns a string representation of an array that is to be written to file.
     * The correct C++ datatype can be deduced from the string value returned by this
@@ -168,49 +144,39 @@ template<> inline std::string VLSVWriter::arrayDataType<double>() {return "float
 template<> inline std::string VLSVWriter::arrayDataType<long double>() {return "float";}
 
 template<typename T>
-inline bool VLSVWriter::addMultiwriteUnit(T* array,const uint64_t& arrayElements,const int& threadID) {
+inline bool VLSVWriter::addMultiwriteUnit(T* array,const uint64_t& arrayElements) {
    // Check that startMultiwrite has initialized correctly:
    if (multiwriteInitialized == false) return false;
    
    // Each thread records their multiwrite units to per-thread storage,
    // so there is no need to synchronize access to vector multiwriteUnits:
-   multiwriteUnits[threadID].push_back(VLSV::WriteUnit(reinterpret_cast<char*>(array),MPI_Type<T>(),arrayElements*vectorSize));
+   multiwriteUnits[0].push_back(VLSV::WriteUnit(reinterpret_cast<char*>(array),MPI_Type<T>(),arrayElements*vectorSize));
    return true;
 }
 
 /** Start an array writing process.
  * @param arraySize  Number of elements this MPI process will write to the output array. 
- * In multithreaded mode all threads must call this function with the same value.
  * @param vectorSize Number of elements in each data vector, this value must have the 
- * same value on all participating MPI processes. In multithreaded mode all threads 
- * must call this function with the same value.
- * @param threadID Thread ID of the thread calling this function. If multithreaded mode
- * is not used, master thread ID should be used here. Defaults to value zero.
+ * same value on all participating MPI processes.
  * @return If true, multiwrite mode has initialized correctly and functions
- * VLSVWriter::addMultiwriteUnit and VLSVWriter::endMultiwrite may be called. In 
- * multithreaded mode every thread calling this function will return the same value.
- */
+ * VLSVWriter::addMultiwriteUnit and VLSVWriter::endMultiwrite may be called.*/
 template<typename T>
-inline bool VLSVWriter::startMultiwrite(const uint64_t& arraySize,const uint64_t& vectorSize,const int& threadID) {
-   return startMultiwrite(arrayDataType<T>(),arraySize,vectorSize,sizeof(T),threadID);
+inline bool VLSVWriter::startMultiwrite(const uint64_t& arraySize,const uint64_t& vectorSize) {
+   return startMultiwrite(arrayDataType<T>(),arraySize,vectorSize,sizeof(T));
 }
 
 /** Write an array to the output file. This function is simply a wrapper to 
  * multiwrite functions, i.e. array is written to file with a single multiwrite unit.
- * In multithreaded mode it is safe to call this function with all threads.
  * @param tagName Name of the array, same as the XML tag name in output file.
  * @param attribs Other attributes for the output XML tag, given in [tag name,tag value] pairs.
  * @param arraySize Number of elements in array.
  * @param vectorSize Number of elements in vectors that comprise the array elements.
  * @param array Pointer to the output array.
- * @param threadID Thread ID of the thread that calls this function. If multithreaded mode is 
- * not used, master thread ID should be used here. Defaults to value zero.
- * @return If true, the array was successfully written to file.
- */
+ * @return If true, the array was successfully written to file.*/
 template<typename T> 
 inline bool VLSVWriter::writeArray(const std::string& tagName,const std::map<std::string,std::string>& attribs,
-				   const uint64_t& arraySize,const uint64_t& vectorSize,T* array,const int& threadID) {
-   return writeArray(tagName,attribs,arrayDataType<T>(),arraySize,vectorSize,sizeof(T),reinterpret_cast<char*>(array),threadID);
+				   const uint64_t& arraySize,const uint64_t& vectorSize,T* array) {
+   return writeArray(tagName,attribs,arrayDataType<T>(),arraySize,vectorSize,sizeof(T),reinterpret_cast<char*>(array));
 }
 
 template<typename T>

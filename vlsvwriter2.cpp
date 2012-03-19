@@ -14,12 +14,7 @@ using namespace std;
  */
 VLSV::WriteUnit::WriteUnit(char* array,const MPI_Datatype& mpiType,const uint64_t& amount): array(array),mpiType(mpiType),amount(amount) { }
 
-/** Constructor for VLSVWriter.
- * In multithreaded mode the mutexes and condition variables are 
- * initialized here.
- * In multithreaded mode only the master thread should be allowed to 
- * call the constructor.
- */
+/** Constructor for VLSVWriter.*/
 VLSVWriter::VLSVWriter() {
    blockLengths = NULL;
    bytesPerProcess = NULL;
@@ -36,12 +31,7 @@ VLSVWriter::VLSVWriter() {
    xmlWriter = NULL;
 }
 
-/** Destructor for VLSVWriter. Deallocates XML writer.
- * In multithreaded mode mutexes and condition variables are 
- * destroyed here.
- * In multithreaded mode only the master thread should be allowed to 
- * call the destructor.
- */
+/** Destructor for VLSVWriter. Deallocates XML writer.*/
 VLSVWriter::~VLSVWriter() {
    if (blockLengths != NULL) {cerr << "bl " << blockLengths;}
    if (bytesPerProcess != NULL) {cerr << "bl " << bytesPerProcess;}
@@ -58,13 +48,10 @@ VLSVWriter::~VLSVWriter() {
    delete xmlWriter; xmlWriter = NULL;
 }
 
-bool VLSVWriter::addMultiwriteUnit(char* array,const uint64_t& arrayElements,const int& threadID) {
+bool VLSVWriter::addMultiwriteUnit(char* array,const uint64_t& arrayElements) {
    // Check that startMultiwrite has initialized correctly:
    if (multiwriteInitialized == false) return false;
-
-   // Each thread records their multiwrite units to per-thread storage,
-   // so there is no need to synchronize access to vector multiwriteUnits:
-   multiwriteUnits[threadID].push_back(VLSV::WriteUnit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
+   multiwriteUnits[0].push_back(VLSV::WriteUnit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
    return true;
 }
 
@@ -72,17 +59,9 @@ bool VLSVWriter::addMultiwriteUnit(char* array,const uint64_t& arrayElements,con
  * After the file has been closed the MPI master process appends an XML footer 
  * to the end of the file, and writes an offset to the footer to the start of 
  * the file.
- * In multithreaded mode only the master thread is allowed to 
- * participate in the file closing process, all other threads will 
- * block until the master thread has finished.
- * In multithreaded mode it is safe to call this function from all processes.
- * @param threadID Thread ID of the thread calling this function. If multithreaded 
- * mode is not used the master thread ID should be used here. Defaults to 
- * value zero.
  * @return If true, the file was closed successfully. If false, a file may not 
- * have been opened successfully by VLSVWriter::open.
- */
-bool VLSVWriter::close(const int& threadID) {
+ * have been opened successfully by VLSVWriter::open.*/
+bool VLSVWriter::close() {
    // If a file was never opened, exit immediately:
    if (fileOpen == false) {
       return false;
@@ -119,8 +98,6 @@ bool VLSVWriter::close(const int& threadID) {
 
    // Wait for master process to finish:
    MPI_Barrier(comm);
-   
-   // Wake up other threads (multithreaded mode only):
    fileOpen = false;
    return true;
 }
@@ -183,37 +160,19 @@ VLSV::datatype VLSVWriter::getVLSVDatatype(const string& s) {
  * in the given communicator. Additionally, master MPI process writes a 
  * header into the output file and caches a footer which will be written 
  * in VLSVWriter::close.
- * In multithreaded mode only the master thread will participate in the file 
- * opening process, all other threads will simply block until master thread 
- * has finished.
- * In multithreaded mode it is safe to call this function with all threads.
  * @param fname The name of the output file.
  * @param comm MPI communicator used in writing.
  * @param masterProcessID ID of the MPI master process.
- * @param mpiThreadingLevel Threading level of MPI, obtained from MPI_Init_thread. 
- * If multithreaded mode is not used a value MPI_THREAD_SINGLE should be used here.
- * Defaults to MPI_THREAD_SINGLE.
- * @param N_threads Total number of threads using VLSV writer, this value is 
- * required for allocation of per-thread variables.
- * @param threadID Thread ID of the thread calling this function. If multithreaded 
- * mode is not used a value zero should be used here. Defaults to value zero.
- * @param masterThreadID Thread ID of the master thread. If multithreaded mode is 
- * not used the master thread ID should be used here. Defalts to value zero.
- * @return If true, a file was opened successfully.
- */
-bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,
-		      const int& mpiThreadingLevel,const int& N_threads,const int& threadID,const int& masterThreadID) {
+ * @return If true, a file was opened successfully.*/
+bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID) {
    MPI_Comm_dup(comm,&(this->comm));
-   masterRank              = masterProcessID;
-   this->masterThreadID    = masterThreadID;
-   this->mpiThreadingLevel = mpiThreadingLevel;
-   this->N_threads         = N_threads;
+   masterRank = masterProcessID;
    MPI_Comm_rank(this->comm,&myrank);
    MPI_Comm_size(this->comm,&N_processes);
 
    // Allocate per-thread storage:
-   multiwriteOffsets.resize(N_threads);
-   multiwriteUnits.resize(N_threads);
+   multiwriteOffsets.resize(1);
+   multiwriteUnits.resize(1);
    
    // All processes in communicator comm open the same file. If a file with the 
    // given name already exists it is deleted:
@@ -270,10 +229,10 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
    return fileOpen;
 }
 
-bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const int& threadID) {
+bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize) {
    // Clear per-thread storage:
-   multiwriteUnits[threadID].clear();
-   multiwriteOffsets[threadID] = std::numeric_limits<unsigned int>::max();
+   multiwriteUnits[0].clear();
+   multiwriteOffsets[0] = numeric_limits<unsigned int>::max();
    
    // Array datatype and byte size of each vector element are determined 
    // from the template parameter, other values are copied from parameters:
@@ -304,52 +263,45 @@ bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySiz
 }
 
 /** Write multiwrite units to file.
- * In multithreaded mode it is safe to call this function with every thread. This function contains several 
- * thread synchronization points, in particular MPI calls have been restricted to the master thread.
- * TODO: In MPI_THREAD_SERIALIZED and MPI_THREAD_MULTIPLE modes it might be more efficient to call 
- * MPI functions with all threads.
  * @param tagName Name of the XML tag for this array.
  * @param attribs Attributes for the XML tag.
- * @param threadID Thread ID of the thread calling this function. If multithreading mode is not 
- * used, masterThreadID value should be used here. Defaults to zero value.
- * @return If true, array was successfully written to file. In multithreaded mode all threads 
- * calling this function will return the same value.
- */
-bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs,const int& threadID) {
-   // Master thread allocates memory for an MPI_Struct that is used to 
-   // write all multiwrite units with a single collective call. In 
-   // multithreaded mode other threads wait until master is finished:
-   if (threadID == masterThreadID) {
-      // Count the total number of multiwrite units:
-      N_multiwriteUnits = 0;
-      for (size_t i=0; i<multiwriteUnits.size(); ++i) {
-	 N_multiwriteUnits += multiwriteUnits[i].size();
-      }
-      // Calculate offset for each thread:
-      multiwriteOffsets[0] = 0;
-      for (size_t i=1; i<multiwriteUnits.size(); ++i) {
-	 multiwriteOffsets[i] = multiwriteOffsets[i-1] + multiwriteUnits[i].size();
-      }
-      // Allocate memory for an MPI struct:
-      blockLengths  = new int[N_multiwriteUnits];
-      displacements = new MPI_Aint[N_multiwriteUnits];
-      types         = new MPI_Datatype[N_multiwriteUnits];
-      // Calculate a global offset pointer for MPI struct, i.e. an 
-      // offset which is used to calculate the displacements:
-      bool found = false;
-      multiwriteOffsetPointer = NULL;
-      for (size_t i=0; i<multiwriteUnits.size(); ++i) {
-	 if (multiwriteUnits[i].size() == 0) continue;
-	 multiwriteOffsetPointer = multiwriteUnits[i].begin()->array;
-      }
+ * @return If true, array was successfully written to file.*/
+bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs) {
+   // Allocate memory for an MPI_Struct that is used to 
+   // write all multiwrite units with a single collective call.
+
+   // Count the total number of multiwrite units:
+   N_multiwriteUnits = 0;
+   for (size_t i=0; i<multiwriteUnits.size(); ++i) {
+      N_multiwriteUnits += multiwriteUnits[i].size();
+   }
+   
+   // Calculate offset for each thread:
+   multiwriteOffsets[0] = 0;
+   for (size_t i=1; i<multiwriteUnits.size(); ++i) {
+      multiwriteOffsets[i] = multiwriteOffsets[i-1] + multiwriteUnits[i].size();
+   }
+   
+   // Allocate memory for an MPI struct:
+   blockLengths  = new int[N_multiwriteUnits];
+   displacements = new MPI_Aint[N_multiwriteUnits];
+   types         = new MPI_Datatype[N_multiwriteUnits];
+   
+   // Calculate a global offset pointer for MPI struct, i.e. an 
+   // offset which is used to calculate the displacements:
+   bool found = false;
+   multiwriteOffsetPointer = NULL;
+   for (size_t i=0; i<multiwriteUnits.size(); ++i) {
+      if (multiwriteUnits[i].size() == 0) continue;
+      multiwriteOffsetPointer = multiwriteUnits[i].begin()->array;
    }
    
    // Every thread copies its multiwrite units into a global MPI struct:
-   if (multiwriteUnits[threadID].size() > 0) {
-      unsigned int offset = multiwriteOffsets[threadID];
+   // DEPRECATED
+   if (multiwriteUnits[0].size() > 0) {
+      unsigned int offset = multiwriteOffsets[0];
       unsigned int i = 0;
-      for (list<VLSV::WriteUnit>::const_iterator it=multiwriteUnits[threadID].begin(); it!=multiwriteUnits[threadID].end(); ++it) {
-	 //cerr << "TID#" << threadID << " copying to offset: " << offset+i << endl;
+      for (list<VLSV::WriteUnit>::const_iterator it=multiwriteUnits[0].begin(); it!=multiwriteUnits[0].end(); ++it) {
 	 blockLengths[offset+i]  = (*it).amount;
 	 displacements[offset+i] = (*it).array - multiwriteOffsetPointer;
 	 types[offset+i]         = (*it).mpiType;
@@ -358,53 +310,48 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
    }
    
    // Write data to file:
-   if (threadID == masterThreadID) {
-      if (N_multiwriteUnits > 0) {
-	 // Create an MPI struct containing the multiwrite units:
-	 MPI_Datatype outputType;
-	 MPI_Type_create_struct(N_multiwriteUnits,blockLengths,displacements,types,&outputType);
-	 MPI_Type_commit(&outputType);
-
-	 // Synchronize MPI processes. This is to make sure that file writing is not started 
-	 // until every process has finished adding their multiwrite units:
-	 MPI_Barrier(comm);
-	 
-	 // Write data to output file with a single collective call:
-	 MPI_File_write_at_all(fileptr,offset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
-	 MPI_Type_free(&outputType);
-      } else {
-	 // We have no data to write but we need to participate in the collective call anyway:
-	 MPI_File_write_at_all(fileptr,offset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
-      }
+   if (N_multiwriteUnits > 0) {
+      // Create an MPI struct containing the multiwrite units:
+      MPI_Datatype outputType;
+      MPI_Type_create_struct(N_multiwriteUnits,blockLengths,displacements,types,&outputType);
+      MPI_Type_commit(&outputType);
       
-      // Deallocate memory:
-      delete [] blockLengths; blockLengths = NULL;
-      delete [] displacements; displacements = NULL;
-      delete [] types; types = NULL;
+      // Synchronize MPI processes. This is to make sure that file writing is not started 
+      // until every process has finished adding their multiwrite units:
+      MPI_Barrier(comm);
+      
+      // Write data to output file with a single collective call:
+      MPI_File_write_at_all(fileptr,offset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
+      MPI_Type_free(&outputType);
+   } else {
+      // We have no data to write but we need to participate in the collective call anyway:
+      MPI_File_write_at_all(fileptr,offset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
    }
+      
+   // Deallocate memory:
+   delete [] blockLengths; blockLengths = NULL;
+   delete [] displacements; displacements = NULL;
+   delete [] types; types = NULL;
 
    // MPI master process writes footer tag:
    if (myrank == masterRank) {
-      // Only the master thread is allowed to update XML tree:
-      if (threadID == masterThreadID) {
-	 // Count total number of bytes written to file:
-	 uint64_t totalBytes = 0;
-	 for(int i=0;i<N_processes;i++) totalBytes+=bytesPerProcess[i];
+      // Count total number of bytes written to file:
+      uint64_t totalBytes = 0;
+      for(int i=0;i<N_processes;i++) totalBytes+=bytesPerProcess[i];
 	 
-	 XMLNode* root = xmlWriter->getRoot();
-	 XMLNode* xmlnode = xmlWriter->find("VLSV",root);
-	 XMLNode* node = xmlWriter->addNode(xmlnode,tagName,offset);
-	 for (map<string,string>::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
-	    xmlWriter->addAttribute(node,it->first,it->second);
-	 }
-	 xmlWriter->addAttribute(node,"vectorsize",vectorSize);
-	 xmlWriter->addAttribute(node,"arraysize",totalBytes/dataSize/vectorSize);
-	 xmlWriter->addAttribute(node,"datatype",dataType);
-	 xmlWriter->addAttribute(node,"datasize",dataSize);
-	 
-	 // Update global file offset:
-	 offset +=totalBytes;
+      XMLNode* root = xmlWriter->getRoot();
+      XMLNode* xmlnode = xmlWriter->find("VLSV",root);
+      XMLNode* node = xmlWriter->addNode(xmlnode,tagName,offset);
+      for (map<string,string>::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
+	 xmlWriter->addAttribute(node,it->first,it->second);
       }
+      xmlWriter->addAttribute(node,"vectorsize",vectorSize);
+      xmlWriter->addAttribute(node,"arraysize",totalBytes/dataSize/vectorSize);
+      xmlWriter->addAttribute(node,"datatype",dataType);
+      xmlWriter->addAttribute(node,"datasize",dataSize);
+      
+      // Update global file offset:
+      offset +=totalBytes;
    }
    
    multiwriteInitialized = false;
@@ -412,16 +359,16 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
 }
 
 bool VLSVWriter::writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
-			    const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,char* array,const int& threadID) {
+			    const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,char* array) {
    bool success = true;
-   if (startMultiwrite(dataType,arraySize,vectorSize,dataSize,threadID) == false) {
+   if (startMultiwrite(dataType,arraySize,vectorSize,dataSize) == false) {
       success = false; return success;
    }
-   if (addMultiwriteUnit(array,arraySize,threadID) == false) {
+   if (addMultiwriteUnit(array,arraySize) == false) {
       success = false; return success;
    }
    
-   if (endMultiwrite(arrayName,attribs,threadID) == false) {
+   if (endMultiwrite(arrayName,attribs) == false) {
       success = false; return success;
    }
    return success;

@@ -993,20 +993,23 @@ bool convertCurveSILO(const string& fname,bool lastFile) {
 	 cerr << "Failed to open '" << fname << "'" << endl;
 	 return false;
       }
-   
+
+      // Get all unique attribute 'name' values from arrays that have name TIMESERIES:
       set<string> parameterNames;
       if (vlsvReader.getUniqueAttributeValues("TIMESERIES","name",parameterNames) == false) {
 	 vlsvReader.close();
 	 return false;
       }
 
+      // Append (x,y) pair from each TIMESERIES array to curves:
       for (set<string>::const_iterator it=parameterNames.begin(); it!=parameterNames.end(); ++it) {
 	 appendCurveValue(vlsvReader,*it,true);
       }
    
       vlsvReader.close();
    }
-   
+
+   // Write curve data to SILO file:
    if (lastFile == true) {
       cerr << "Writing file curves.silo" << endl;
       string outName = "curves.silo";
