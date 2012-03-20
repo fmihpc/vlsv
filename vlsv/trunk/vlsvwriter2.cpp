@@ -2,6 +2,19 @@
 #include <iostream>
 #include <fstream>
 
+#ifdef PROFILE
+   #include <profiler.h>
+   static int fileOpenID = -1;
+   static int startMWgatherID = -1;
+   static int startMWscatterID = -1;
+   static int endMWstructID = -1;
+   static int endMWwriteID = -1;
+   static int addMWunitID = -1;
+   static int startMWID = -1;
+   static int addMWID = -1;
+   static int endMWID = -1;
+#endif
+
 #include "mpiconversion.h"
 #include "vlsvwriter.h"
 
@@ -50,8 +63,14 @@ VLSVWriter::~VLSVWriter() {
 
 bool VLSVWriter::addMultiwriteUnit(char* array,const uint64_t& arrayElements) {
    // Check that startMultiwrite has initialized correctly:
+   #ifdef PROFILE
+      profile::start("add mw unit",addMWunitID);
+   #endif
    if (multiwriteInitialized == false) return false;
    multiwriteUnits[0].push_back(VLSV::WriteUnit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
+   #ifdef PROFILE
+      profile::stop();
+   #endif
    return true;
 }
 
@@ -165,6 +184,10 @@ VLSV::datatype VLSVWriter::getVLSVDatatype(const string& s) {
  * @param masterProcessID ID of the MPI master process.
  * @return If true, a file was opened successfully.*/
 bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID) {
+   #ifdef PROFILE
+      profile::start("open",fileOpenID);
+   #endif
+   
    MPI_Comm_dup(comm,&(this->comm));
    masterRank = masterProcessID;
    MPI_Comm_rank(this->comm,&myrank);
@@ -182,7 +205,10 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
    MPI_File_delete(const_cast<char*>(fname.c_str()),MPI_INFO_NULL);
    if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,MPIinfo,&fileptr) != MPI_SUCCESS) {
       return fileOpen;
-   }   
+   }
+   #ifdef PROFILE
+      profile::stop();
+   #endif
    
    offset = 0;           //offset set to 0 when opening a new file
    MPI_File_set_view(fileptr,0,MPI_BYTE,MPI_BYTE,const_cast<char*>("native"),MPI_INFO_NULL);
@@ -246,8 +272,14 @@ bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySiz
    endMultiwriteCounter = 0;
    
    // Gather the number of bytes written by every process to MPI master process:
+   #ifdef PROFILE
+      profile::start("gather",startMWgatherID);
+   #endif
    myBytes = arraySize * vectorSize * dataSize;
    MPI_Gather(&myBytes,1,MPI_Type<uint64_t>(),bytesPerProcess,1,MPI_Type<uint64_t>(),masterRank,comm);
+   #ifdef PROFILE
+      profile::stop();
+   #endif
    
    // MPI master process calculates an offset to the output file for all processes:
    if (myrank == masterRank) {
@@ -256,7 +288,13 @@ bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySiz
    }
    
    // MPI master scatters offsets:
+   #ifdef PROFILE
+      profile::start("scatter",startMWscatterID);
+   #endif
    MPI_Scatter(offsets,1,MPI_Type<uint64_t>(),&offset,1,MPI_Type<uint64_t>(),masterRank,comm);
+   #ifdef PROFILE
+      profile::stop();
+   #endif
 
    multiwriteInitialized = true;
    return multiwriteInitialized;
@@ -312,20 +350,38 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
    // Write data to file:
    if (N_multiwriteUnits > 0) {
       // Create an MPI struct containing the multiwrite units:
+      #ifdef PROFILE
+         profile::start("struct creation",endMWstructID);
+      #endif
       MPI_Datatype outputType;
       MPI_Type_create_struct(N_multiwriteUnits,blockLengths,displacements,types,&outputType);
       MPI_Type_commit(&outputType);
+      #ifdef PROFILE
+         profile::stop();
+      #endif
       
       // Synchronize MPI processes. This is to make sure that file writing is not started 
       // until every process has finished adding their multiwrite units:
       MPI_Barrier(comm);
       
       // Write data to output file with a single collective call:
+      #ifdef PROFILE
+         profile::start("write",endMWwriteID);
+      #endif
       MPI_File_write_at_all(fileptr,offset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
       MPI_Type_free(&outputType);
+      #ifdef PROFILE
+         profile::stop();
+      #endif
    } else {
       // We have no data to write but we need to participate in the collective call anyway:
+      #ifdef PROFILE
+         profile::start("write",endMWwriteID);
+      #endif
       MPI_File_write_at_all(fileptr,offset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
+      #ifdef PROFILE
+         profile::stop();
+      #endif
    }
       
    // Deallocate memory:
@@ -337,7 +393,7 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
    if (myrank == masterRank) {
       // Count total number of bytes written to file:
       uint64_t totalBytes = 0;
-      for(int i=0;i<N_processes;i++) totalBytes+=bytesPerProcess[i];
+      for (int i=0; i<N_processes; ++i) totalBytes += bytesPerProcess[i];
 	 
       XMLNode* root = xmlWriter->getRoot();
       XMLNode* xmlnode = xmlWriter->find("VLSV",root);
@@ -351,7 +407,7 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
       xmlWriter->addAttribute(node,"datasize",dataSize);
       
       // Update global file offset:
-      offset +=totalBytes;
+      offset += totalBytes;
    }
    
    multiwriteInitialized = false;
@@ -361,16 +417,32 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
 bool VLSVWriter::writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
 			    const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,char* array) {
    bool success = true;
+   #ifdef PROFILE
+      profile::start("start multiwrite",startMWID);
+   #endif
    if (startMultiwrite(dataType,arraySize,vectorSize,dataSize) == false) {
       success = false; return success;
    }
+   
+   #ifdef PROFILE
+      profile::stop();
+      profile::start("add multiwrite",addMWID);
+   #endif
    if (addMultiwriteUnit(array,arraySize) == false) {
       success = false; return success;
    }
    
+   #ifdef PROFILE
+      profile::stop();
+      profile::start("end multiwrite",endMWID);
+   #endif
    if (endMultiwrite(arrayName,attribs) == false) {
       success = false; return success;
    }
+   #ifdef PROFILE
+      profile::stop();
+   #endif
+   
    return success;
 }
 
