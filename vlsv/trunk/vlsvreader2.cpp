@@ -23,6 +23,11 @@ bool VLSVReader::close() {
    return true;
 }
 
+/** Get attributes of the given XML tag.
+ * @param tagName Name of the XML tag.
+ * @param attribsIn Constraints that limit the search.
+ * @param attribsOut Attributes of the XML tag, if one matched given constraints.
+ * @return If true, an XML tag was found that mathes given constraints.*/
 bool VLSVReader::getArrayAttributes(const string& tagName,const list<pair<string,string> >& attribsIn,map<string,string>& attribsOut) const {
    if (fileOpen == false) return false;
    XMLNode* node = xmlReader.find(tagName,attribsIn);
@@ -32,6 +37,15 @@ bool VLSVReader::getArrayAttributes(const string& tagName,const list<pair<string
    return true;
 }
 
+/** Get metadata of given array.
+ * @param tagName Name of the XML tag.
+ * @param attribs Constraints that limit search.
+ * @param arraySize Variable in which array size is written.
+ * @param vectorSize Variable in which vector size of each array element is written.
+ * @param dataType Variable in which the datatype stored to array is written.
+ * @param dataSize Variable in which byte size of the datatype stored to array is written.
+ * @return If true, an array was found that matched given search criteria and output variables 
+ * contain meaningful values.*/
 bool VLSVReader::getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,uint64_t& arraySize,uint64_t& vectorSize,VLSV::datatype& dataType,uint64_t& dataSize) const {
    if (fileOpen == false) return false;
    XMLNode* node = xmlReader.find(tagName,attribs);
@@ -50,6 +64,12 @@ bool VLSVReader::getArrayInfo(const std::string& tagName,const std::list<std::pa
    return true;
 }
 
+/** Get unique values of given XML tag attribute. This function can be used to query the names of 
+ * all mesh variables, for example.
+ * @param tagName Name of the XML tag whose attributes are included in the search.
+ * @param attribName Name of the queried tag attribute.
+ * @param output Set in which unique attribute values are written.
+ * @return If true, output variable contain meaningful values.*/
 bool VLSVReader::getUniqueAttributeValues(const string& tagName,const string& attribName,set<string>& output) const {
    if (fileOpen == false) return false;
    
@@ -89,6 +109,9 @@ bool VLSVReader::loadArray(const std::string& tagName,const std::list<std::pair<
    return true;
 }
 
+/** Open a VLSV file for reading.
+ * @param fname File name.
+ * @return If true, file was successfully opened.*/
 bool VLSVReader::open(const std::string& fname) {
    bool success = true;
    filein.open(fname.c_str(), fstream::in);
@@ -122,6 +145,13 @@ bool VLSVReader::open(const std::string& fname) {
    return success;
 }
 
+/** Read given part of a given array from file.
+ * @param tagName Name of the XML tag.
+ * @param attribs List of attributes that uniquely determine the array.
+ * @param begin Index of the first read array element.
+ * @param amount How many array elements are read.
+ * @param buffer Buffer in which data is copied.
+ * @return If true, array was found and requested part was copied to buffer.*/
 bool VLSVReader::readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
 			   const uint64_t& begin,const uint64_t& amount,char* buffer) {
    if (fileOpen == false) {
