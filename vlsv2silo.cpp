@@ -9,6 +9,14 @@
 #include <vector>
 #include <map>
 
+#ifdef PROFILE
+   #include <profile.hpp>
+   int convertQuadMeshTotalID;
+   //int quadMeshID;
+   //int quadVariablesID;
+   //int quadMeshReadID;
+#endif
+
 #include "vlsvreader.h"
 
 using namespace std;
@@ -311,7 +319,10 @@ void parseCoordinateNames(DBoptlist* optlist,map<string,string>& attribsOut) {
    DBAddOption(optlist,DBOPT_ZUNITS,const_cast<char*>(units_z.c_str()));
 }
 
-bool convertMeshVariable(VLSVReader& vlsvReader,const string& meshName,const string& varName) {
+bool convertMeshVariable(VLSVReader& vlsvReader,const string& meshName,const string& varName) {   
+//   #ifdef PROFILE
+//      profile::start(quadVariablesID);
+//   #endif
    bool success = true;
 
    // Writing a unstructured grid variable is a rather straightforward process. The 
@@ -323,7 +334,12 @@ bool convertMeshVariable(VLSVReader& vlsvReader,const string& meshName,const str
    list<pair<string,string> > attributes;
    attributes.push_back(make_pair("mesh",meshName));
    attributes.push_back(make_pair("name",varName));
-   if (vlsvReader.getArrayInfo("VARIABLE",attributes,arraySize,vectorSize,dataType,dataSize) == false) return false;
+   if (vlsvReader.getArrayInfo("VARIABLE",attributes,arraySize,vectorSize,dataType,dataSize) == false) {
+//      #ifdef PROFILE
+//         profile::stop(quadVariablesID);
+//      #endif
+      return false;
+   }
 
    // Read variable data. We do not actually need to care if 
    // the data is given as floats, doubles, or long doubles. We 
@@ -332,9 +348,12 @@ bool convertMeshVariable(VLSVReader& vlsvReader,const string& meshName,const str
    if (vlsvReader.readArray("VARIABLE",attributes,0,arraySize,buffer) == false) success = false;
    if (success == false) {
       delete [] buffer;
+//      #ifdef PROFILE
+//         profile::stop(quadVariablesID);
+//      #endif
       return success;
    }
-   
+      
    // Vector variables need to be copied to temporary arrays before 
    // writing to SILO file:
    char** components = new char*[vectorSize];
@@ -436,6 +455,9 @@ bool convertMeshVariable(VLSVReader& vlsvReader,const string& meshName,const str
       cerr << "Failed to return to root dir in SILO!" << endl;
       success = false;
    }
+//   #ifdef PROFILE
+//      profile::stop(quadVariablesID);
+//   #endif
    return success;
 }
 
@@ -623,6 +645,10 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
       return false;
    }
    
+   #ifdef PROFILE
+      profile::start(convertQuadMeshTotalID);
+   #endif
+   
    // Get array XML attributes:
    map<string,string> attribsOut;
    if (vlsvReader.getArrayAttributes("MESH",attributes,attribsOut) == false) {
@@ -666,6 +692,9 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    // Insert all eight nodes of each cell into map nodes.
    // NOTE: map is a unique associative container - given a suitable comparator, map 
    // will filter out duplicate nodes:
+   #ifdef PROFILE
+      profile::start("data read+insert");
+   #endif
    switch (dataSize) {
     case (sizeof(float)):
       for (uint64_t i=0; i<arraySize; ++i) {
@@ -707,6 +736,9 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
       }
       break;
    }
+   #ifdef PROFILE
+      profile::stop("data read+insert");
+   #endif
    
    // Copy unique node x,y,z coordinates into separate arrays, 
    // which will be passed to SILO writer:
@@ -772,6 +804,9 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    map<NodeCrd<double>,uint64_t,NodeComp>::const_iterator it8;
    map<NodeCrd<long double>,uint64_t,NodeComp>::const_iterator it12;
    
+   #ifdef PROFILE
+      profile::start("data read+find");
+   #endif
    switch (dataSize) {
     case (sizeof(float)):
       for (uint64_t i=0; i<arraySize; ++i) {
@@ -813,6 +848,10 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
       }
       break;
    }
+   #ifdef PROFILE
+      profile::stop("data read+find");
+      profile::start("data write");
+   #endif
    
    // Write the unstructured mesh to SILO file:
    const int N_dims  = 3;                      // Number of dimensions
@@ -850,16 +889,28 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    delete [] xcrds; xcrds = NULL;
    delete [] ycrds; ycrds = NULL;
    delete [] zcrds; zcrds = NULL;
-
+   #ifdef PROFILE
+      profile::stop("data write");
+      profile::start("variables total");
+   #endif
+   
    // Write all variables of this mesh into silo file:
    set<string> variableNames;
    if (vlsvReader.getUniqueAttributeValues("VARIABLE","name",variableNames) == false) {
+      #ifdef PROFILE
+         profile::stop("variables total");
+         profile::stop(convertQuadMeshTotalID);
+      #endif
       return false;
-   }   
+   }
    for (set<string>::const_iterator it=variableNames.begin(); it!=variableNames.end(); ++it) {
       if (convertMeshVariable(vlsvReader,meshName,*it) == false) success = false;
    }
 
+   #ifdef PROFILE
+      profile::stop("variables total");
+      profile::stop(convertQuadMeshTotalID);
+   #endif
    return success;
 }
 
@@ -1046,6 +1097,14 @@ int main(int argn,char* args[]) {
       return 1;
    }
    
+   #ifdef PROFILE
+      MPI_Init(&argn,&args);
+      convertQuadMeshTotalID = profile::initializeTimer("Quad mesh total");
+      //quadMeshID             = profile::initializeTimer("mesh convert");
+      //quadVariablesID        = profile::initializeTimer("variables");
+      //quadMeshReadID         = profile::initializeTimer("data read");
+   #endif
+   
    // Convert file masks into strings:
    vector<string> masks;
    for (int i=1; i<argn; ++i) masks.push_back(args[i]);
@@ -1096,5 +1155,10 @@ int main(int argn,char* args[]) {
       
       if (filesConverted == 0) cout << "\t no matches found" << endl;
    }
+   
+   #ifdef PROFILE
+      profile::print(MPI_COMM_SELF);
+      MPI_Finalize();
+   #endif
    return 0;
 }
