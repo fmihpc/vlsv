@@ -37,6 +37,7 @@ VLSVWriter::VLSVWriter() {
    initialized = false;
    multiwriteFinalized = false;
    multiwriteInitialized = false;
+   multiwriteOffsetPointer = NULL;
    N_multiwriteUnits = 0;
    offset = 0;
    offsets = NULL;
@@ -46,13 +47,15 @@ VLSVWriter::VLSVWriter() {
 
 /** Destructor for VLSVWriter. Deallocates XML writer.*/
 VLSVWriter::~VLSVWriter() {
-   if (blockLengths != NULL) {cerr << "bl " << blockLengths;}
+   /*if (blockLengths != NULL) {cerr << "bl " << blockLengths;}
    if (bytesPerProcess != NULL) {cerr << "bl " << bytesPerProcess;}
    if (displacements != NULL) {cerr << "bl " << displacements;}
    if (offsets != NULL) {cerr << "bl " << offsets;}
    if (types != NULL) {cerr << "bl " << types;}
-   if (xmlWriter != NULL) {cerr << "bl " << xmlWriter;}
-   
+   if (xmlWriter != NULL) {cerr << "bl " << xmlWriter;}*/
+
+   if (fileOpen == true) close();
+   if (comm != MPI_COMM_NULL) MPI_Comm_free(&comm);
    delete [] blockLengths; blockLengths = NULL;
    delete [] bytesPerProcess; bytesPerProcess = NULL;
    delete [] displacements; displacements = NULL;
@@ -82,9 +85,7 @@ bool VLSVWriter::addMultiwriteUnit(char* array,const uint64_t& arrayElements) {
  * have been opened successfully by VLSVWriter::open.*/
 bool VLSVWriter::close() {
    // If a file was never opened, exit immediately:
-   if (fileOpen == false) {
-      return false;
-   }
+   if (fileOpen == false) return false;
    
    // Close MPI file:
    MPI_Barrier(comm);
@@ -101,7 +102,6 @@ bool VLSVWriter::close() {
         
       // Write footer:
       xmlWriter->print(footer);
-      delete xmlWriter; xmlWriter = NULL;
       footer.close();
       
       // Write header position to the beginning of binary file:
@@ -111,13 +111,22 @@ bool VLSVWriter::close() {
       footer.write(ptr,sizeof(uint64_t));
       footer.close();
    }
-
-   delete [] offsets; offsets = NULL;
+   
+   delete [] blockLengths; blockLengths = NULL;
    delete [] bytesPerProcess; bytesPerProcess = NULL;
+   delete [] displacements; displacements = NULL;
+   delete [] offsets; offsets = NULL;
+   delete [] types; types = NULL;
+   delete xmlWriter; xmlWriter = NULL;
+
+   //delete xmlWriter; xmlWriter = NULL;
+   //delete [] offsets; offsets = NULL;
+   //delete [] bytesPerProcess; bytesPerProcess = NULL;
 
    // Wait for master process to finish:
    MPI_Barrier(comm);
    fileOpen = false;
+   MPI_Comm_free(&comm);
    return true;
 }
 
@@ -178,7 +187,8 @@ VLSV::datatype VLSVWriter::getVLSVDatatype(const string& s) {
 /** Open a VLSV file for parallel output. The file is opened on all processes 
  * in the given communicator. Additionally, master MPI process writes a 
  * header into the output file and caches a footer which will be written 
- * in VLSVWriter::close.
+ * in VLSVWriter::close. If a file has already been opened and VLSVWriter::open 
+ * is called again, the currently open file is closed before the new file is opened.
  * @param fname The name of the output file.
  * @param comm MPI communicator used in writing.
  * @param masterProcessID ID of the MPI master process.
@@ -187,6 +197,13 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
    #ifdef PROFILE
       profile::start("open",fileOpenID);
    #endif
+
+   // If a file with the same name has already been opened, return immediately.
+   // Otherwise close the currently open file before opening the new file.
+   if (fileOpen == true) {
+      if (fname == fileName) return true;
+      close();
+   }
    
    MPI_Comm_dup(comm,&(this->comm));
    masterRank = masterProcessID;
@@ -213,13 +230,13 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
    offset = 0;           //offset set to 0 when opening a new file
    MPI_File_set_view(fileptr,0,MPI_BYTE,MPI_BYTE,const_cast<char*>("native"),MPI_INFO_NULL);
        
-   // Only master rank needs these arrays:
+   // Only master process needs these arrays:
    if (myrank == masterRank) {
       offsets = new MPI_Offset[N_processes];
       bytesPerProcess = new uint64_t[N_processes];    
    }
     
-   // Master opens an XML tree for storing the footer:
+   // Master process opens an XML tree for storing the footer:
    if (myrank == masterRank) {
       xmlWriter     = new MuXML();
       XMLNode* root = xmlWriter->getRoot();
@@ -248,6 +265,7 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
       MPI_File_delete(const_cast<char*>(fileName.c_str()),MPI_INFO_NULL);
       delete [] offsets; offsets = NULL;
       delete [] bytesPerProcess; bytesPerProcess = NULL;
+      delete xmlWriter; xmlWriter = NULL;
    }
 
    initialized = true;
@@ -259,7 +277,7 @@ bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySiz
    // Clear per-thread storage:
    multiwriteUnits[0].clear();
    multiwriteOffsets[0] = numeric_limits<unsigned int>::max();
-   
+
    // Array datatype and byte size of each vector element are determined 
    // from the template parameter, other values are copied from parameters:
    this->dataType   = datatype;
@@ -280,7 +298,7 @@ bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySiz
    #ifdef PROFILE
       profile::stop();
    #endif
-   
+
    // MPI master process calculates an offset to the output file for all processes:
    if (myrank == masterRank) {
       offsets[0] = offset;
@@ -313,13 +331,13 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
    for (size_t i=0; i<multiwriteUnits.size(); ++i) {
       N_multiwriteUnits += multiwriteUnits[i].size();
    }
-   
+
    // Calculate offset for each thread:
    multiwriteOffsets[0] = 0;
    for (size_t i=1; i<multiwriteUnits.size(); ++i) {
       multiwriteOffsets[i] = multiwriteOffsets[i-1] + multiwriteUnits[i].size();
    }
-   
+
    // Allocate memory for an MPI struct:
    blockLengths  = new int[N_multiwriteUnits];
    displacements = new MPI_Aint[N_multiwriteUnits];
