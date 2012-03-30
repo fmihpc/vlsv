@@ -65,13 +65,6 @@ VLSVWriter::VLSVWriter() {
 
 /** Destructor for VLSVWriter. Deallocates XML writer.*/
 VLSVWriter::~VLSVWriter() {
-   /*if (blockLengths != NULL) {cerr << "bl " << blockLengths;}
-   if (bytesPerProcess != NULL) {cerr << "bl " << bytesPerProcess;}
-   if (displacements != NULL) {cerr << "bl " << displacements;}
-   if (offsets != NULL) {cerr << "bl " << offsets;}
-   if (types != NULL) {cerr << "bl " << types;}
-   if (xmlWriter != NULL) {cerr << "bl " << xmlWriter;}*/
-
    if (fileOpen == true) close();
    if (comm != MPI_COMM_NULL) MPI_Comm_free(&comm);
    delete [] blockLengths; blockLengths = NULL;
@@ -87,6 +80,7 @@ bool VLSVWriter::addMultiwriteUnit(char* array,const uint64_t& arrayElements) {
    #ifdef PROFILE
       profile::start("add mw unit",addMWunitID);
    #endif
+   if (initialized == false) return false;
    if (multiwriteInitialized == false) return false;
    multiwriteUnits[0].push_back(VLSV::WriteUnit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
    #ifdef PROFILE
@@ -129,17 +123,14 @@ bool VLSVWriter::close() {
       footer.write(ptr,sizeof(uint64_t));
       footer.close();
    }
-   
+
+   initialized = false;
    delete [] blockLengths; blockLengths = NULL;
    delete [] bytesPerProcess; bytesPerProcess = NULL;
    delete [] displacements; displacements = NULL;
    delete [] offsets; offsets = NULL;
    delete [] types; types = NULL;
    delete xmlWriter; xmlWriter = NULL;
-
-   //delete xmlWriter; xmlWriter = NULL;
-   //delete [] offsets; offsets = NULL;
-   //delete [] bytesPerProcess; bytesPerProcess = NULL;
 
    // Wait for master process to finish:
    MPI_Barrier(comm);
@@ -215,7 +206,8 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
    #ifdef PROFILE
       profile::start("open",fileOpenID);
    #endif
-
+   bool success = true;
+   
    // If a file with the same name has already been opened, return immediately.
    // Otherwise close the currently open file before opening the new file.
    if (fileOpen == true) {
@@ -233,12 +225,16 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
    multiwriteUnits.resize(1);
    
    // All processes in communicator comm open the same file. If a file with the 
-   // given name already exists it is deleted:
+   // given name already exists it is deleted. Note: We found out that MPI_File_open 
+   // failed quite often in meteo, at least when writing many small files. It was 
+   // possibly caused by MPI_File_delete call, that's the reason for the barrier.
    int accessMode = (MPI_MODE_WRONLY | MPI_MODE_CREATE);
    MPI_Info MPIinfo = MPI_INFO_NULL;
    fileName = fname;
-   MPI_File_delete(const_cast<char*>(fname.c_str()),MPI_INFO_NULL);
+   if (myrank == masterRank) MPI_File_delete(const_cast<char*>(fname.c_str()),MPI_INFO_NULL);
+   MPI_Barrier(comm);
    if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,MPIinfo,&fileptr) != MPI_SUCCESS) {
+      fileOpen = false;
       return fileOpen;
    }
    #ifdef PROFILE
@@ -264,7 +260,6 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
    // Master writes 2 64bit integers to the start of file. 
    // Second value will be overwritten in close() function to tell 
    // the position of footer:
-   bool success = true;
    if (myrank == masterRank) {
       // Write file endianness to the first byte:
       uint64_t endianness = 0;
@@ -292,6 +287,10 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
 }
 
 bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize) {
+   // Check that a file is open before continuing:
+   if (fileOpen == false) return false;
+   if (initialized == false) return false;
+   
    // Clear per-thread storage:
      {
 	vector<list<VLSV::WriteUnit> > dummy(1);
@@ -345,6 +344,10 @@ bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySiz
  * @param attribs Attributes for the XML tag.
  * @return If true, array was successfully written to file.*/
 bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs) {
+   // Check that multiwrite mode has started successfully:
+   if (initialized == false) return false;
+   if (multiwriteInitialized == false) return false;
+   
    // Allocate memory for an MPI_Struct that is used to 
    // write all multiwrite units with a single collective call.
 
@@ -456,6 +459,10 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
 
 bool VLSVWriter::writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
 			    const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,char* array) {
+   // Check that everything is OK before continuing:
+   if (initialized == false) return false;
+   if (fileOpen == false) return false;
+   
    bool success = true;
    #ifdef PROFILE
       profile::start("start multiwrite",startMWID);
