@@ -1,5 +1,5 @@
 CMP = mpic++
-CXXFLAGS = -O3
+CXXFLAGS = -O3 -std=c++0x
 FLAGS =
 
 AR = ar

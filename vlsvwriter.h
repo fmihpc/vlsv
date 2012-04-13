@@ -141,8 +141,7 @@ class VLSVWriter {
     * The correct C++ datatype can be deduced from the string value returned by this
     * function and from the byte size of the data in array. For example, datatype "float"
     * with byte size of 8 usually means that the values are doubles.
-    * @return String representation of the datatype.
-    */
+    * @return String representation of the datatype.*/
    template<typename T> std::string arrayDataType();
    
    MPI_Datatype getMPIDatatype(VLSV::datatype dt,uint64_t dataSize);

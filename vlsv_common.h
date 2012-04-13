@@ -29,6 +29,7 @@ namespace VLSV {
    
    const std::string MESH_POINT = "point";
    const std::string MESH_QUAD = "quad";
+   const std::string MESH_QUAD_MULTI = "multimesh";
 }
 
 unsigned char detectEndianness();
