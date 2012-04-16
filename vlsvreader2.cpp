@@ -177,6 +177,9 @@ bool VLSVReader::readArray(const std::string& tagName,const std::list<std::pair<
       return false;
    }
    
+   // If zero-length read was requested, exit immediately:
+   if (amount == 0) return true;
+   
    // Find tag corresponding to given array:
    XMLNode* node = xmlReader.find(tagName,attribs);
    if (node == NULL) {
@@ -200,7 +203,7 @@ bool VLSVReader::readArray(const std::string& tagName,const std::list<std::pair<
       cerr << "VLSVReader ERROR: Unknown datatype in tag!" << endl;
       return false;
    }
-
+   
    if (arrayOpen.arraySize == 0) return false;
    if (arrayOpen.vectorSize == 0) return false;
    if (arrayOpen.dataSize == 0) return false;
