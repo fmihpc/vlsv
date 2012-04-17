@@ -1,0 +1,897 @@
+#LyX 1.6.5 created this file. For more info see http://www.lyx.org/
+\lyxformat 345
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\language english
+\inputencoding auto
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_amsmath 1
+\use_esint 1
+\cite_engine basic
+\use_bibtopic false
+\paperorientation portrait
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\defskip medskip
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\author "" 
+\end_header
+
+\begin_body
+
+\begin_layout Title
+VLSV File Format
+\end_layout
+
+\begin_layout Section
+Quad multimesh
+\begin_inset CommandInset label
+LatexCommand label
+name "sec:Quad-multimesh"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Quotes eld
+\end_inset
+
+Multimesh
+\begin_inset Quotes erd
+\end_inset
+
+ here means that the simulation domain is written to file as separate mesh
+ pieces.
+ This is one of the mesh formats supported by Silo and VisIt.
+ Furthermore, Silo plugin in VisIt supports parallel visualization when
+ there are more than one mesh pieces present.
+ In this Section instructions are given how to write a multimesh to vlsv
+ file.
+ It is assumed that every process writes out its own mesh piece (although
+ this is not really required).
+\end_layout
+
+\begin_layout Standard
+Multimesh type is enabled by using 
+\family typewriter
+VLSV::MESH_QUAD_MULTI
+\family default
+ as the value of 
+\begin_inset Quotes eld
+\end_inset
+
+type
+\begin_inset Quotes erd
+\end_inset
+
+ attribute of array 
+\family typewriter
+MESH
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+map<string,string> attributes
+\end_layout
+
+\begin_layout Plain Layout
+
+attributes["name"]="SpatialGrid"
+\end_layout
+
+\begin_layout Plain Layout
+
+attributes["type"]=VLSV::MESH_QUAD_MULTI
+\end_layout
+
+\begin_layout Plain Layout
+
+<write array>
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Bounding Box
+\end_layout
+
+\begin_layout Standard
+This section describes the contents of array 
+\family typewriter
+MESH_BBOX
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+The mesh is assumed to be logically Cartesian in the sense that each node
+ can be assigned a unique (i,j,k) index tuple.
+ The bounding box name can be a bit misleading, in practice this array tells
+ 
+\family typewriter
+vlsv2silo
+\family default
+ how to convert (i,j,k) tuples to (x,y,z) coordinates.
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Float table
+placement h
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="7" columns="2">
+<features>
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+index
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+value
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $x_{\mathrm{min}}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $y_{\mathrm{min}}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $z_{\mathrm{min}}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\Delta x$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\Delta y$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\Delta z$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Contents of 
+\family typewriter
+MESH_BBOX
+\family default
+ array.
+ 
+\begin_inset CommandInset label
+LatexCommand label
+name "tab:MESH_BBOX"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Only one process should write 
+\family typewriter
+MESH_BBOX
+\family default
+ array.
+ It should contain the values given in Table 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "tab:MESH_BBOX"
+
+\end_inset
+
+.
+ The important part here is that 
+\family typewriter
+vlsv2silo
+\family default
+ calculates cell coordinates in the following manner:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula \begin{eqnarray*}
+x & = & x_{\mathrm{min}}+i\cdot\Delta x,\\
+y & = & y_{\min}+j\cdot\Delta y,\\
+z & = & z_{\min}+k\cdot\Delta z,\end{eqnarray*}
+
+\end_inset
+
+where (i,j,k) are indices of each node.
+ Array 
+\family typewriter
+MESH_BBOX
+\family default
+ is written out using 
+\family typewriter
+arraySize=6
+\family default
+, 
+\family typewriter
+vectorSize=1
+\family default
+.
+ The datatype must be floating point.
+\end_layout
+
+\begin_layout Subsection
+Node Indices
+\end_layout
+
+\begin_layout Standard
+This section describes the contents of array 
+\family typewriter
+MESH
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+Each process should write its mesh piece in the following manner.
+ Cells are written out as (i,j,k) index tuples, where the indices are the
+ indices of the bottom lower left corner nodes of the cells.
+ The eight nodes associated with a cell are (i,j,k), (i+1,j,k), (i,j+1,k),
+ (i+1,j+1,k), (i,j,k+1), (i+1,j,k+1), (i,j+1,k+1), and (i+1,j+1,k+1).
+ Thus, only one of the nodes is written out -- (i,j,k) -- the rest can be
+ inferred.
+ This is the logic used by 
+\family typewriter
+vlsv2silo
+\family default
+ when it eliminates duplicate nodes from multimesh pieces.
+\end_layout
+
+\begin_layout Standard
+Finally, each process must first write its local cells followed by all remote
+ cells.
+ Variables are written in the same order as cells except that processes
+ do not write remote cell data.
+ 
+\family typewriter
+vlsv2silo
+\family default
+ fills missing ghost cell values during conversion (see below).
+\end_layout
+
+\begin_layout Standard
+Array 
+\family typewriter
+MESH
+\family default
+ is written out using 
+\family typewriter
+vectorSize=3
+\family default
+.
+ The datatype must be signed or unsigned integer.
+ Each process must write 
+\begin_inset Formula $\mathrm{N}_{\mathrm{cells}}$
+\end_inset
+
+ values (see below).
+\end_layout
+
+\begin_layout Subsection
+Mesh Piece Sizes
+\end_layout
+
+\begin_layout Standard
+This section describes the contents of array 
+\family typewriter
+MESH_ZONES
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+Each process writes the total number of cells (local+remote) and the number
+ of ghost (remote) cells, in its mesh piece.
+ This information is written out into single array element in vlsv file,
+ i.e.
+ each process writes a vector of size two 
+\begin_inset Formula $[\mathrm{N}_{\mathrm{cells}},\mathrm{N}_{\mathrm{ghosts}}]$
+\end_inset
+
+.
+ The 
+\family typewriter
+arraySize
+\family default
+ of 
+\family typewriter
+MESH_ZONES
+\family default
+ must be equal to number of mesh pieces.
+\end_layout
+
+\begin_layout Standard
+
+\family typewriter
+vlsv2silo
+\family default
+ calculates offsets to other arrays based on the information stored here.
+ For example, 
+\begin_inset Formula $\mathrm{N}_{\mathrm{cells}}$
+\end_inset
+
+ values are used to calculate offsets that tell where the data for each
+ mesh piece is stored in array 
+\family typewriter
+MESH
+\family default
+.
+ This array also defines mesh piece numbering which runs from 
+\begin_inset Formula $[0...\mathrm{N}_{\mathrm{meshes}}-1]$
+\end_inset
+
+, where 
+\begin_inset Formula $\mathrm{N}_{\mathrm{meshes}}$
+\end_inset
+
+ is the same as array size of 
+\family typewriter
+MESH_ZONES
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+Array 
+\family typewriter
+MESH_ZONES
+\family default
+ is written out using 
+\family typewriter
+vectorSize=2
+\family default
+.
+ The datatype must be signed or unsigned integer.
+\end_layout
+
+\begin_layout Subsection
+Ghost Cell Domain Array
+\begin_inset CommandInset label
+LatexCommand label
+name "sub:MESH_GHOST_DOMAINS"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This section describes the contents of array 
+\family typewriter
+MESH_GHOST_DOMAINS
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+When vlsv files are converted to silo format (actually visit requires multimesh
+ data in this format), each mesh piece must contain at least one layer of
+ ghost cells that contain exactly same variable values as the same cells
+ in neighbouring mesh pieces.
+ Each process could write required ghost cell data directly to vlsv files
+ (after synchronization of remote cell data), but this would increase the
+ file size and slow down the data writing process.
+ Instead, information on how to fill ghost cell variable data is written
+ with two arrays.
+\end_layout
+
+\begin_layout Standard
+Each process writes as many elements to array 
+\family typewriter
+MESH_GHOST_DOMAINS
+\family default
+ as it has ghost cells in its mesh piece, i.e.
+ 
+\begin_inset Formula $\mathrm{N}_{\mathrm{ghosts}}$
+\end_inset
+
+ elements.
+ The elements are written out in the same order as the ghost cell indices
+ in array 
+\family typewriter
+MESH
+\family default
+.
+ Each element tells which mesh piece owns the cell.
+ If each process writes its own mesh piece, each element contains the MPI
+ rank of the process who owns the remote cell.
+ This information tells 
+\family typewriter
+vlsv2silo
+\family default
+ which mesh piece contains variable data for this ghost cell, i.e.
+ valid values are in the range 
+\begin_inset Formula $[0,\mathrm{N}_{\mathrm{meshes}}-1]$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Array 
+\family typewriter
+MESH_GHOST_DOMAINS
+\family default
+ is written out using 
+\family typewriter
+vectorSize=1
+\family default
+.
+ The datatype must be signed or unsigned integer.
+ Each process must write out 
+\begin_inset Formula $\mathrm{N}_{\mathrm{ghosts}}$
+\end_inset
+
+ elements.
+\end_layout
+
+\begin_layout Subsection
+Ghost Cell Local ID Array
+\end_layout
+
+\begin_layout Standard
+This section describes the contents of array 
+\family typewriter
+MESH_GHOST_LOCALIDS
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+This array is read by 
+\family typewriter
+vlsv2silo
+\family default
+ when it fills ghost cell variable values during vlsv to silo conversion,
+ as described in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sub:MESH_GHOST_DOMAINS"
+
+\end_inset
+
+.
+ Array 
+\family typewriter
+MESH_GHOSTS_DOMAINS
+\family default
+ only tells which mesh piece owns the ghost cell, but not which cell in
+ that mesh.
+ That information is given here as indices (local IDs) to neighbouring mesh
+ pieces' variable arrays.
+ 
+\end_layout
+
+\begin_layout Standard
+For example, assume that 
+\family typewriter
+MESH_GHOST_DOMAINS
+\family default
+ array has value 
+\begin_inset Quotes eld
+\end_inset
+
+1
+\begin_inset Quotes erd
+\end_inset
+
+ for a certain ghost cell in mesh piece #0.
+ This tells 
+\family typewriter
+vlsv2silo
+\family default
+ that variable values for that cell should be read from mesh piece #1.
+ Assume further that the corresponding ghost cell has value 
+\begin_inset Quotes eld
+\end_inset
+
+134
+\begin_inset Quotes erd
+\end_inset
+
+ in array 
+\family typewriter
+MESH_GHOST_LOCALIDS
+\family default
+.
+ This tells 
+\family typewriter
+vlsv2silo
+\family default
+ that the ghost cell is 
+\begin_inset Formula $134^{\mathrm{th}}$
+\end_inset
+
+ cell in mesh piece #1 -- first cell in every mesh piece is always 
+\begin_inset Quotes eld
+\end_inset
+
+cell number 0
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Most likely processes need to exchange data with each others before the
+ contents of this array can be written out.
+ Easy way to do this is to define an integer value for each cell (let's
+ call this variable 
+\family typewriter
+localID
+\family default
+).
+ Each process then iterates over its local cells as demonstrated in the
+ following pseudocode
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+int i=0
+\end_layout
+
+\begin_layout Plain Layout
+
+for each local cell
+\end_layout
+
+\begin_layout Plain Layout
+
+	localID[cell] = i
+\end_layout
+
+\begin_layout Plain Layout
+
+	++i
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Assuming that each process writes out its cells and variables in the same
+ order as local cells are iterated above, it is sufficient that processes
+ fetch the 
+\family typewriter
+localID
+\family default
+ values defined above to their remote cells, and then write the obtained
+ values to 
+\family typewriter
+MESH_GHOST_LOCALIDS
+\family default
+.
+ 
+\end_layout
+
+\begin_layout Standard
+Array 
+\family typewriter
+MESH_GHOST_LOCALIDS
+\family default
+ is written out using 
+\family typewriter
+vectorSize=1
+\family default
+.
+ The datatype must be signed or unsigned integer.
+ Each process must write out 
+\begin_inset Formula $\mathrm{N}_{\mathrm{ghosts}}$
+\end_inset
+
+ elements.
+\end_layout
+
+\begin_layout Subsection
+How to Skip Mesh Writing
+\end_layout
+
+\begin_layout Standard
+Multimesh data only needs to be written out if cell partitioning has changed,
+ i.e.
+ after each load balance.
+ However, each vlsv file must contain an array 
+\family typewriter
+MESH
+\family default
+ but its array size can be zero.
+ This adds an XML tag to the vlsv file which tells 
+\family typewriter
+vlsv2silo
+\family default
+ that a) the vlsv file contains a multimesh, and b) mesh data should be
+ read from another file.
+ The array 
+\family typewriter
+MESH
+\family default
+ must contain an attribute 
+\begin_inset Quotes eld
+\end_inset
+
+file
+\begin_inset Quotes erd
+\end_inset
+
+, whose value is the name of vlsv file where the mesh is written.
+ Compare the example below with the one given in Section 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sec:Quad-multimesh"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset listings
+lstparams "basicstyle={\scriptsize}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+int* ptr = NULL
+\end_layout
+
+\begin_layout Plain Layout
+
+map<string,string> attribs
+\end_layout
+
+\begin_layout Plain Layout
+
+attribs["name"]="SpatialGrid"
+\end_layout
+
+\begin_layout Plain Layout
+
+attribs["type"]=VLSV::MESH_QUAD_MULTI
+\end_layout
+
+\begin_layout Plain Layout
+
+attribs["file"]="state00000.vlsv"
+\end_layout
+
+\begin_layout Plain Layout
+
+VLSVWriter.writeArray("MESH",attribs,0,1,ptr)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Note that 
+\family typewriter
+vectorSize
+\family default
+ must always be non-zero.
+ If one passes 
+\family typewriter
+NULL
+\family default
+ pointer directly to 
+\family typewriter
+VLSVWriter
+\family default
+ instead of 
+\family typewriter
+ptr
+\family default
+, compiler will throw an error because the pointer datatype is a template
+ parameter, and 
+\family typewriter
+void
+\family default
+ pointers do not work here.
+\end_layout
+
+\end_body
+\end_document
