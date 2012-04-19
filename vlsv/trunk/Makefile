@@ -9,7 +9,7 @@
 # meant to use from make command line to override 
 # the values set here.
 CMP = mpic++
-CXXFLAGS = -O3 -std=c++0x
+CXXFLAGS = -O3 -std=c++0x -Wall
 FLAGS =
 
 # Archiver

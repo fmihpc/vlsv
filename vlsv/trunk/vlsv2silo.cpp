@@ -194,6 +194,9 @@ uint64_t convUInt(const char* ptr,const VLSV::datatype& dataType,const uint64_t&
  * @return Corresponding SILO datatype or -1 if conversion was not possible.*/
 int SiloType(const VLSV::datatype& dataType,const uint64_t& dataSize) {
    switch (dataType) {
+    case VLSV::UNKNOWN:
+      return -1;
+      break;
     case VLSV::INT:
       if (dataSize == 2) return DB_SHORT;
       else if (dataSize == 4) return DB_INT;
@@ -359,19 +362,19 @@ template<typename REAL> struct NodeCrd {
    void xcopy(char* target,REAL scaling=1.0) const {
       const REAL tmp = x*scaling;
       const char* ptr = reinterpret_cast<const char*>(&tmp);
-      for (int i=0; i<sizeof(REAL); ++i) target[i] = ptr[i];
+      for (unsigned int i=0; i<sizeof(REAL); ++i) target[i] = ptr[i];
    }
 
-   char ycopy(char* target,REAL scaling=1.0) const {
+   void ycopy(char* target,REAL scaling=1.0) const {
       const REAL tmp = y*scaling;
       const char* ptr = reinterpret_cast<const char*>(&tmp);
-      for (int i=0; i<sizeof(REAL); ++i) target[i] = ptr[i];
+      for (unsigned int i=0; i<sizeof(REAL); ++i) target[i] = ptr[i];
    }
 
-   char zcopy(char* target,REAL scaling=1.0) const {
+   void zcopy(char* target,REAL scaling=1.0) const {
       const REAL tmp = z*scaling;
       const char* ptr = reinterpret_cast<const char*>(&tmp);
-      for (int i=0; i<sizeof(REAL); ++i) target[i] = ptr[i];
+      for (unsigned int i=0; i<sizeof(REAL); ++i) target[i] = ptr[i];
    }
 
    bool comp(const NodeCrd<REAL>& n) const {
@@ -1601,7 +1604,6 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
 
 bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    bool success = true;
-   const float EPS = 1.0e-7;
    
    // First task is to push all unique node coordinates into a map.
    // This is not too difficult for unrefined grids, since each spatial cell stores
@@ -1661,7 +1663,7 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    float       ZERO4 = 0.0;
    double      ZERO8 = 0.0;
    long double ZERO12 = 0.0;
-   char* zeroPtr;
+   char* zeroPtr = NULL;
    switch (dataSize) {
     case (sizeof(float)):
       zeroPtr = reinterpret_cast<char*>(&ZERO4);
@@ -1925,7 +1927,7 @@ bool appendCurveValue(VLSVReader& vlsvReader,const string& varName,bool isTimeSe
    if (vlsvReader.readArray("PARAMETER",attribs,0,xArraySize,buffer) == false) return false;
 
    // Convert x value to double:
-   double x;
+   double x = NAN;
    switch (xDataSize) {
     case (sizeof(float)):
       x = *reinterpret_cast<float*>(buffer);
@@ -1947,7 +1949,7 @@ bool appendCurveValue(VLSVReader& vlsvReader,const string& varName,bool isTimeSe
    if (vlsvReader.readArray("TIMESERIES",attribs,0,xArraySize,buffer) == false) return false;
 
    // Convert y value to double:
-   double y;
+   double y = NAN;
    switch (xDataSize) {
     case (sizeof(float)):
       y = *reinterpret_cast<float*>(buffer);
