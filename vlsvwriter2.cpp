@@ -141,6 +141,9 @@ bool VLSVWriter::close() {
 
 MPI_Datatype VLSVWriter::getMPIDatatype(VLSV::datatype dt,uint64_t dataSize) {
    switch (dt) {
+    case VLSV::UNKNOWN:
+      return MPI_DATATYPE_NULL;
+      break;
     case VLSV::INT:
       switch (dataSize) {
        case (sizeof(int8_t)):
@@ -184,6 +187,7 @@ MPI_Datatype VLSVWriter::getMPIDatatype(VLSV::datatype dt,uint64_t dataSize) {
 	 break;
       }
    }
+   return MPI_DATATYPE_NULL;
 }
 
 VLSV::datatype VLSVWriter::getVLSVDatatype(const string& s) {
@@ -370,7 +374,6 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
    
    // Calculate a global offset pointer for MPI struct, i.e. an 
    // offset which is used to calculate the displacements:
-   bool found = false;
    multiwriteOffsetPointer = NULL;
    for (size_t i=0; i<multiwriteUnits.size(); ++i) {
       if (multiwriteUnits[i].size() == 0) continue;
