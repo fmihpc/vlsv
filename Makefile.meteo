@@ -31,6 +31,7 @@ OBJS = muxml.o vlsv_common.o vlsvreader.o vlsvwriter.o
 
 lib: ${OBJS}
 	${AR} r libvlsv.a ${OBJS}
+#	make vlsv2silo -f ${word 1,${MAKEFILE_LIST}}
 
 muxml.o: ${DEPS_MUXML}
 	${CMP} ${CXXFLAGS} ${FLAGS} -o muxml.o -c muxml.cpp
