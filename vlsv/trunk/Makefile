@@ -21,7 +21,7 @@ LIB_SILO=-L/home/sandroos/codes/silo/silo-4.7.1/lib -lsilo
 
 # Distribution package name (do not edit)
 DIR=vlsv
-DIST=vlsv_v01_000.tar
+DIST=vlsv_v01_001.tar
 
 # Build targets
 
