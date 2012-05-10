@@ -15,7 +15,7 @@ FLAGS =
 # Archiver
 AR = ar
 
-# Include and library paths (edit these if necessary)
+# Include and library paths (edit these as necessary)
 INC_SILO=-I/home/sandroos/codes/silo/silo-4.7.1/include
 LIB_SILO=-L/home/sandroos/codes/silo/silo-4.7.1/lib -lsilo
 
@@ -25,7 +25,7 @@ DIST=vlsv_v01_000.tar
 
 # Build targets
 
-default: lib
+default: lib vlsv2silo
 
 clean:
 	rm -rf *~ *.o *.a *.tar *.tar.gz vlsv2silo
@@ -50,9 +50,11 @@ OBJS=muxml.o vlsv_common.o vlsvreader.o vlsvwriter.o
 
 # Build rules
 
+# Note: vlsv2silo is compiled using the first Makefile that 
+# was given in the command line of make.
 lib: ${OBJS}
 	${AR} r libvlsv.a ${OBJS}
-	make vlsv2silo
+#	make vlsv2silo -f ${word 1,${MAKEFILE_LIST}}
 
 muxml.o: ${DEPS_MUXML}
 	${CMP} ${CXXFLAGS} ${FLAGS} -o muxml.o -c muxml.cpp
