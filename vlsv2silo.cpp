@@ -1268,21 +1268,23 @@ bool convertQuadMesh2(VLSVReader& vlsvReader,const string& meshName,const string
    int shapeSizes[] = {8};                     // Each hexahedron has 8 nodes
    int shapeCnt[] = {N_zones};                 // Only 1 shape type (hexahedron)
    const int N_shapes = 1;                     //  -- "" --
-   
+
    void* coords[3];                            // Pointers to coordinate arrays
    coords[0] = &(xcrds[0]);
    coords[1] = &(ycrds[0]);
    coords[2] = &(zcrds[0]);
-      
+
    // Write zone list into silo file:
    const string zoneListName = siloMeshName + "Zones";
    if (DBPutZonelist2(fileptr,zoneListName.c_str(),N_zones,N_dims,&(zoneList[0]),8*N_zones,0,0,N_ghosts,shapeTypes,shapeSizes,shapeCnt,N_shapes,NULL) < 0) success = false;
    
    // Make an option list (do not insert simulation time or timestep):
-   DBoptlist* optlist = getOptionList(vlsvReader,6,false);
+   DBoptlist* optlist = getOptionList(vlsvReader,7,false);
    
    // Get coordinate names & units from VLSV file if available, otherwise use default values:
    parseCoordinateNames(optlist,attribsOut);
+   int connectivity = 1;
+   DBAddOption(optlist,DBOPT_TIME,&connectivity);
    
    // Write UCD grid to SILO file:
    if (DBPutUcdmesh(fileptr,siloMeshName.c_str(),N_dims,NULL,coords,N_nodes,N_zones,zoneListName.c_str(),NULL,SiloType(VLSV::FLOAT,sizeof(float)),optlist) < 0) success = false;
@@ -1397,7 +1399,14 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
 
    // Convert mesh piece m, and its variables, to SILO format:
    uint64_t cellOffset = 0;
+   
+   // Number of next mesh piece written to SILO file. This is different from 
+   // loop counter m below if one or more mesh pieces have zero cells.
+   uint64_t currentMeshNumber = 0;
    for (uint64_t m=0; m<meshArraySize; ++m) {
+      // Skip empty multimesh pieces:
+      if (N_cells[m] == 0) continue;
+      
       // Read ghost cells local ids and domain array info for this mesh piece:
       VLSV::datatype domainDatatype,localidDatatype;
       uint64_t domainArraySize,domainVectorSize,domainDataSize;
@@ -1462,7 +1471,7 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
       // Create a new directory for mesh m:
       stringstream ss;
       ss.fill('0');
-      ss << "mesh" << setw(8) << m;
+      ss << "mesh" << setw(8) << currentMeshNumber;
       string meshDir;
       ss >> meshDir;
       
@@ -1480,7 +1489,7 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
       strcat(mn,meshDir.c_str());
       strcat(mn,"/");
       strcat(mn,meshDir.c_str());
-      meshNames[m] = mn;
+      meshNames[currentMeshNumber] = mn;
       
       // Change current SILO directory to meshDir:
       if (DBSetDir(fileptr,meshDir.c_str()) < 0) {
@@ -1521,15 +1530,21 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
       directories.clear();      
       delete [] ghostLocalIDs; ghostLocalIDs = NULL;
       delete [] ghostDomains; ghostDomains = NULL;
-   }
+      
+      // Increase mesh number:
+      ++currentMeshNumber;
+   }   
+   const uint64_t N_validMeshPieces = currentMeshNumber;
    
    // Write multimesh to SILO file:
    int* meshTypes = NULL;
    if (success == true) {
-      meshTypes = new int[meshArraySize];
-      for (uint64_t m=0; m<meshArraySize; ++m) meshTypes[m] = DB_UCDMESH;
-      DBoptlist* optlist = getOptionList(vlsvReader,0,true);
-      if (DBPutMultimesh(fileptr,meshName.c_str(),meshArraySize,meshNames,meshTypes,optlist) < 0) {
+      meshTypes = new int[N_validMeshPieces];
+      for (uint64_t m=0; m<N_validMeshPieces; ++m) meshTypes[m] = DB_UCDMESH;
+      DBoptlist* optlist = getOptionList(vlsvReader,1,true);
+      int connectivity = 1;
+      DBAddOption(optlist,DBOPT_TV_CONNECTIVITY,&connectivity);
+      if (DBPutMultimesh(fileptr,meshName.c_str(),N_validMeshPieces,meshNames,meshTypes,optlist) < 0) {
 	 cerr << "ERROR occurred while writing multimesh!" << endl;
 	 success = false;
       }
