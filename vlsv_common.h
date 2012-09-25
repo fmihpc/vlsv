@@ -19,6 +19,9 @@
 #ifndef VLSV_COMMON_H
 #define VLSV_COMMON_H
 
+#include <cstdlib>
+#include <iostream>
+#include <mpi.h>
 #include <stdint.h>
 
 namespace VLSV {
@@ -30,6 +33,148 @@ namespace VLSV {
    const std::string MESH_POINT = "point";
    const std::string MESH_QUAD = "quad";
    const std::string MESH_QUAD_MULTI = "multimesh";
+
+   template<typename T> T convertFloat(const char* const ptr);
+   template<typename T> T convertInteger(const char* const ptr,const bool& swapEndianness=false);
+   template<typename T> void convertValue(T& value,const char* const ptr,VLSV::datatype dt,int dataSize,const bool& swapEndianness=false);
+   
+   MPI_Datatype getMPIDatatype(VLSV::datatype dt,uint64_t dataSize);
+   
+   /** Returns a string representation of an array that is to be written to file.
+    * The correct C++ datatype can be deduced from the string value returned by this
+    * function and from the byte size of the data in array. For example, datatype "float"
+    * with byte size of 8 usually means that the values are doubles.
+    * @return String representation of the datatype.*/
+   template<typename T> std::string getStringDatatype();
+   
+   VLSV::datatype getVLSVDatatype(const std::string& s);
+   
+   // ********************************************* //
+   // ***** DEFINITIONS OF TEMPLATE FUNCTIONS ***** //
+   // ********************************************* //
+
+   template<typename T> inline
+   T convertFloat(const char* const ptr) {
+      return *reinterpret_cast<const T*>(ptr);
+   }
+   
+   template<typename T> inline 
+   T convertInteger(const char* const ptr,const bool& swapEndianness) {
+      if (swapEndianness == false) return *reinterpret_cast<const T*>(ptr);
+      int index = 0;
+      T tmp = 0;
+      char* const ptrtmp = reinterpret_cast<char*>(&tmp);
+      for (int i=sizeof(T)-1; i>=0; --i) {
+	 ptrtmp[index] = ptr[i];
+	 ++index;
+      }
+      return tmp;
+   }
+   
+   /** Driver function for convertFloat and convertInteger. Value from given buffer 
+    * is converted into datatype given with template parameter T. Endianness of 
+    * integer datatypes is converted if necessary. Note that if VLSV::datatype is 
+    * VLSV::UNKNOWN the contents of buffer are simply copied into output variable 'value'.
+    * @param value Variable in which the value from buffer is copied.
+    * @param buffer Byte array containing the desired value.
+    * @param dt VLSV::datatype of the value in buffer.
+    * @param dataSize Byte size of the value in buffer.
+    * @param swapEndianness If true, endianness of integer datatypes is swapped before
+    * the value is copied to output variable 'value'.*/
+   template<typename T> inline
+   void convertValue(T& value,const char* const buffer,VLSV::datatype dt,int dataSize,const bool& swapEndianness=false) {
+      char* valuePtr = NULL;
+      // Switch according the native datatype of the value in buffer:
+      switch (dt) {
+       case VLSV::UNKNOWN:
+	 // Unknown datatype, just byte-copy buffer to 'value':
+	 valuePtr = reinterpret_cast<char*>(&value);
+	 for (int i=0; i<dataSize; ++i) valuePtr[i] = buffer[i];
+	 break;
+       case VLSV::INT:
+	 // Signed integer, switch according to byte size:
+	 switch (dataSize) {
+	  case sizeof(int8_t):
+	    value = convertInteger<int8_t>(buffer,swapEndianness);
+	    break;
+	  case sizeof(int16_t):
+	    value = convertInteger<int16_t>(buffer,swapEndianness);
+	    break;
+	  case sizeof(int32_t):
+	    value = convertInteger<int32_t>(buffer,swapEndianness);
+	    break;
+	  case sizeof(int64_t):
+	    value = convertInteger<int64_t>(buffer,swapEndianness);
+	    break;
+	  default:
+	    std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl; 
+	    std::cerr << "\t Exiting at convertValue VLSV::INT." << std::endl;
+	    exit(1);
+	    break;
+	 }
+	 break;
+       case VLSV::UINT:
+	 // Unsigned integer, switch according to byte size:
+	 switch (dataSize) {
+	  case sizeof(uint8_t):
+	    value = convertInteger<uint8_t>(buffer,swapEndianness);
+	    break;
+	  case sizeof(uint16_t):
+	    value = convertInteger<uint16_t>(buffer,swapEndianness);
+	    break;
+	  case sizeof(uint32_t):
+	    value = convertInteger<uint32_t>(buffer,swapEndianness);
+	    break;
+	  case sizeof(uint64_t):
+	    value = convertInteger<uint64_t>(buffer,swapEndianness);
+	    break;
+	  default:
+	    std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl; 
+	    std::cerr << "\t Exiting at convertValue VLSV::UINT." << std::endl;
+	    exit(1);
+	    break;
+	 }
+	 break;
+       case VLSV::FLOAT:
+	 // Floating point, switch according to byte size:
+	 switch (dataSize) {
+	  case sizeof(float):
+	    value = convertFloat<float>(buffer);
+	    break;
+	  case sizeof(double):
+	    value = convertFloat<double>(buffer);
+	    break;
+	  case sizeof(long double):
+	    value = convertFloat<long double>(buffer);
+	    break;
+	  default:
+	    std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl;
+	    std::cerr << "\t Exiting at convertValue VLSV::FLOAT." << std::endl;
+	    exit(1);
+	    break;
+	 }
+	 break;
+       default:
+	 // Error:
+	 std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl;
+	 exit(1);
+	 break;
+      }
+   }
+   
+   template<typename T> inline std::string getStringDatatype() {return "unknown";}
+   template<> inline std::string getStringDatatype<char>() {return "uint";}
+   template<> inline std::string getStringDatatype<int8_t>() {return "int";}
+   template<> inline std::string getStringDatatype<int16_t>() {return "int";}
+   template<> inline std::string getStringDatatype<int32_t>() {return "int";}
+   template<> inline std::string getStringDatatype<int64_t>() {return "int";}
+   template<> inline std::string getStringDatatype<uint8_t>() {return "uint";}
+   template<> inline std::string getStringDatatype<uint16_t>() {return "uint";}
+   template<> inline std::string getStringDatatype<uint32_t>() {return "uint";}
+   template<> inline std::string getStringDatatype<uint64_t>() {return "uint";}
+   template<> inline std::string getStringDatatype<float>() {return "float";}
+   template<> inline std::string getStringDatatype<double>() {return "float";}
+   template<> inline std::string getStringDatatype<long double>() {return "float";}
 }
 
 unsigned char detectEndianness();

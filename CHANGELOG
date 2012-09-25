@@ -1,0 +1,15 @@
+*************************************
+***** CHANGES IN REVISION 00284 *****
+*************************************
+
+Cleaned up code in vlsvwriter2.cpp and vlsvreader2.cpp as well as in
+the associated headers. General-use functions have been templatized
+and moved to vlsv_common.h
+
+VLSVParReader now works after several bug fixes.
+
+Makefile was updated so that architecture-dependent flags etc. are
+read from user-dependent Makefile.ARCH files. As a result VLSV library
+needs to be compiled with
+>make "ARCH=arch"
+command, where 'arch' is the suffix of the architecture file.

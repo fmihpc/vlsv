@@ -38,13 +38,6 @@
 
 using namespace std;
 
-/** Constructor for WriteUnit. Simply copies parameters to internal variables.
- * @param array Pointer to the data to be written.
- * @param mpiType MPI datatype describing the type of data to be written.
- * @param amount Number of MPI datatypes in array.
- */
-VLSV::WriteUnit::WriteUnit(char* array,const MPI_Datatype& mpiType,const uint64_t& amount): array(array),mpiType(mpiType),amount(amount) { }
-
 /** Constructor for VLSVWriter.*/
 VLSVWriter::VLSVWriter() {
    blockLengths = NULL;
@@ -61,6 +54,7 @@ VLSVWriter::VLSVWriter() {
    offsets = NULL;
    types = NULL;
    xmlWriter = NULL;
+   comm = MPI_COMM_NULL;
 }
 
 /** Destructor for VLSVWriter. Deallocates XML writer.*/
@@ -82,7 +76,7 @@ bool VLSVWriter::addMultiwriteUnit(char* array,const uint64_t& arrayElements) {
    #endif
    if (initialized == false) return false;
    if (multiwriteInitialized == false) return false;
-   multiwriteUnits[0].push_back(VLSV::WriteUnit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
+   multiwriteUnits[0].push_back(VLSV::Multi_IO_Unit(array,VLSV::getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
    #ifdef PROFILE
       profile::stop();
    #endif
@@ -98,7 +92,7 @@ bool VLSVWriter::addMultiwriteUnit(char* array,const uint64_t& arrayElements) {
 bool VLSVWriter::close() {
    // If a file was never opened, exit immediately:
    if (fileOpen == false) return false;
-   
+
    // Close MPI file:
    MPI_Barrier(comm);
    MPI_File_close(&fileptr);
@@ -137,64 +131,6 @@ bool VLSVWriter::close() {
    fileOpen = false;
    MPI_Comm_free(&comm);
    return true;
-}
-
-MPI_Datatype VLSVWriter::getMPIDatatype(VLSV::datatype dt,uint64_t dataSize) {
-   switch (dt) {
-    case VLSV::UNKNOWN:
-      return MPI_DATATYPE_NULL;
-      break;
-    case VLSV::INT:
-      switch (dataSize) {
-       case (sizeof(int8_t)):
-	 return MPI_Type<int8_t>();
-	 break;
-       case (sizeof(int16_t)):
-	 return MPI_Type<int16_t>();
-	 break;
-       case (sizeof(int32_t)):
-	 return MPI_Type<int32_t>();
-	 break;
-       case (sizeof(int64_t)):
-	 return MPI_Type<int64_t>();
-	 break;
-      }
-    case VLSV::UINT:
-      switch (dataSize) {
-       case (sizeof(uint8_t)):
-	 return MPI_Type<uint8_t>();
-	 break;
-       case (sizeof(uint16_t)):
-	 return MPI_Type<uint16_t>();
-	 break;
-       case (sizeof(uint32_t)):
-	 return MPI_Type<uint32_t>();
-	 break;
-       case (sizeof(uint64_t)):
-	 return MPI_Type<uint64_t>();
-	 break;
-      }
-    case VLSV::FLOAT:
-      switch (dataSize) {
-       case (sizeof(float)):
-	 return MPI_Type<float>();
-	 break;
-       case (sizeof(double)):
-	 return MPI_Type<double>();
-	 break;
-       case (sizeof(long double)):
-	 return MPI_Type<long double>();
-	 break;
-      }
-   }
-   return MPI_DATATYPE_NULL;
-}
-
-VLSV::datatype VLSVWriter::getVLSVDatatype(const string& s) {
-   if (s == "int") return VLSV::INT;
-   else if (s == "uint") return VLSV::UINT;
-   else if (s == "float") return VLSV::FLOAT;
-   else return VLSV::UNKNOWN;
 }
 
 /** Open a VLSV file for parallel output. The file is opened on all processes 
@@ -297,16 +233,15 @@ bool VLSVWriter::startMultiwrite(const string& datatype,const uint64_t& arraySiz
    
    // Clear per-thread storage:
      {
-	vector<list<VLSV::WriteUnit> > dummy(1);
+	vector<list<VLSV::Multi_IO_Unit> > dummy(1);
 	multiwriteUnits.swap(dummy);
      }
-   //multiwriteUnits[0].clear();
    multiwriteOffsets[0] = numeric_limits<unsigned int>::max();
 
    // Array datatype and byte size of each vector element are determined 
    // from the template parameter, other values are copied from parameters:
    this->dataType   = datatype;
-   this->vlsvType   = getVLSVDatatype(datatype);
+   this->vlsvType   = VLSV::getVLSVDatatype(datatype);
    this->arraySize  = arraySize;
    this->vectorSize = vectorSize;
    this->dataSize   = dataSize;
@@ -385,7 +320,7 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
    if (multiwriteUnits[0].size() > 0) {
       unsigned int offset = multiwriteOffsets[0];
       unsigned int i = 0;
-      for (list<VLSV::WriteUnit>::const_iterator it=multiwriteUnits[0].begin(); it!=multiwriteUnits[0].end(); ++it) {
+      for (list<VLSV::Multi_IO_Unit>::const_iterator it=multiwriteUnits[0].begin(); it!=multiwriteUnits[0].end(); ++it) {
 	 blockLengths[offset+i]  = (*it).amount;
 	 displacements[offset+i] = (*it).array - multiwriteOffsetPointer;
 	 types[offset+i]         = (*it).mpiType;
@@ -461,7 +396,7 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
 }
 
 bool VLSVWriter::writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
-			    const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,char* array) {
+			    const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array) {
    // Check that everything is OK before continuing:
    if (initialized == false) return false;
    if (fileOpen == false) return false;
@@ -478,7 +413,8 @@ bool VLSVWriter::writeArray(const std::string& arrayName,const std::map<std::str
       profile::stop();
       profile::start("add multiwrite",addMWID);
    #endif
-   if (addMultiwriteUnit(array,arraySize) == false) {
+   char* arrayPtr = const_cast<char*>(array);
+   if (addMultiwriteUnit(arrayPtr,arraySize) == false) {
       success = false; return success;
    }
    
