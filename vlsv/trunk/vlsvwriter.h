@@ -22,28 +22,11 @@
 #include <stdint.h>
 #include <mpi.h>
 #include <limits>
-#ifdef THREADING
-   #include <pthread.h>
-#endif
 
 #include "muxml.h"
 #include "mpiconversion.h"
 #include "vlsv_common.h"
-
-namespace VLSV {
-   struct WriteUnit {
-      char* array;              /**< Pointer to data to be written.*/
-      MPI_Datatype mpiType;     /**< MPI datatype of data that is written.*/
-      uint64_t amount;          /**< How many elements are to be written.*/
-      
-      WriteUnit(char* array,const MPI_Datatype& mpiType,const uint64_t& amount);
-   
-    private:
-   
-      /** Private default constructor to prevent creation of empty multiwrite units.*/
-      WriteUnit();
-   };
-}
+#include "multi_io_unit.h"
 
 /** VLSV file format writer.
  * 
@@ -76,20 +59,23 @@ class VLSVWriter {
    bool open(const std::string& fname,MPI_Comm comm,const int& masterProcessID);
    bool startMultiwrite(const std::string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize);
    bool writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
-		   const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,char* array);
+		   const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array);
    
    // ***** TEMPLATE WRAPPER FUNCTIONS ***** //
 
    template<typename T> 
-   bool addMultiwriteUnit(T* array,const uint64_t& arrayElements);
+   bool addMultiwriteUnit(const T* array,const uint64_t& arrayElements);
 
    template<typename T>
    bool startMultiwrite(const uint64_t& arraySize,const uint64_t& vectorSize);
    
    template<typename T> 
    bool writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,
-		   const uint64_t& arraySize,const uint64_t& vectorSize,T* array);
+		   const uint64_t& arraySize,const uint64_t& vectorSize,const T* array);
 
+   template<typename T>
+   bool writeParameter(const std::string& parameterName,const T* const array);
+   
    template<typename T>
    bool writeWithReduction(const std::string& arrayName,const std::map<std::string,std::string>& attribs,
 			   const uint64_t& arraySize,T* array,MPI_Op operation);
@@ -120,10 +106,10 @@ class VLSVWriter {
 						 * data into an MPI struct in endMultiwrite.*/
    char* multiwriteOffsetPointer;          /**< Pointer to an array that is used to calculate offsets in an 
 					    * MPI struct created in endMultiwrite.*/
-   std::vector<std::list<VLSV::WriteUnit> > multiwriteUnits; /**< Container for all multiwrite units for this process. 
-							      * Each thread using VLSVWriter has its own list. This 
-							      * allows VLSVWriter::addMultiwriteUnit to be called without 
-							      * thread synchronizations.*/   
+   std::vector<std::list<VLSV::Multi_IO_Unit> > multiwriteUnits; /**< Container for all multiwrite units for this process. 
+								  * Each thread using VLSVWriter has its own list. This 
+								  * allows VLSVWriter::addMultiwriteUnit to be called without 
+								  * thread synchronizations.*/   
    uint64_t myBytes;                       /**< Number of bytes this process is writing to the current array.*/
    int myrank;                             /**< Rank of this process in communicator comm.*/
    unsigned int N_multiwriteUnits;         /**< Total number of multiwrite units this process has. In multithreaded mode 
@@ -136,38 +122,19 @@ class VLSVWriter {
 					    * must have the same value on all participating processes.*/
    VLSV::datatype vlsvType;                /**< Same as dataType but in an integer representation.*/
    MuXML* xmlWriter;                       /**< Pointer to XML writer, used for writing a footer to the VLSV file.*/
-   
-   /** Returns a string representation of an array that is to be written to file.
-    * The correct C++ datatype can be deduced from the string value returned by this
-    * function and from the byte size of the data in array. For example, datatype "float"
-    * with byte size of 8 usually means that the values are doubles.
-    * @return String representation of the datatype.*/
-   template<typename T> std::string arrayDataType();
-   
-   MPI_Datatype getMPIDatatype(VLSV::datatype dt,uint64_t dataSize);
-   VLSV::datatype getVLSVDatatype(const std::string& s);
 };
 
-template<> inline std::string VLSVWriter::arrayDataType<int8_t>() {return "int";}
-template<> inline std::string VLSVWriter::arrayDataType<int16_t>() {return "int";}
-template<> inline std::string VLSVWriter::arrayDataType<int32_t>() {return "int";}
-template<> inline std::string VLSVWriter::arrayDataType<int64_t>() {return "int";}
-template<> inline std::string VLSVWriter::arrayDataType<uint8_t>() {return "uint";}
-template<> inline std::string VLSVWriter::arrayDataType<uint16_t>() {return "uint";}
-template<> inline std::string VLSVWriter::arrayDataType<uint32_t>() {return "uint";}
-template<> inline std::string VLSVWriter::arrayDataType<uint64_t>() {return "uint";}
-template<> inline std::string VLSVWriter::arrayDataType<float>() {return "float";}
-template<> inline std::string VLSVWriter::arrayDataType<double>() {return "float";}
-template<> inline std::string VLSVWriter::arrayDataType<long double>() {return "float";}
-
-template<typename T>
-inline bool VLSVWriter::addMultiwriteUnit(T* array,const uint64_t& arrayElements) {
+template<typename T> inline
+bool VLSVWriter::addMultiwriteUnit(const T* array,const uint64_t& arrayElements) {
    // Check that startMultiwrite has initialized correctly:
    if (multiwriteInitialized == false) return false;
    
+   // Cast away const-ness:
+   T* arrayPtr = const_cast<T*>(array);
+   
    // Each thread records their multiwrite units to per-thread storage,
    // so there is no need to synchronize access to vector multiwriteUnits:
-   multiwriteUnits[0].push_back(VLSV::WriteUnit(reinterpret_cast<char*>(array),MPI_Type<T>(),arrayElements*vectorSize));
+   multiwriteUnits[0].push_back(VLSV::Multi_IO_Unit(reinterpret_cast<char*>(arrayPtr),MPI_Type<T>(),arrayElements*vectorSize));
    return true;
 }
 
@@ -179,7 +146,7 @@ inline bool VLSVWriter::addMultiwriteUnit(T* array,const uint64_t& arrayElements
  * VLSVWriter::addMultiwriteUnit and VLSVWriter::endMultiwrite may be called.*/
 template<typename T>
 inline bool VLSVWriter::startMultiwrite(const uint64_t& arraySize,const uint64_t& vectorSize) {
-   return startMultiwrite(arrayDataType<T>(),arraySize,vectorSize,sizeof(T));
+   return startMultiwrite(VLSV::getStringDatatype<T>(),arraySize,vectorSize,sizeof(T));
 }
 
 /** Write an array to the output file. This function is simply a wrapper to 
@@ -190,13 +157,27 @@ inline bool VLSVWriter::startMultiwrite(const uint64_t& arraySize,const uint64_t
  * @param vectorSize Number of elements in vectors that comprise the array elements.
  * @param array Pointer to the output array.
  * @return If true, the array was successfully written to file.*/
-template<typename T> 
-inline bool VLSVWriter::writeArray(const std::string& tagName,const std::map<std::string,std::string>& attribs,
-				   const uint64_t& arraySize,const uint64_t& vectorSize,T* array) {
-   return writeArray(tagName,attribs,arrayDataType<T>(),arraySize,vectorSize,sizeof(T),reinterpret_cast<char*>(array));
+template<typename T> inline
+bool VLSVWriter::writeArray(const std::string& tagName,const std::map<std::string,std::string>& attribs,
+			    const uint64_t& arraySize,const uint64_t& vectorSize,const T* array) {
+   // Cast away const-ness of array pointer (required by MPI):
+   T* arrayPtr = const_cast<T*>(array);
+   return writeArray(tagName,attribs,VLSV::getStringDatatype<T>(),arraySize,vectorSize,sizeof(T),reinterpret_cast<char*>(arrayPtr));
 }
 
-template<typename T>
+template<typename T> inline
+bool VLSVWriter::writeParameter(const std::string& parameterName,const T* const array) {
+   
+   std::map<std::string,std::string> attributes;
+   attributes["name"] = parameterName;
+   
+   if (myrank == masterRank)
+     return writeArray("PARAMETER",attributes,1,1,array);
+   else
+     return writeArray("PARAMETER",attributes,0,0,array);
+}
+
+template<typename T> inline
 bool VLSVWriter::writeWithReduction(const std::string& arrayName,const std::map<std::string,std::string>& attribs,
 				    const uint64_t& arraySize,T* array,MPI_Op operation) {
    // Master process allocates a receive buffer for reduction:
