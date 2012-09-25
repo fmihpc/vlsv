@@ -18,6 +18,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <string.h>
 
 #include "vlsvreader.h"
 
