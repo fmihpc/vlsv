@@ -651,7 +651,7 @@ bool convertMultimeshVariable(VLSVReader& vlsvReader,const string& meshName,cons
    // only compilation here is that some of the variables are actually vectors, i.e.
    // vectorSize > 1 (vectorSize == 1 for scalars). Format in which vectors are stored in VLSV
    // differ from format in which they are written to SILO files.
-   VLSV::datatype dataType,localidDataType;
+   VLSV::datatype dataType;
    uint64_t arraySize,vectorSize,dataSize;
    list<pair<string,string> > attributes;
    attributes.push_back(make_pair("mesh",meshName));
