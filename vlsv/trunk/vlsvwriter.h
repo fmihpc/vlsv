@@ -144,8 +144,8 @@ bool VLSVWriter::addMultiwriteUnit(const T* array,const uint64_t& arrayElements)
  * same value on all participating MPI processes.
  * @return If true, multiwrite mode has initialized correctly and functions
  * VLSVWriter::addMultiwriteUnit and VLSVWriter::endMultiwrite may be called.*/
-template<typename T>
-inline bool VLSVWriter::startMultiwrite(const uint64_t& arraySize,const uint64_t& vectorSize) {
+template<typename T> inline
+bool VLSVWriter::startMultiwrite(const uint64_t& arraySize,const uint64_t& vectorSize) {
    return startMultiwrite(VLSV::getStringDatatype<T>(),arraySize,vectorSize,sizeof(T));
 }
 
