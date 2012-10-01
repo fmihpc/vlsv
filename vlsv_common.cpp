@@ -47,7 +47,7 @@ MPI_Datatype VLSV::getMPIDatatype(VLSV::datatype dt,uint64_t dataSize) {
    switch (dt) {
     case VLSV::UNKNOWN:
       // TEST
-      cerr << "WARNING MPI_DATATYPE_NULL returned!!!" << endl;
+      cerr << "(VLSV) ERROR: VLSV::getMPIDatatype called with VLSV::UNKNOWN datatype, returning MPI_DATATYPE_NULL!" << endl;
       // END TEST
       return MPI_DATATYPE_NULL;
       break;
@@ -65,6 +65,10 @@ MPI_Datatype VLSV::getMPIDatatype(VLSV::datatype dt,uint64_t dataSize) {
        case (sizeof(int64_t)):
 	 return MPI_Type<int64_t>();
 	 break;
+       default:
+	 cerr << "(VLSV) ERROR: VLSV::getMPIDatatype called with VLSV::INT datatype and unsupported datasize of " << dataSize << "!" << endl;
+	 return MPI_DATATYPE_NULL;
+	 break;
       }
     case VLSV::UINT:
       switch (dataSize) {
@@ -80,6 +84,10 @@ MPI_Datatype VLSV::getMPIDatatype(VLSV::datatype dt,uint64_t dataSize) {
        case (sizeof(uint64_t)):
 	 return MPI_Type<uint64_t>();
 	 break;
+       default:
+	 cerr << "(VLSV) ERROR: VLSV::getMPIDatatype called with VLSV::UINT datatype and unsupported datasize of " << dataSize << "!" << endl;
+	 return MPI_DATATYPE_NULL;
+	 break;
       }
     case VLSV::FLOAT:
       switch (dataSize) {
@@ -91,6 +99,10 @@ MPI_Datatype VLSV::getMPIDatatype(VLSV::datatype dt,uint64_t dataSize) {
 	 break;
        case (sizeof(long double)):
 	 return MPI_Type<long double>();
+	 break;
+       default:
+	 cerr << "(VLSV) ERROR: VLSV::getMPIDatatype called with VLSV::FLOAT datatype and unsupported datasize of " << dataSize << "!" << endl;
+	 return MPI_DATATYPE_NULL;
 	 break;
       }
     default:

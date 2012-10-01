@@ -163,6 +163,7 @@ namespace VLSV {
    }
    
    template<typename T> inline std::string getStringDatatype() {return "unknown";}
+   template<> inline std::string getStringDatatype<bool>() {return "int";}
    template<> inline std::string getStringDatatype<char>() {return "uint";}
    template<> inline std::string getStringDatatype<int8_t>() {return "int";}
    template<> inline std::string getStringDatatype<int16_t>() {return "int";}
