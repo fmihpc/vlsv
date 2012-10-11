@@ -69,8 +69,20 @@ static set<string> directories; /**< List of directories created to output SILO 
 				 * throws errors to console. In order to avoid these errors, currently 
 				 * existing directories are stored in this set.*/
 
-static map<string,map<double,double> > curves; /**< Container for all curve data stored to VLSV file(s).
-						* map<double,double> is for sorting data by ascending x values.*/
+struct CurveData {
+   string xlabel;
+   string ylabel;
+   string xunit;
+   string yunit;
+   map<double,double> data;
+   
+   CurveData();
+};
+
+CurveData::CurveData(): xlabel(""),ylabel(""),xunit(""),yunit("") { }
+
+static map<string,CurveData> curves; /**< Container for all curve data stored to VLSV file(s).
+				      * map<double,double> is for sorting data by ascending x values.*/
 
 /** Convert an integer value written to a char array to int64_t. If the integer value 
  * in char array is uint64_t the conversion to int64_t may lead to unexpected results.
@@ -1930,6 +1942,7 @@ bool appendCurveValue(VLSVReader& vlsvReader,const string& varName,bool isTimeSe
    VLSV::datatype xDataType;
    uint64_t xArraySize,xVectorSize,xDataSize;
    list<pair<string,string> > attribs;
+   map<string,string> attribsOut;
    
    // Buffer for reading data:
    char buffer[sizeof(long double)];
@@ -1955,12 +1968,17 @@ bool appendCurveValue(VLSVReader& vlsvReader,const string& varName,bool isTimeSe
       break;
    }
    
-   // Get y value from VLSV file:
+   // Get info of array containing the y value:
    attribs.clear();
    attribs.push_back(make_pair("name",varName));
    if (vlsvReader.getArrayInfo("TIMESERIES",attribs,xArraySize,xVectorSize,xDataType,xDataSize) == false) return false;
    if (xDataType != VLSV::FLOAT) return false;
    if (xArraySize != 1 || xVectorSize != 1) return false;
+   
+   // Get y-value array attributes:
+   if (vlsvReader.getArrayAttributes("TIMESERIES",attribs,attribsOut) == false) return false;
+   
+   // Get y value from VLSV file:
    if (vlsvReader.readArray("TIMESERIES",attribs,0,xArraySize,buffer) == false) return false;
 
    // Convert y value to double:
@@ -1980,7 +1998,13 @@ bool appendCurveValue(VLSVReader& vlsvReader,const string& varName,bool isTimeSe
    // Store (x,y) value pair to map curves. Note that the VLSV files are not read in 
    // chronological order. Thus, the (x,y) pairs are also read in unspecified order 
    // and need to be sorted by ascending x-value. The sort is done here:
-   curves[varName][x] = y;
+   //curves[varName][x] = y;
+   if (attribsOut.find("xlabel") != attribsOut.end()) curves[varName].xlabel = attribsOut["xlabel"];
+   if (attribsOut.find("ylabel") != attribsOut.end()) curves[varName].ylabel = attribsOut["ylabel"];
+   if (attribsOut.find("xunit") != attribsOut.end()) curves[varName].xunit = attribsOut["xunit"];
+   if (attribsOut.find("yunit") != attribsOut.end()) curves[varName].yunit = attribsOut["yunit"];
+   curves[varName].data[x] = y;
+   
    return success;
 }
 
@@ -2070,19 +2094,26 @@ bool convertCurveSILO(const string& fname,bool lastFile) {
       fileptr = DBCreate(outName.c_str(),DB_CLOBBER,DB_LOCAL,"VLSV curve data",DB_PDB);
       if (fileptr == NULL) return false;
 
-      for (map<string,map<double,double> >::const_iterator it=curves.begin(); it!=curves.end(); ++it) {
-	 vector<double> x(it->second.size());
-	 vector<double> y(it->second.size());
+      for (map<string,CurveData>::const_iterator it=curves.begin(); it!=curves.end(); ++it) {
+	 vector<double> x(it->second.data.size());
+	 vector<double> y(it->second.data.size());
 	 size_t index = 0;
-	 for (map<double,double>::const_iterator jt=it->second.begin(); jt!=it->second.end(); ++jt) {
+	 for (map<double,double>::const_iterator jt=it->second.data.begin(); jt!=it->second.data.end(); ++jt) {
 	    x[index] = jt->first;
 	    y[index] = jt->second;
 	    ++index;
 	 }
 	 
-	 if (DBPutCurve(fileptr,it->first.c_str(),&(x[0]),&(y[0]),DB_DOUBLE,x.size(),NULL) < 0) {
+	 DBoptlist* optlist = DBMakeOptlist(4);
+	 DBAddOption(optlist,DBOPT_XLABEL,const_cast<char*>(it->second.xlabel.c_str()));
+	 DBAddOption(optlist,DBOPT_YLABEL,const_cast<char*>(it->second.ylabel.c_str()));
+	 DBAddOption(optlist,DBOPT_XUNITS,const_cast<char*>(it->second.xunit.c_str()));
+	 DBAddOption(optlist,DBOPT_YUNITS,const_cast<char*>(it->second.yunit.c_str()));
+	 
+	 if (DBPutCurve(fileptr,it->first.c_str(),&(x[0]),&(y[0]),DB_DOUBLE,x.size(),optlist) < 0) {
 	    cerr << "Failed to write curve '" << it->first << "'" << endl; success = false;
-	 }
+	 }	 
+	 DBFreeOptlist(optlist);
       }
       DBClose(fileptr); fileptr = NULL;
    }
