@@ -660,7 +660,7 @@ bool convertMultimeshVariable(VLSVReader& vlsvReader,const string& meshName,cons
    fullName = "";
    
    // Writing a unstructured grid variable is a rather straightforward process. The
-   // only compilation here is that some of the variables are actually vectors, i.e.
+   // only complication here is that some of the variables are actually vectors, i.e.
    // vectorSize > 1 (vectorSize == 1 for scalars). Format in which vectors are stored in VLSV
    // differ from format in which they are written to SILO files.
    VLSV::datatype dataType;

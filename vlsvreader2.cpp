@@ -68,9 +68,9 @@ bool VLSVReader::getArrayInfo(const std::string& tagName,const std::list<std::pa
    XMLNode* node = xmlReader.find(tagName,attribs);
    if (node == NULL) return false;
    
-   arraySize = atoi(node->attributes["arraysize"].c_str());
-   vectorSize = atoi(node->attributes["vectorsize"].c_str());
-   dataSize = atoi(node->attributes["datasize"].c_str());
+   arraySize = atol(node->attributes["arraysize"].c_str());
+   vectorSize = atol(node->attributes["vectorsize"].c_str());
+   dataSize = atol(node->attributes["datasize"].c_str());
    if (node->attributes["datatype"] == "unknown") dataType = VLSV::UNKNOWN;
    else if (node->attributes["datatype"] == "int") dataType = VLSV::INT;
    else if (node->attributes["datatype"] == "uint") dataType = VLSV::UINT;
@@ -108,11 +108,11 @@ bool VLSVReader::loadArray(const std::string& tagName,const std::list<std::pair<
    if (node == NULL) return false;
 
    // Copy array information from tag:
-   arrayOpen.offset = atoi(node->value.c_str());
+   arrayOpen.offset = atol(node->value.c_str());
    arrayOpen.tagName = tagName;
-   arrayOpen.arraySize = atoi(node->attributes["arraysize"].c_str());
-   arrayOpen.vectorSize = atoi(node->attributes["vectorsize"].c_str());
-   arrayOpen.dataSize = atoi(node->attributes["datasize"].c_str());
+   arrayOpen.arraySize = atol(node->attributes["arraysize"].c_str());
+   arrayOpen.vectorSize = atol(node->attributes["vectorsize"].c_str());
+   arrayOpen.dataSize = atol(node->attributes["datasize"].c_str());
    if (node->attributes["datatype"] == "unknown") arrayOpen.dataType = VLSV::UNKNOWN;
    else if (node->attributes["datatype"] == "int") arrayOpen.dataType = VLSV::INT;
    else if (node->attributes["datatype"] == "uint") arrayOpen.dataType = VLSV::UINT;
@@ -192,11 +192,11 @@ bool VLSVReader::readArray(const std::string& tagName,const std::list<std::pair<
    }
 
    // Copy array information from tag:
-   arrayOpen.offset = atoi(node->value.c_str());
+   arrayOpen.offset = atol(node->value.c_str());
    arrayOpen.tagName = tagName;
-   arrayOpen.arraySize = atoi(node->attributes["arraysize"].c_str());
-   arrayOpen.vectorSize = atoi(node->attributes["vectorsize"].c_str());
-   arrayOpen.dataSize = atoi(node->attributes["datasize"].c_str());
+   arrayOpen.arraySize = atol(node->attributes["arraysize"].c_str());
+   arrayOpen.vectorSize = atol(node->attributes["vectorsize"].c_str());
+   arrayOpen.dataSize = atol(node->attributes["datasize"].c_str());
    if (node->attributes["datatype"] == "int") arrayOpen.dataType = VLSV::INT;
    else if (node->attributes["datatype"] == "uint") arrayOpen.dataType = VLSV::UINT;
    else if (node->attributes["datatype"] == "float") arrayOpen.dataType = VLSV::FLOAT;
@@ -221,8 +221,16 @@ bool VLSVReader::readArray(const std::string& tagName,const std::list<std::pair<
    filein.seekg(start);
    filein.read(buffer,readBytes);
    if (filein.gcount() != readBytes) {
-      cerr << "VLSVReader ERROR: Failed to read requested amount of bytes!" << endl;
-      return false;
+      cerr << "VLSVReader ERROR: Failed to read requested amount of bytes!" << endl;      
+      cerr << "tag name='" << tagName << "'" << endl;
+      cerr << "attributes:" << endl;
+      for (map<string,string>::const_iterator it=node->attributes.begin(); it!=node->attributes.end(); ++it) {
+	 cerr << '\t' << it->first << " = " << it->second << endl;
+      }
+      cerr << "array offset string '" << node->value.c_str() << "'" << endl;
+      cerr << "start=" << start << " readBytes=" << readBytes << endl;
+      cerr << "offset=" << arrayOpen.offset << " vectorsize=" << arrayOpen.vectorSize << " dataSize=" << arrayOpen.dataSize << endl;
+      exit(1);
    }
    return true;
 }
