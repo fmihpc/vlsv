@@ -959,7 +959,7 @@ bool convertMeshVariable(VLSVReader& vlsvReader,const string& meshName,const str
    return success;
 }
 
-bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName) {
+bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName,const bool asciiParticleFile = false) {
    bool success = true;
    //cerr << "Converting point mesh '" << meshName << "'" << endl;
    
@@ -981,7 +981,7 @@ bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName) {
       cerr << "\t byte size obtained: " << dataSize << endl;
       return false;
    }
-   if (vectorSize < 1 || vectorSize > 3) {
+   if ((vectorSize < 1 || vectorSize > 3) && asciiParticleFile == false) {
       cerr << "Mesh dimensionality must be between 1 and 3!" << endl;
       return false;
    }
@@ -1091,19 +1091,52 @@ bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName) {
       coordinateArrays[2] = reinterpret_cast<char*>(zout12);
       break;
    }
-   delete [] inbuffer; inbuffer = NULL;
 
    // Make an option list and insert simulation time and timestep, if they are available:
    DBoptlist* optlist = getOptionList(vlsvReader,6);
 
-   // Get coordinate names & units from VLSV file if available, otherwise use default values:
-   parseCoordinateNames(optlist,attribsOut);
-
-   if (DBPutPointmesh(fileptr,meshName.c_str(),N_dims,coordinateArrays,N_points,SiloType(dataType,dataSize),optlist) < 0) {
-      cerr << "Failed to write the point mesh to file!" << endl;
-      success = false;
+   // Create ASCII particle file
+   if(asciiParticleFile == true) {
+      static bool initAsciiWrite = false;
+      static ofstream ofples;
+      if(initAsciiWrite == false) {
+	 ofples.open("particles.dat");
+	 ofples << scientific << showpos;
+	 ofples.precision(10);
+	 initAsciiWrite = true;
+      }
+      void* siloSimTime = DBGetOption(optlist,DBOPT_DTIME);
+      double simt = -1;
+      if(siloSimTime != NULL) {
+	 simt = *reinterpret_cast<double*> (siloSimTime);
+      }
+      for (uint64_t point=0; point<N_points; ++point) {
+	 ofples << simt << " ";
+	 for(size_t t=0;t<N_dims;t++) {
+	    double d = reinterpret_cast<double*>(inbuffer)[point*N_dims+t];
+	    if(t==0)      { d *= xscale8; }
+	    else if(t==1) { d *= yscale8; }
+	    else if(t==2) { d *= zscale8; }
+	    ofples << d << " ";
+	 }
+	 ofples << endl;
+      }
    }
-   if (optlist != NULL) DBFreeOptlist(optlist);
+   
+   delete [] inbuffer; inbuffer = NULL;
+   
+   // Add point mesh in SILO
+   if(asciiParticleFile == false) {   
+      // Get coordinate names & units from VLSV file if available, otherwise use default values:
+      parseCoordinateNames(optlist,attribsOut);
+
+      if (DBPutPointmesh(fileptr,meshName.c_str(),N_dims,coordinateArrays,N_points,SiloType(dataType,dataSize),optlist) < 0) {
+	 cerr << "Failed to write the point mesh to file!" << endl;
+	 success = false;
+      }
+   }
+   
+   if(optlist != NULL) DBFreeOptlist(optlist);
 
    // Deallocate memory and exit:
    delete [] xout4; delete [] yout4; delete [] zout4;
@@ -2008,7 +2041,7 @@ bool appendCurveValue(VLSVReader& vlsvReader,const string& varName,bool isTimeSe
    return success;
 }
 
-bool convertSILO(const string& fname) {
+bool convertSILO(const string& fname,const bool asciiParticleFile) {
    bool success = true;
    
    // Open VLSV file for reading:
@@ -2045,7 +2078,7 @@ bool convertSILO(const string& fname) {
       }
       
       if (attribsOut["type"] == VLSV::MESH_QUAD) convertQuadMesh(vlsvReader,*it);
-      else if (attribsOut["type"] == VLSV::MESH_POINT) convertPointMesh(vlsvReader,*it);
+      else if (attribsOut["type"] == VLSV::MESH_POINT) convertPointMesh(vlsvReader,*it,asciiParticleFile);
       else if (attribsOut["type"] == VLSV::MESH_QUAD_MULTI) convertMultimesh(vlsvReader,*it,fname,fileout);
       else {
 	 cout << "\t Skipping mesh '" << *it << "' because it has unknown type" << endl;
@@ -2124,7 +2157,7 @@ int main(int argn,char* args[]) {
    
    if (argn < 2) {
       cout << endl;
-      cout << "USAGE: ./vlsv2silo <input file mask(s)>" << endl;
+      cout << "USAGE: ./vlsv2silo [--ascii-particle-file] <input file mask(s)>" << endl;
       cout << "Each VLSV in the current directory is compared against the given file mask(s)," << endl;
       cout << "and if match is found, that file is converted into SILO format." << endl;
       cout << endl;
@@ -2135,10 +2168,19 @@ int main(int argn,char* args[]) {
       MPI_Init(&argn,&args);
       convertQuadMeshTotalID = profile::initializeTimer("Quad mesh total");
    #endif
+
+   // whether to create an ASCII particle file
+   bool asciiParticleFile = false;
    
    // Convert file masks into strings:
    vector<string> masks;
-   for (int i=1; i<argn; ++i) masks.push_back(args[i]);
+   for (int i=1; i<argn; ++i) {
+      if(string(args[i]).compare("--ascii-particle-file") == 0) {
+	 asciiParticleFile = true;
+	 continue;
+      }
+      masks.push_back(args[i]);
+   }
 
    // Compare directory contents against each mask:
    set<string> inputFiles;
@@ -2168,7 +2210,7 @@ int main(int argn,char* args[]) {
       for (set<string>::iterator it=inputFiles.begin(); it!=inputFiles.end(); ++it) {
 	 cout << "\t converting '" << *it << "'" << endl;
 	 directories.clear();
-	 convertSILO(*it);
+	 convertSILO(*it,asciiParticleFile);
 	 ++filesConverted;
       }
       
