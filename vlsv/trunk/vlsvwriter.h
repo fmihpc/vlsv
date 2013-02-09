@@ -121,7 +121,7 @@ class VLSVWriter {
    uint64_t vectorSize;                    /**< Number of elements in each data vector per array element,
 					    * must have the same value on all participating processes.*/
    VLSV::datatype vlsvType;                /**< Same as dataType but in an integer representation.*/
-   MuXML* xmlWriter;                       /**< Pointer to XML writer, used for writing a footer to the VLSV file.*/
+   muxml::MuXML* xmlWriter;                /**< Pointer to XML writer, used for writing a footer to the VLSV file.*/
 };
 
 template<typename T> inline

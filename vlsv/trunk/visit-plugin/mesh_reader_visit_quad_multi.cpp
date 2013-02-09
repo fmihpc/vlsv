@@ -1,0 +1,348 @@
+/** This file is part of VLSV file format.
+ * 
+ *  Copyright 2011-2013 Finnish Meteorological Institute
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <mesh_reader_visit_quad_multi.h>
+#include <mesh_metadata_visit_quad_multi.h>
+
+#include <typeinfo>
+#include <unordered_map>
+
+#include <DebugStream.h>
+#include <avtGhostData.h>
+
+#include <vtkCellType.h>
+#include <vtkCellData.h>
+#include <vtkUnsignedCharArray.h>
+#include <vtkPoints.h>
+#include <vtkUnstructuredGrid.h>
+
+using namespace std;
+
+namespace vlsvplugin {
+   
+   /** Struct for storing (i,j,k) indices of nodes in the mesh. This 
+    * struct is, in practice, used to eliminate duplicate nodes from the 
+    * mesh pieces written to SILO file.*/
+   struct NodeIndices {
+      int32_t i;            /**< i-index of the node.*/
+      int32_t j;            /**< j-index of the node.*/
+      int32_t k;            /**< k-index of the node.*/
+      
+      /** Constructor.
+       * @param i i-index of the node.
+       * @param j j-index of the node.
+       * @param k k-index of the node.*/
+      NodeIndices(int32_t i,int32_t j,int32_t k): i(i),j(j),k(k) { }
+   };
+   
+   /** Comparator object for struct NodeIndices, required for being
+    * able to store NodeIndices to unordered_map.*/
+   struct NodesAreEqual {
+      /** Compare given NodeIndices objects for equality. Objects 
+       * are equal if their (i,j,k) indices are equal.
+       * @param first First NodeIndices object to compare.
+       * @param second Second NodeIndices object to compare.
+       * @return If true, given objects are equal.*/
+      bool operator()(const NodeIndices& first,const NodeIndices& second) const {
+	 if (first.i != second.i) return false;
+	 if (first.j != second.j) return false;
+	 if (first.k != second.k) return false;
+	 return true;
+      }
+   };
+   
+   const int32_t maxHash = 2097152-1; // =2^21, the (i,j,k) indices are packed into a 64-bit integer (3*21=63).
+   
+   /** Hash function implementation for object NodeIndices, required for 
+    * being able to store NodeIndices to unordered_map.*/
+   struct NodeHash {
+      /** Calculate hash value for given NodeIndices object.
+       * @param Node NodeIndices object whose hash value is to be calculated.
+       * @return Calculated hash value.*/
+      uint64_t operator()(const NodeIndices& node) const {
+	 uint64_t result = 0;
+	 uint64_t tmp = node.i % maxHash;
+	 result = (result | tmp);
+	 
+	 tmp = node.j % maxHash;
+	 result = (result | (tmp << 21));
+	 
+	 tmp = node.k % maxHash;
+	 result = (result | (tmp << 42));
+	 return result;
+      }
+   };
+   
+   VisitQuadMultiMeshReader::VisitQuadMultiMeshReader(): MeshReader() { }
+   
+   VisitQuadMultiMeshReader::~VisitQuadMultiMeshReader() { }
+   
+   bool VisitQuadMultiMeshReader::readMesh(VLSVReader* vlsv,MeshMetadata* md,int domain,void*& output) {
+      debug2 << "VLSV\t VisitQuadMultiMeshReader::readMesh called, domain: " << domain << endl;
+      output = NULL;
+      
+      // Check that VLSVReader exists:
+      if (vlsv == NULL) {
+	 debug2 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
+	 return false;
+      }
+      
+      // Check that metadata is not NULL:
+      if (md == NULL) {
+	 debug2 << "VLSV\t\t ERROR: MeshMetadata object is NULL" << endl;
+	 return false;
+      }
+      
+      // Check that given metadata is of correct type:
+      VisitQuadMultiMeshMetadata* const metadata = dynamic_cast<VisitQuadMultiMeshMetadata*>(md);
+      if (typeid(*md) != typeid(*metadata)) {
+	 debug2 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitQuadMultiMeshMedata" << endl;
+	 return false;
+      }
+      
+      debug4 << "VLSV\t\t arraysize:  " << metadata->getArraySize() << endl;
+      debug4 << "VLSV\t\t vectorsize: " << metadata->getVectorSize() << endl;
+      debug4 << "VLSV\t\t datasize:   " << metadata->getDataSize() << endl;
+      debug4 << "VLSV\t\t datatype:   " << metadata->getDatatype() << endl;
+
+      // Get domain offset arrays:
+      const uint64_t* cellOffsets = NULL;
+      const uint64_t* ghostOffsets  = NULL;      
+      const uint64_t* variableOffsets = NULL;
+      if (metadata->getDomainInfo(vlsv,domain,cellOffsets,ghostOffsets,variableOffsets) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
+	 return false;
+      }
+      const uint64_t N_cells = cellOffsets[domain+1]-cellOffsets[domain];
+      debug4 << "VLSV\t\t N_cells: " << N_cells << endl;
+      
+      // Get mesh bounding box:
+      const float* const bbox = metadata->getMeshBoundingBox();
+      if (bbox == NULL) {
+	 debug2 << "VLSV\t\t ERROR: Failed to obtain mesh bounding box" << endl;
+	 return false;
+      }
+      
+      // Read domain's cells' (i,j,k) indices:
+      int32_t* cells = NULL;
+      list<pair<string,string> > attribs;
+      attribs.push_back(make_pair("name",metadata->getName()));
+      if (vlsv->read("MESH",attribs,cellOffsets[domain],cellOffsets[domain+1]-cellOffsets[domain],cells) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to read cell indices" << endl;
+	 delete [] cells; cells = NULL;
+	 return false;
+      }
+      
+      // For each cell, attempt to insert its eight nodes to unordered_map. 
+      // The insertion will fail if the node already exists in the map, in which case 
+      // counter is not increased. Counter, i.e. the value of unordered_map for given
+      // NodeIndices, tells node's index.
+      int counter = 0;
+      int32_t* ptr = cells;
+      unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual> nodeIndices;
+      pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
+      
+      for (uint64_t i=0; i<N_cells; ++i) {
+	 result = nodeIndices.insert(make_pair(NodeIndices(ptr[0]+0,ptr[1]+1,ptr[2]+0),counter));
+	 if (result.second == true) ++counter;
+	 result = nodeIndices.insert(make_pair(NodeIndices(ptr[0]+0,ptr[1]+0,ptr[2]+0),counter));
+	 if (result.second == true) ++counter;
+	 result = nodeIndices.insert(make_pair(NodeIndices(ptr[0]+1,ptr[1]+0,ptr[2]+0),counter));
+	 if (result.second == true) ++counter;
+	 result = nodeIndices.insert(make_pair(NodeIndices(ptr[0]+1,ptr[1]+1,ptr[2]+0),counter));
+	 if (result.second == true) ++counter;
+	 result = nodeIndices.insert(make_pair(NodeIndices(ptr[0]+0,ptr[1]+1,ptr[2]+1),counter));
+	 if (result.second == true) ++counter;
+	 result = nodeIndices.insert(make_pair(NodeIndices(ptr[0]+0,ptr[1]+0,ptr[2]+1),counter));
+	 if (result.second == true) ++counter;
+	 result = nodeIndices.insert(make_pair(NodeIndices(ptr[0]+1,ptr[1]+0,ptr[2]+1),counter));
+	 if (result.second == true) ++counter;
+	 result = nodeIndices.insert(make_pair(NodeIndices(ptr[0]+1,ptr[1]+1,ptr[2]+1),counter));
+	 if (result.second == true) ++counter;
+	 ptr += 3;
+      }
+      
+      // unordered_map now contains all unique nodes. Its size is equal to number
+      // of nodes in this mesh piece:
+      debug4 << "VLSV\t\t domain has " << nodeIndices.size() << " unique nodes" << endl;
+      const size_t N_uniqueNodes = nodeIndices.size();
+
+      // Create vtkPoints object and copy node coordinates to it:
+      vtkPoints* coordinates = vtkPoints::New();
+      coordinates->SetNumberOfPoints(N_uniqueNodes);
+      float* pointer = reinterpret_cast<float*>(coordinates->GetVoidPointer(0));
+      
+      for (unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator 
+	   it=nodeIndices.begin(); it!=nodeIndices.end(); ++it) {
+	 int position = it->second;
+	 if (3*position+2 >= N_uniqueNodes*3) {
+	    cerr << "position exceeds array size!" << endl;
+	    exit(1);
+	 }
+	 pointer[3*position+0] = bbox[0] + it->first.i * bbox[3];
+	 pointer[3*position+1] = bbox[1] + it->first.j * bbox[4];
+	 pointer[3*position+2] = bbox[2] + it->first.k * bbox[5];
+      }
+      
+      // Create vtkUnstructuredGrid:
+      vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
+      ugrid->SetPoints(coordinates);      
+      coordinates->Delete();
+      ugrid->Allocate(N_cells);
+
+      // Add all cells' connectivity information to vtkUnstructuredGrid:
+      const int cellType = VTK_HEXAHEDRON;
+      vtkIdType vertices[8];
+      ptr = cells;
+      unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator nodeIt;
+      for (uint64_t i=0; i<N_cells; ++i) {
+	 // Find indices of all eight nodes:
+	 nodeIt = nodeIndices.find(NodeIndices(ptr[0]+0,ptr[1]+1,ptr[2]+0));
+	 vertices[0] = nodeIt->second;
+	 nodeIt = nodeIndices.find(NodeIndices(ptr[0]+0,ptr[1]+0,ptr[2]+0));
+	 vertices[1] = nodeIt->second;
+	 nodeIt = nodeIndices.find(NodeIndices(ptr[0]+1,ptr[1]+0,ptr[2]+0));
+	 vertices[2] = nodeIt->second;
+	 nodeIt = nodeIndices.find(NodeIndices(ptr[0]+1,ptr[1]+1,ptr[2]+0));
+	 vertices[3] = nodeIt->second;
+	 nodeIt = nodeIndices.find(NodeIndices(ptr[0]+0,ptr[1]+1,ptr[2]+1));
+	 vertices[4] = nodeIt->second;
+	 nodeIt = nodeIndices.find(NodeIndices(ptr[0]+0,ptr[1]+0,ptr[2]+1));
+	 vertices[5] = nodeIt->second;
+	 nodeIt = nodeIndices.find(NodeIndices(ptr[0]+1,ptr[1]+0,ptr[2]+1));
+	 vertices[6] = nodeIt->second;
+	 nodeIt = nodeIndices.find(NodeIndices(ptr[0]+1,ptr[1]+1,ptr[2]+1));
+	 vertices[7] = nodeIt->second;
+	 ptr += 3;
+	 
+	 // Insert cell:
+	 ugrid->InsertNextCell(cellType,8,vertices);
+      }
+      delete [] cells; cells = NULL;
+
+      // Determine correct values for real and ghost (internal to problem) zones:
+      unsigned char cellIsReal = 0;
+      unsigned char cellIsGhost = 0;
+      avtGhostData::AddGhostZoneType(cellIsGhost,DUPLICATED_ZONE_INTERNAL_TO_PROBLEM);
+      
+      // Create an array that flags each zone either as real or internal ghost:
+      vtkUnsignedCharArray* ghostZones = vtkUnsignedCharArray::New();
+      ghostZones->SetName("avtGhostZones");
+      ghostZones->Allocate(N_cells);      
+      const uint64_t N_ghosts = ghostOffsets[domain+1]-ghostOffsets[domain];
+      for (uint64_t i=0; i<N_cells-N_ghosts; ++i) ghostZones->InsertNextValue(cellIsReal);
+      for (uint64_t i=N_cells-N_ghosts; i<N_cells; ++i) ghostZones->InsertNextValue(cellIsGhost);
+      
+      // Copy ghost cell information to vtkUnstructuredGrid:
+      ugrid->GetCellData()->AddArray(ghostZones);
+      ugrid->SetUpdateGhostLevel(0);
+      ghostZones->Delete();
+	
+      output = ugrid;
+      return true;
+   }
+   
+   bool VisitQuadMultiMeshReader::readVariable(VLSVReader* vlsv,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) {
+      debug2 << "VLSV\t VisitQuadMultiMeshReader::readVariable called, domain: " << domain << endl;
+      if (output == NULL) {
+	 debug3 << "VLSV\t ERROR: Output array is NULL" << endl;	 
+	 return false;
+      }
+
+      // Check that VLSVReader exists:
+      if (vlsv == NULL) {
+	 debug2 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
+	 return false;
+      }
+
+      // Check that metadata is not NULL:
+      if (md == NULL) {
+	 debug2 << "VLSV\t\t ERROR: MeshMetadata object is NULL" << endl;
+	 return false;
+      }
+      
+      // Check that given mesh metadata is of correct type:
+      VisitQuadMultiMeshMetadata* const metadata = dynamic_cast<VisitQuadMultiMeshMetadata*>(md);
+      if (typeid(*md) != typeid(*metadata)) {
+	 debug2 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitQuadMultiMeshMedata" << endl;
+	 return false;
+      }
+    
+      // Get domain offset arrays:
+      const uint64_t* cellOffsets = NULL;
+      const uint64_t* ghostOffsets  = NULL;
+      const uint64_t* variableOffsets = NULL;
+      if (metadata->getDomainInfo(vlsv,domain,cellOffsets,ghostOffsets,variableOffsets) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
+	 return false;
+      }
+      const uint64_t N_totalCells = cellOffsets[domain+1] - cellOffsets[domain];
+      const uint64_t N_ghosts     = ghostOffsets[domain+1] - ghostOffsets[domain];
+      const uint64_t N_cells      = N_totalCells - N_ghosts;
+      const uint64_t components   = vmd.vectorSize;
+      
+      // Read variable values from domain's real cells:
+      list<pair<string,string> > attribs;
+      attribs.push_back(make_pair("name",vmd.name));
+      attribs.push_back(make_pair("mesh",md->getName()));
+      if (vlsv->read("VARIABLE",attribs,variableOffsets[domain],N_cells,output,false) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to read domain's real cell variable data" << endl;
+	 return false;
+      }
+
+      // Read array that tell which domains contain ghost cell data:
+      list<pair<string,string> > meshAttribs;
+      meshAttribs.push_back(make_pair("mesh",md->getName()));
+      uint64_t* ghostDomains = NULL;
+      if (vlsv->read("MESH_GHOST_DOMAINS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostDomains,true) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_DOMAINS array" << endl;
+	 delete [] ghostDomains; ghostDomains = NULL;
+	 return false;
+      }
+      
+      // Read array that tells local IDs of ghost cell data in each domain:
+      uint64_t* ghostLocalIDs = NULL;
+      if (vlsv->read("MESH_GHOST_LOCALIDS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostLocalIDs,true) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_LOCALIDS array" << endl;
+	 delete [] ghostDomains; ghostDomains = NULL;
+	 delete [] ghostLocalIDs; ghostLocalIDs = NULL;
+	 return false;
+      }
+      
+      // Read variable values for domain's ghost cells:
+      bool success = true;
+      float* ptr = output + N_cells*components;
+      for (uint64_t i=0; i<N_ghosts; ++i) {
+	 const uint64_t ghostDomainID    = ghostDomains[i];
+	 const uint64_t ghostValueOffset = variableOffsets[ghostDomainID] + ghostLocalIDs[i];	 
+	 if (vlsv->read("VARIABLE",attribs,ghostValueOffset,1,ptr,false) == false) {
+	    debug2 << "VLSV\t\t ERROR: Failed to read domain's ghost values" << endl;
+	    success = false;
+	    break;
+	 }
+	 ptr += components;
+      }
+      
+      delete [] ghostDomains; ghostDomains = NULL;
+      delete [] ghostLocalIDs; ghostLocalIDs = NULL;
+      return success;
+   }
+   
+} // namespace vlsvplugin
+
+

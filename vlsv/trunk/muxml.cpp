@@ -21,6 +21,7 @@
 #include "muxml.h"
 
 using namespace std;
+using namespace muxml;
 
 XMLNode::XMLNode(XMLNode* parent): parent(parent) { }
 
