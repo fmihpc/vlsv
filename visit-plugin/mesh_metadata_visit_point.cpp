@@ -1,0 +1,75 @@
+/** This file is part of VLSV file format.
+ * 
+ *  Copyright 2011-2013 Finnish Meteorological Institute
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <mesh_metadata_visit_point.h>
+
+#include <DebugStream.h>
+#include <list>
+
+using namespace std;
+
+namespace vlsvplugin {
+
+   VisitPointMeshMetadata::VisitPointMeshMetadata(): VisitMeshMetadata() { }
+   
+   VisitPointMeshMetadata::~VisitPointMeshMetadata() { }
+
+   uint64_t VisitPointMeshMetadata::getNumberOfGhostCells(int domain) const {
+      return MeshMetadata::getNumberOfGhostCells();
+   }
+
+   uint64_t VisitPointMeshMetadata::getNumberOfRealCells(int domain) const {
+      return MeshMetadata::getNumberOfRealCells();
+   }
+
+   uint64_t VisitPointMeshMetadata::getNumberOfTotalCells(int domain) const {
+      return MeshMetadata::getNumberOfTotalCells();
+   }
+   
+   bool VisitPointMeshMetadata::read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs) {
+      // Call superclass read function:
+      if (VisitMeshMetadata::read(vlsv,attribs) == false) return false;
+      
+      // Check that we are reading point mesh metadata:
+      bool success = true;
+      map<string,string>::const_iterator it = attribs.find("type");
+      if (it == attribs.end()) {
+	 debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
+	 success = false;
+      }
+      
+      if (it->second != VLSV::MESH_POINT) {
+	 debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << VLSV::MESH_POINT << "'" << endl;
+	 success = false;
+      } else {
+	 meshType = AVT_POINT_MESH;
+	 meshTypeString = "AVT_POINT_MESH";
+	 spatialDimension = 3;
+	 topologicalDimension = 0;
+      }
+
+      it = attribs.find("arraysize");
+      if (it == attribs.end()) success = false;
+      N_totalCells = atoi(it->second.c_str());
+      N_realCells = N_totalCells;
+      N_ghostCells = 0;
+      
+      return success;
+   }
+   
+} // namespace vlsvplugin

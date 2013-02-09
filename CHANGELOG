@@ -1,4 +1,29 @@
 *************************************
+***** CHANGES IN REVISION 00386 *****
+*************************************
+
+VLSV reader was split into two files - one for sequential and one for
+parallel (MPI) reader class. Sequential reader does not need
+mpi-related headers etc. to compile which helps to avoid issues when
+including VLSV headers.
+
+Class MuXML had to be hidden inside namespace muxml because of
+typename clash with headers that VisIt includes.
+
+All files required by VLSVReader class have to be compiled with -fPIC
+switch so that compiler can include them in shared library.
+
+Corrected a typo in vlsv_reader.h header -- readArray function takes 
+'begin' and 'amount' as parameters, not 'begin' and 'end'.
+
+Added a 'read' convenience function which automatically converts read
+data into given datatype.
+
+First version of VisIt VLSV plugin is now ready.
+
+Changed filenames.
+
+*************************************
 ***** CHANGES IN REVISION 00284 *****
 *************************************
 

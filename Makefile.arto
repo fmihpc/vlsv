@@ -18,4 +18,4 @@ AR = ar
 
 # Include and library paths
 INC_SILO=
-LIB_SILO=-lsiloh5
+LIB_SILO=-lsilo

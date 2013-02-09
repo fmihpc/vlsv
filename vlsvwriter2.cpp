@@ -34,6 +34,7 @@
 #endif
 
 #include "mpiconversion.h"
+#include "vlsv_common_mpi.h"
 #include "vlsvwriter.h"
 
 using namespace std;
@@ -192,8 +193,8 @@ bool VLSVWriter::open(const std::string& fname,MPI_Comm comm,const int& masterPr
     
    // Master process opens an XML tree for storing the footer:
    if (myrank == masterRank) {
-      xmlWriter     = new MuXML();
-      XMLNode* root = xmlWriter->getRoot();
+      xmlWriter     = new muxml::MuXML();
+      muxml::XMLNode* root = xmlWriter->getRoot();
       xmlWriter->addNode(root,"VLSV","");
    }
    
@@ -376,9 +377,9 @@ bool VLSVWriter::endMultiwrite(const std::string& tagName,const std::map<std::st
       uint64_t totalBytes = 0;
       for (int i=0; i<N_processes; ++i) totalBytes += bytesPerProcess[i];
 	 
-      XMLNode* root = xmlWriter->getRoot();
-      XMLNode* xmlnode = xmlWriter->find("VLSV",root);
-      XMLNode* node = xmlWriter->addNode(xmlnode,tagName,offset);
+      muxml::XMLNode* root = xmlWriter->getRoot();
+      muxml::XMLNode* xmlnode = xmlWriter->find("VLSV",root);
+      muxml::XMLNode* node = xmlWriter->addNode(xmlnode,tagName,offset);
       for (map<string,string>::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
 	 xmlWriter->addAttribute(node,it->first,it->second);
       }

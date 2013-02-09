@@ -21,7 +21,6 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <mpi.h>
 #include <stdint.h>
 
 namespace VLSV {
@@ -37,8 +36,6 @@ namespace VLSV {
    template<typename T> T convertFloat(const char* const ptr);
    template<typename T> T convertInteger(const char* const ptr,const bool& swapEndianness=false);
    template<typename T> void convertValue(T& value,const char* const ptr,VLSV::datatype dt,int dataSize,const bool& swapEndianness=false);
-   
-   MPI_Datatype getMPIDatatype(VLSV::datatype dt,uint64_t dataSize);
    
    /** Returns a string representation of an array that is to be written to file.
     * The correct C++ datatype can be deduced from the string value returned by this
