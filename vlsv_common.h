@@ -32,6 +32,7 @@ namespace VLSV {
    const std::string MESH_POINT = "point";
    const std::string MESH_QUAD = "quad";
    const std::string MESH_QUAD_MULTI = "multimesh";
+   const std::string MESH_UCD_MULTI = "multi_ucd";   /**< Unstructured nonuniform curvilinear multimesh.*/
 
    template<typename T> T convertFloat(const char* const ptr);
    template<typename T> T convertInteger(const char* const ptr,const bool& swapEndianness=false);
