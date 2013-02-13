@@ -590,6 +590,8 @@ bool avtVlsvFileFormat::PrepareVariable(int domain,const char* varName,
    if (found == false) {
       debug1 << "VLSV\t ERROR: Could not find correct mesh for variable '" << varName << "'" << endl;
       return found;
+   } else {
+      debug4 << "VLSV\t Mesh '" << meshName << "' contains variable '" << varName << "'" << endl;
    }
    
    // Get mesh reader:
@@ -598,6 +600,8 @@ bool avtVlsvFileFormat::PrepareVariable(int domain,const char* varName,
       debug2 << "VLSV\t ERROR: Mesh reader for mesh '" << meshName << "' not found" << endl;
       return false;
    }
+   
+   return true;
 }
 
 vtkDataArray* avtVlsvFileFormat::ReadVariable(int domain,const char* varName) {
