@@ -70,9 +70,11 @@
 
 #include <mesh_metadata_visit_point.h>
 #include <mesh_metadata_visit_quad_multi.h>
+#include <mesh_metadata_visit_ucd_multi.h>
 
 #include <mesh_reader_visit_point.h>
 #include <mesh_reader_visit_quad_multi.h>
+#include <mesh_reader_visit_ucd_multi.h>
 
 #ifdef PARALLEL
    #include <mpi.h>
@@ -194,10 +196,10 @@ void avtVlsvFileFormat::FreeUpResources(void) {
 }
 
 void avtVlsvFileFormat::addMesh(avtDatabaseMetaData* md,const vlsvplugin::VisitMeshMetadata* const meshMetadata) {
-   avtMeshMetaData *mesh = new avtMeshMetaData;
+   avtMeshMetaData* mesh = new avtMeshMetaData;
    mesh->name = meshMetadata->getName();
    mesh->meshType = meshMetadata->getMeshType();
-   mesh->numBlocks = meshMetadata->getNumberOfMeshBlocks();
+   mesh->numBlocks = meshMetadata->getNumberOfDomains();
    mesh->blockOrigin = meshMetadata->getBlockOrigin();
    mesh->cellOrigin = 0;
    mesh->spatialDimension = meshMetadata->getSpatialDimension();
@@ -781,9 +783,6 @@ bool avtVlsvFileFormat::readMetadata() {
 	    }
 	 }
       } else if (attribsOut["type"] == VLSV::MESH_QUAD_MULTI) {
-	 //debug4 << "VLSV\t\t mesh type not implemented yet, skipping it" << endl;
-	 //supportedType = false;
-	 
 	 vlsvplugin::VisitQuadMultiMeshMetadata* multiMesh = new vlsvplugin::VisitQuadMultiMeshMetadata();
 	 if (multiMesh->read(vlsv,attribsOut) == false) {
 	    debug2 << "VLSV\t\t Failed to read multimesh metadata" << endl;
@@ -798,6 +797,26 @@ bool avtVlsvFileFormat::readMetadata() {
 	       debug4 << "VLSV\t\t Created quad multimesh reader" << endl;
 	    } else {
 	       debug2 << "VLSV\t\t Failed to insert quad multimesh metadata" << endl;
+	       map<string,vlsvplugin::VisitMeshMetadata*>::iterator tmp = meshMetadata.find(*it);
+	       delete tmp->second; tmp->second = NULL;
+	       meshMetadata.erase(tmp);
+	    }
+	 }
+      } else if (attribsOut["type"] == VLSV::MESH_UCD_MULTI) {
+	 vlsvplugin::VisitUCDMultiMeshMetadata* multiUCD = new vlsvplugin::VisitUCDMultiMeshMetadata();
+	 if (multiUCD->read(vlsv,attribsOut) == false) {
+	    debug2 << "VLSV\t\t Failed to read multimesh metadata" << endl;
+	    delete multiUCD; multiUCD = NULL;
+	 } else {
+	    // Insert metadata to map meshMetadata:
+	    pair<map<string,vlsvplugin::VisitMeshMetadata*>::iterator,bool> position =
+	      meshMetadata.insert(make_pair(*it,multiUCD));
+	    
+	    if (position.second == true) {
+	       meshReaders[*it] = new vlsvplugin::VisitUCDMultiMeshReader();
+	       debug4 << "VLSV\t\t Created UCD multimesh reader" << endl;
+	    } else {
+	       debug2 << "VLSV\t\t Failed to insert UCD multimesh metadata" << endl;
 	       map<string,vlsvplugin::VisitMeshMetadata*>::iterator tmp = meshMetadata.find(*it);
 	       delete tmp->second; tmp->second = NULL;
 	       meshMetadata.erase(tmp);

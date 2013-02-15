@@ -16,7 +16,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <mesh_metadata_visit_quad_multi.h>
+#include <mesh_metadata_visit_ucd_multi.h>
 
 #include <DebugStream.h>
 #include <list>
@@ -24,33 +24,33 @@
 using namespace std;
 
 namespace vlsvplugin {
-   
-   VisitQuadMultiMeshMetadata::VisitQuadMultiMeshMetadata(): VisitMeshMetadata() { 
+
+   VisitUCDMultiMeshMetadata::VisitUCDMultiMeshMetadata() {
       domainMetadataRead = false;
       meshMetadataRead = false;
       domainOffsets = NULL;
       ghostOffsets = NULL;
-      meshCoordinates = NULL;
+      meshBoundingBox = NULL;
       variableOffsets = NULL;
    }
    
-   VisitQuadMultiMeshMetadata::~VisitQuadMultiMeshMetadata() { 
+   VisitUCDMultiMeshMetadata::~VisitUCDMultiMeshMetadata() {
       delete [] domainOffsets; domainOffsets = NULL;
       delete [] ghostOffsets; ghostOffsets = NULL;
-      delete [] meshCoordinates; meshCoordinates = NULL;
+      delete [] meshBoundingBox; meshBoundingBox = NULL;
       delete [] variableOffsets; variableOffsets = NULL;
    }
    
-   bool VisitQuadMultiMeshMetadata::getDomainInfo(VLSVReader* vlsv,int domain,const uint64_t*& domainOffsets,
+   bool VisitUCDMultiMeshMetadata::getDomainInfo(VLSVReader* vlsv,int domain,const uint64_t*& domainOffsets,
 						  const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
-      debug2 << "VLSV\t\t VisitQuadMultiMeshMetadata::getDomainInfo called, domain: " << domain << endl;
+      debug2 << "VLSV\t\t VisitUCDMultiMeshMetadata::getDomainInfo called, domain: " << domain << endl;
       
       // Check that VLSVReader exists:
       if (vlsv == NULL) {
 	 debug3 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
 	 return false;
       }
-
+	     
       // Read domain info:
       if (readDomains(vlsv) == false) {
 	 debug3 << "VLSV\t\t ERROR: Failed to read quad multimesh domains" << endl;
@@ -69,41 +69,45 @@ namespace vlsvplugin {
       return true;
    }
    
-   const uint64_t* VisitQuadMultiMeshMetadata::getDomainOffsets() {return domainOffsets;}
+   const uint64_t* VisitUCDMultiMeshMetadata::getDomainOffsets() {return domainOffsets;}
    
-   const uint64_t* VisitQuadMultiMeshMetadata::getGhostOffsets() {return ghostOffsets;}
+   const uint64_t* VisitUCDMultiMeshMetadata::getGhostOffsets() {return ghostOffsets;}
    
-   const float* VisitQuadMultiMeshMetadata::getMeshBoundingBox() {return meshCoordinates;}
+   const uint64_t* VisitUCDMultiMeshMetadata::getMeshBoundingBox() {return meshBoundingBox;}
 
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfGhostCells(int domain) const {
+   const std::string& VisitUCDMultiMeshMetadata::getMeshGeometry() const {return geometry;}
+   
+   uint64_t VisitUCDMultiMeshMetadata::getNumberOfGhostCells(int domain) const {
       return ghostOffsets[domain+1]-ghostOffsets[domain];
    }
    
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfRealCells(int domain) const {
+   uint64_t VisitUCDMultiMeshMetadata::getNumberOfRealCells(int domain) const {
       return getNumberOfTotalCells(domain)-getNumberOfGhostCells(domain);
    }
    
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfTotalCells(int domain) const {
+   uint64_t VisitUCDMultiMeshMetadata::getNumberOfTotalCells(int domain) const {
       return domainOffsets[domain+1]-domainOffsets[domain];
    }
    
-   const uint64_t* VisitQuadMultiMeshMetadata::getVariableOffsets() {return variableOffsets;}
-   
-   bool VisitQuadMultiMeshMetadata::read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs) {
+   const uint64_t* VisitUCDMultiMeshMetadata::getVariableOffsets() {return variableOffsets;}
+
+   bool VisitUCDMultiMeshMetadata::read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs) {
+      debug2 << "VLSV\t\t VisitUCDMultiMeshMetadata::read called" << endl;
+      
       // Exit if mesh metadata has already been read:
       if (meshMetadataRead == true) return true;
       
       // Call superclass read function:
       if (VisitMeshMetadata::read(vlsv,attribs) == false) return false;
       
-      // Check that we are reading multi-domain mesh metadata:
+      // Check that we are reading multi-domain unstructured mesh metadata:
       map<string,string>::const_iterator it = attribs.find("type");
       if (it == attribs.end()) {
 	 debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
 	 return false;
-      }      
-      if (it->second != VLSV::MESH_QUAD_MULTI) {
-	 debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << VLSV::MESH_QUAD_MULTI << "'" << endl;
+      }
+      if (it->second != VLSV::MESH_UCD_MULTI) {
+	 debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << VLSV::MESH_UCD_MULTI << "'" << endl;
 	 return false;
       }
       
@@ -111,23 +115,36 @@ namespace vlsvplugin {
       meshTypeString = "AVT_UNSTRUCTURED_MESH";
       spatialDimension = 3;
       topologicalDimension = 3;
-
+      
       // Figure out total number of cells in the mesh:
       it = attribs.find("arraysize");
       if (it == attribs.end()) return false;
       MeshMetadata::N_totalCells = atoi(it->second.c_str());
+
+      // Get mesh geometry:
+      it = attribs.find("geometry");
+      if (it == attribs.end()) geometry = VLSV::GEOM_CARTESIAN;
+      else {
+	 if (it->second == VLSV::GEOM_CARTESIAN) geometry = VLSV::GEOM_CARTESIAN;
+	 else if (it->second == VLSV::GEOM_CYLINDRICAL) geometry = VLSV::GEOM_CYLINDRICAL;
+	 else if (it->second == VLSV::GEOM_SPHERICAL) geometry = VLSV::GEOM_SPHERICAL;
+	 else {
+	    geometry = VLSV::GEOM_SPHERICAL;
+	    debug3 << "VLSV\t\t WARNING: Unknown mesh geometry, using Cartesian." << endl;
+	 }
+      }
       
       // Read XML tag 'MESH_ZONES' to figure out how many domains the mesh has:
       map<string,string> attribsOut;
       list<pair<string,string> > attribsIn;
       attribsIn.push_back(make_pair("mesh",getName()));
-      if (vlsv->getArrayAttributes("MESH_ZONES",attribsIn,attribsOut) == false) {
-	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_ZONES' attributes for mesh '" << getName() << "' from VLSV file" << endl;
+      if (vlsv->getArrayAttributes("MESH_DOMAIN_SIZES",attribsIn,attribsOut) == false) {
+	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_DOMAIN_SIZES' attributes for mesh '" << getName() << "' from VLSV file" << endl;
 	 return false;
-      }      
+      }
       it = attribsOut.find("arraysize");
       if (it == attribsOut.end()) {
-	 debug3 << "VLSV\t\t ERROR: Array 'MESH_ZONES' XML tag does not have attribute 'arraysize'" << endl;
+	 debug3 << "VLSV\t\t ERROR: Array 'MESH_DOMAIN_SIZES' XML tag does not have attribute 'arraysize'" << endl;
 	 return false;
       } else {
 	 debug3 << "VLSV\t\t Mesh has " << it->second << " domains" << endl;
@@ -177,7 +194,7 @@ namespace vlsvplugin {
 	       success = false;
 	    }
 	 }
-	 
+      
 	 if (success == false) continue;
 	 
 	 MeshMetadata::variableMetadata.push_back(vlsvplugin::VariableMetadata(centering,*it,vectorSize));
@@ -186,32 +203,32 @@ namespace vlsvplugin {
       meshMetadataRead = true;
       return true;
    }
-   
-   bool VisitQuadMultiMeshMetadata::readDomains(VLSVReader* vlsv) {
+
+   bool VisitUCDMultiMeshMetadata::readDomains(VLSVReader* vlsv) {
       // Exit if domain metadata has already been read:
       if (domainMetadataRead == true) return true;
-      debug2 << "VLSV\t\t VisitQuadMultiMeshMetadata::readDomains called" << endl;      
+      debug2 << "VLSV\t\t VisitUCDMultiMeshMetadata::readDomains called" << endl;
       
       // Check that VLSVReader exists:
       if (vlsv == NULL) {
 	 debug3 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
 	 return false;
       }
-
+      
       // Read mesh bounding box:
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("mesh",name));
-      delete [] meshCoordinates; meshCoordinates = NULL;
-      if (vlsv->read("MESH_BBOX",attribs,0,6,meshCoordinates) == false) {
+      delete [] meshBoundingBox; meshBoundingBox = NULL;
+      if (vlsv->read("MESH_BBOX",attribs,0,6,meshBoundingBox) == false) {
 	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
 	 return false;
       }
-      debug4 << "VLSV\t\t Mesh corner coordinates: " << meshCoordinates[0] << ' ' << meshCoordinates[1] << ' ' << meshCoordinates[2];
-      debug4 << " cell sizes: " << meshCoordinates[3] << ' ' << meshCoordinates[4] << ' ' << meshCoordinates[5] << endl;
+      debug4 << "VLSV\t\t Mesh size in blocks: " << meshBoundingBox[0] << ' ' << meshBoundingBox[1] << ' ' << meshBoundingBox[2];
+      debug4 << " block sizes: " << meshBoundingBox[3] << ' ' << meshBoundingBox[4] << ' ' << meshBoundingBox[5] << endl;
       
       // Read domain info:
       int64_t* domainInfo = NULL;
-      if (vlsv->read("MESH_ZONES",attribs,0,VisitMeshMetadata::N_domains,domainInfo) == false) {
+      if (vlsv->read("MESH_DOMAIN_SIZES",attribs,0,VisitMeshMetadata::N_domains,domainInfo) == false) {
 	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_ZONES'" << endl;
 	 delete [] domainInfo; domainInfo = NULL;
 	 return false;
@@ -227,16 +244,16 @@ namespace vlsvplugin {
       for (int64_t i=0; i<VisitMeshMetadata::N_domains; ++i) {
 	 domainOffsets[i+1]   = domainOffsets[i] + domainInfo[i*2];
 	 ghostOffsets[i+1]    = ghostOffsets[i] + domainInfo[i*2+1];
-	 variableOffsets[i+1] = variableOffsets[i] + domainInfo[i*2+0]-domainInfo[i*2+1];	 
+	 variableOffsets[i+1] = variableOffsets[i] + domainInfo[i*2+0]-domainInfo[i*2+1];
       }
       delete [] domainInfo; domainInfo = NULL;
       
       // Compute total number of real and ghost cells:
-      N_ghostCells = ghostOffsets[VisitMeshMetadata::N_domains];
-      N_realCells  = variableOffsets[VisitMeshMetadata::N_domains];
-      
+      MeshMetadata::N_ghostCells = ghostOffsets[VisitMeshMetadata::N_domains];
+      MeshMetadata::N_realCells  = variableOffsets[VisitMeshMetadata::N_domains];
+   
       domainMetadataRead = true;
       return true;
    }
-
+      
 } // namespace vlsvplugin

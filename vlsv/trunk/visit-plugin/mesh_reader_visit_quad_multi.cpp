@@ -18,6 +18,7 @@
 
 #include <mesh_reader_visit_quad_multi.h>
 #include <mesh_metadata_visit_quad_multi.h>
+#include <duplicate_node_elimination.h>
 
 #include <typeinfo>
 #include <unordered_map>
@@ -34,60 +35,6 @@
 using namespace std;
 
 namespace vlsvplugin {
-   
-   /** Struct for storing (i,j,k) indices of nodes in the mesh. This 
-    * struct is, in practice, used to eliminate duplicate nodes from the 
-    * mesh pieces written to SILO file.*/
-   struct NodeIndices {
-      int32_t i;            /**< i-index of the node.*/
-      int32_t j;            /**< j-index of the node.*/
-      int32_t k;            /**< k-index of the node.*/
-      
-      /** Constructor.
-       * @param i i-index of the node.
-       * @param j j-index of the node.
-       * @param k k-index of the node.*/
-      NodeIndices(int32_t i,int32_t j,int32_t k): i(i),j(j),k(k) { }
-   };
-   
-   /** Comparator object for struct NodeIndices, required for being
-    * able to store NodeIndices to unordered_map.*/
-   struct NodesAreEqual {
-      /** Compare given NodeIndices objects for equality. Objects 
-       * are equal if their (i,j,k) indices are equal.
-       * @param first First NodeIndices object to compare.
-       * @param second Second NodeIndices object to compare.
-       * @return If true, given objects are equal.*/
-      bool operator()(const NodeIndices& first,const NodeIndices& second) const {
-	 if (first.i != second.i) return false;
-	 if (first.j != second.j) return false;
-	 if (first.k != second.k) return false;
-	 return true;
-      }
-   };
-   
-   const int32_t maxHash = 2097152-1; // =2^21, the (i,j,k) indices are packed into a 64-bit integer (3*21=63).
-   
-   /** Hash function implementation for object NodeIndices, required for 
-    * being able to store NodeIndices to unordered_map.*/
-   struct NodeHash {
-      /** Calculate hash value for given NodeIndices object.
-       * @param Node NodeIndices object whose hash value is to be calculated.
-       * @return Calculated hash value.*/
-      uint64_t operator()(const NodeIndices& node) const {
-	 uint64_t result = 0;
-	 uint64_t tmp = node.i % maxHash;
-	 result = (result | tmp);
-	 
-	 tmp = node.j % maxHash;
-	 result = (result | (tmp << 21));
-	 
-	 tmp = node.k % maxHash;
-	 result = (result | (tmp << 42));
-	 return result;
-      }
-   };
-   
    VisitQuadMultiMeshReader::VisitQuadMultiMeshReader(): MeshReader() { }
    
    VisitQuadMultiMeshReader::~VisitQuadMultiMeshReader() { }
@@ -152,7 +99,7 @@ namespace vlsvplugin {
       // The insertion will fail if the node already exists in the map, in which case 
       // counter is not increased. Counter, i.e. the value of unordered_map for given
       // NodeIndices, tells node's index.
-      int counter = 0;
+      vtkIdType counter = 0;
       int32_t* ptr = cells;
       unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual> nodeIndices;
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
@@ -189,7 +136,7 @@ namespace vlsvplugin {
       
       for (unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator 
 	   it=nodeIndices.begin(); it!=nodeIndices.end(); ++it) {
-	 int position = it->second;
+	 const vtkIdType position = it->second;
 	 if (3*position+2 >= N_uniqueNodes*3) {
 	    cerr << "position exceeds array size!" << endl;
 	    exit(1);

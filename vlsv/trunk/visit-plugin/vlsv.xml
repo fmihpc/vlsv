@@ -2,10 +2,10 @@
   <Plugin name="Vlsv" type="database" label="VLSV parallel file format" version="1.0" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" dbtype="STMD" haswriter="false" hasoptions="false" filePatternsStrict="false" opensWholeDirectory="false">
     <CXXFLAGS>
       -std=c++0x
-      -I/home/sandroos/Codes/vlsv-plugin
+      -I/home/sandroos/Codes/vlsv
     </CXXFLAGS>
     <LDFLAGS>
-      -L/home/sandroos/Codes/vlsv-plugin
+      -L/home/sandroos/Codes/vlsv
     </LDFLAGS>
     <LIBS>
       -lvlsv
@@ -14,6 +14,7 @@
       *.vlsv
     </FilePatterns>
     <Files components="M">
+      duplicate_node_elimination.cpp
       avtVlsvFileFormat.C
       mesh_metadata.cpp
       mesh_reader.cpp
@@ -22,9 +23,12 @@
       mesh_reader_visit_point.cpp
       mesh_vtk.cpp
       mesh_metadata_visit_quad_multi.cpp
+      mesh_metadata_visit_ucd_multi.cpp
       mesh_reader_visit_quad_multi.cpp
+      mesh_reader_visit_ucd_multi.cpp
     </Files>
     <Files components="E">
+      duplicate_node_elimination.cpp
       avtVlsvFileFormat.C
       mesh_metadata.cpp
       mesh_reader.cpp
@@ -33,7 +37,9 @@
       mesh_reader_visit_point.cpp
       mesh_vtk.cpp
       mesh_metadata_visit_quad_multi.cpp
+      mesh_metadata_visit_ucd_multi.cpp
       mesh_reader_visit_quad_multi.cpp
+      mesh_reader_visit_ucd_multi.cpp
     </Files>
     <LIBS components="ESer">
     </LIBS>
