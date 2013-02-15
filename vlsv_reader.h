@@ -76,6 +76,7 @@ bool VLSVReader::read(const std::string& tagName,const std::list<std::pair<std::
 		      const uint64_t& begin,const uint64_t& amount,T*& outBuffer,bool allocateMemory) {
    // Don't touch outBuffer if it has already been allocated:
    if (allocateMemory == true) outBuffer = NULL;
+   if (amount == 0) return true;
    
    // Get array info:
    uint64_t arraySize;
@@ -83,11 +84,12 @@ bool VLSVReader::read(const std::string& tagName,const std::list<std::pair<std::
    VLSV::datatype datatype;
    uint64_t dataSize;
    if (VLSVReader::getArrayInfo(tagName,attribs,arraySize,vectorSize,datatype,dataSize) == false) {
+      std::cerr << "VLSVReader failed to get array info" << std::endl;
       return false;
    }
 
    // Check that requested read is inside the array:
-   if (begin >= arraySize || (begin+amount) > arraySize) return false;
+   if (begin > arraySize || (begin+amount) > arraySize) return false;
    
    // Read data into temporary buffer:
    char* buffer = new char[amount*vectorSize*dataSize];

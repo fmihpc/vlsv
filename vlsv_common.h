@@ -34,6 +34,10 @@ namespace VLSV {
    const std::string MESH_QUAD_MULTI = "multimesh";
    const std::string MESH_UCD_MULTI = "multi_ucd";   /**< Unstructured nonuniform curvilinear multimesh.*/
 
+   const std::string GEOM_CARTESIAN = "cartesian";     /**< Cartesian mesh geometry.*/
+   const std::string GEOM_CYLINDRICAL = "cylindrical"; /**< Cylindrical mesh geometry.*/
+   const std::string GEOM_SPHERICAL = "spherical";     /**< Spherical mesh geometry.*/
+   
    template<typename T> T convertFloat(const char* const ptr);
    template<typename T> T convertInteger(const char* const ptr,const bool& swapEndianness=false);
    template<typename T> void convertValue(T& value,const char* const ptr,VLSV::datatype dt,int dataSize,const bool& swapEndianness=false);

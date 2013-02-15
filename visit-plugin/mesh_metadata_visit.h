@@ -33,7 +33,7 @@ namespace vlsvplugin {
       virtual int getBlockOrigin() const;
       virtual avtMeshType getMeshType() const;
       virtual std::string getMeshTypeString() const;
-      virtual int getNumberOfMeshBlocks() const;
+      virtual int getNumberOfDomains() const;
       virtual int getSpatialDimension() const;
       virtual int getTopologicalDimension() const;
 
@@ -48,7 +48,7 @@ namespace vlsvplugin {
       int blockOrigin;
       avtMeshType meshType;       /**< Mesh type, one of AVT_POINT_MESH, ... */
       std::string meshTypeString; /**< String representation of mesh type.*/
-      int numberOfMeshBlocks;     /**< Number of mesh patches.*/
+      int N_domains;              /**< Number of domains in the mesh.*/
       int spatialDimension;       /**< Spatial dimension of mesh.*/
       int topologicalDimension;   /**< Topological dimension of mesh.*/
    };

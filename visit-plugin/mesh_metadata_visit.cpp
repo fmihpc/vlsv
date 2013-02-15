@@ -24,7 +24,7 @@ using namespace std;
 namespace vlsvplugin {
    VisitMeshMetadata::VisitMeshMetadata(): MeshMetadata() { 
       blockOrigin = 0;
-      numberOfMeshBlocks = 1;
+      N_domains = 1;
    }
    
    VisitMeshMetadata::~VisitMeshMetadata() { }
@@ -35,7 +35,7 @@ namespace vlsvplugin {
    
    std::string VisitMeshMetadata::getMeshTypeString() const {return meshTypeString;}
 
-   int VisitMeshMetadata::getNumberOfMeshBlocks() const {return numberOfMeshBlocks;}
+   int VisitMeshMetadata::getNumberOfDomains() const {return N_domains;}
    
    int VisitMeshMetadata::getSpatialDimension() const {return spatialDimension;}
    

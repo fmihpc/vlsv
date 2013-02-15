@@ -16,20 +16,33 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef MESH_READER_VISIT_UCD_MULTI_H
+#define MESH_READER_VISIT_UCD_MULTI_H
+
 #include <mesh_reader.h>
 
 namespace vlsvplugin {
-   
-   class VisitQuadMultiMeshReader: public MeshReader {
+
+   class VisitUCDMultiMeshReader: public MeshReader {
     public:
-      VisitQuadMultiMeshReader();
-      virtual ~VisitQuadMultiMeshReader();
+      VisitUCDMultiMeshReader();
+      virtual ~VisitUCDMultiMeshReader();
       
       virtual bool readMesh(VLSVReader* vlsv,MeshMetadata* md,int domain,void*& output);
       virtual bool readVariable(VLSVReader* vlsv,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output);
       
     protected:
-
+      float* crds_node_x;
+      float* crds_node_y;
+      float* crds_node_z;
+      bool nodeCoordinateArraysRead;
+      uint64_t N_nodes_x;
+      uint64_t N_nodes_y;
+      uint64_t N_nodes_z;
+      
+      virtual bool readNodeCoordinateArrays(VLSVReader* vlsv,const std::string& meshName);
    };
-   
-} // namespace vlsvplugin
+
+} // namespace plugin
+
+#endif
