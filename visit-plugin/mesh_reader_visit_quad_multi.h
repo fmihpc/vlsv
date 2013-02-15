@@ -25,8 +25,8 @@ namespace vlsvplugin {
       VisitQuadMultiMeshReader();
       virtual ~VisitQuadMultiMeshReader();
       
-      virtual bool readMesh(VLSVReader* vlsv,MeshMetadata* md,int domain,void*& output);
-      virtual bool readVariable(VLSVReader* vlsv,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output);
+      virtual bool readMesh(vlsv::Reader* vlsvReader,MeshMetadata* md,int domain,void*& output);
+      virtual bool readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output);
       
     protected:
 

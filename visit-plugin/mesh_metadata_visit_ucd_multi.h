@@ -30,31 +30,31 @@ namespace vlsvplugin {
       VisitUCDMultiMeshMetadata();
       virtual ~VisitUCDMultiMeshMetadata();
       
-      bool getDomainInfo(VLSVReader* vlsv,int domain,const uint64_t*& domainOffsets,
+      bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 			 const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
       const uint64_t* getDomainOffsets();
       const uint64_t* getGhostOffsets();
       const uint64_t* getMeshBoundingBox();
-      const std::string& getMeshGeometry() const;
+      const vlsv::geometry::type& getMeshGeometry() const;
       uint64_t getNumberOfGhostCells(int domain) const;
       uint64_t getNumberOfRealCells(int domain) const;
       uint64_t getNumberOfTotalCells(int domain) const;
       const uint64_t* getVariableOffsets();
       
-      bool read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs);
+      bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
 
       bool domainMetadataRead;        /**< If true, domain metadata has been read.*/
       bool meshMetadataRead;          /**< If true, mesh metadata has been read.*/
       
-      std::string geometry;           /**< Mesh geometry (Cartesian, Cylindrical, etc.).*/
+      vlsv::geometry::type geometry;  /**< Mesh geometry (Cartesian, Cylindrical, etc.).*/
       uint64_t* domainOffsets;
       uint64_t* ghostOffsets;
       uint64_t* variableOffsets;
       uint64_t* meshBoundingBox;
 
-      bool readDomains(VLSVReader* vlsv);
+      bool readDomains(vlsv::Reader* vlsvReader);
    };
    
 } // namespace vlsvplugin

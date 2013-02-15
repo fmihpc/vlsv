@@ -48,7 +48,7 @@ namespace vlsvplugin {
 
       virtual uint64_t getArraySize() const;
       virtual uint64_t getDataSize() const;
-      virtual VLSV::datatype getDatatype() const;
+      virtual vlsv::datatype::type getDatatype() const;
       virtual std::string getName() const;
       virtual uint64_t getNumberOfGhostCells() const;
       virtual uint64_t getNumberOfGhostCells(int domain) const =0;
@@ -65,13 +65,13 @@ namespace vlsvplugin {
       virtual std::string getYUnits() const;
       virtual std::string getZUnits() const;
       
-      virtual bool read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs);
+      virtual bool read(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
       
     protected:
       uint64_t arraySize;
       uint64_t vectorSize;
       uint64_t dataSize;
-      VLSV::datatype datatype;
+      vlsv::datatype::type datatype;
       std::vector<VariableMetadata> variableMetadata;
       
       uint64_t N_ghostCells;      /**< Total number of ghost cells in the mesh, summed over all domains.*/

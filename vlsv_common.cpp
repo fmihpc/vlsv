@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011, 2012 Finnish Meteorological Institute
+ *  Copyright 2011-2013 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -23,29 +23,60 @@
 
 using namespace std;
 
-unsigned char detectEndianness() {
-   const int number = 1;
-   const char* const ptr = reinterpret_cast<const char*>(&number);
-   if (ptr[0] == 1) return VLSV::LITTLE_END;
-   else return VLSV::BIG_END;
-}
-
-uint64_t convUInt64(const char* const ptr,const bool& swapEndian) {
-   if (swapEndian == false) return *(reinterpret_cast<const uint64_t*>(ptr));
-   int index = 0;
-   uint64_t tmp = 0;
-   char* const ptrtmp = reinterpret_cast<char*>(&tmp);
-   for (int i=sizeof(uint64_t)-1; i>=0; --i) {
-      ptrtmp[index] = ptr[i];
-      ++index;
+namespace vlsv {
+   
+   unsigned char detectEndianness() {
+      const int number = 1;
+      const char* const ptr = reinterpret_cast<const char*>(&number);
+      if (ptr[0] == 1) return datatype::ENDIANNESS_LITTLE;
+      else return datatype::ENDIANNESS_BIG;
    }
-   return tmp;
-}
 
-VLSV::datatype VLSV::getVLSVDatatype(const std::string& s) {
-   if (s == "int") return VLSV::INT;
-   else if (s == "uint") return VLSV::UINT;
-   else if (s == "float") return VLSV::FLOAT;
-   else return VLSV::UNKNOWN;
-}
+   uint64_t convUInt64(const char* const ptr,const bool& swapEndian) {
+      if (swapEndian == false) return *(reinterpret_cast<const uint64_t*>(ptr));
+      int index = 0;
+      uint64_t tmp = 0;
+      char* const ptrtmp = reinterpret_cast<char*>(&tmp);
+      for (int i=sizeof(uint64_t)-1; i>=0; --i) {
+	 ptrtmp[index] = ptr[i];
+	 ++index;
+      }
+      return tmp;
+   }
 
+   const std::string& getMeshGeometry(geometry::type geom) {
+      switch (geom) {
+       case geometry::UNKNOWN:
+	 return geometry::STRING_UNKNOWN;
+	 break;
+       case geometry::CARTESIAN:
+	 return geometry::STRING_CARTESIAN;
+	 break;
+       case geometry::CYLINDRICAL:
+	 return geometry::STRING_CYLINDRICAL;
+	 break;
+       case geometry::SPHERICAL:
+	 return geometry::STRING_SPHERICAL;
+	 break;
+       default:
+	 return geometry::STRING_UNKNOWN;
+	 break;
+      }
+   }
+
+   geometry::type getMeshGeometry(const std::string& s) {
+      if (s == geometry::STRING_UNKNOWN) return geometry::UNKNOWN;
+      else if (s == geometry::STRING_CARTESIAN) return geometry::CARTESIAN;
+      else if (s == geometry::STRING_CYLINDRICAL) return geometry::CYLINDRICAL;
+      else if (s == geometry::STRING_SPHERICAL) return geometry::SPHERICAL;
+      return geometry::UNKNOWN;
+   }
+
+   datatype::type getVLSVDatatype(const std::string& s) {
+      if (s == "int") return datatype::INT;
+      else if (s == "uint") return datatype::UINT;
+      else if (s == "float") return datatype::FLOAT;
+      else return datatype::UNKNOWN;
+   }
+
+} // namespace vlsv

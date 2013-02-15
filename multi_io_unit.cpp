@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011, 2012 Finnish Meteorological Institute
+ *  Copyright 2011-2013 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -23,15 +23,17 @@
 
 using namespace std;
 
-/** Constructor for struct Multi_IO_Unit.
- * NOTE: MPI datatypes passed to Multi_IO_Unit are not committed or freed, 
- * thus one should only use native MPI datatypes, e.g. as returned by 
- * getMPIDatatype function.
- * @param array In VLSVWriter this is a pointer to array whose contents are
- * written to file. In VLSVParReader this is a pointer to array where data 
- * from file is to be read.
- * @param mpiType MPI datatype defining the I/O operation.
- * @param amount Amount of data to be written or read, in units of mpiType.*/
-VLSV::Multi_IO_Unit::Multi_IO_Unit(char* array,const MPI_Datatype& mpiType,const uint64_t& amount): array(array),mpiType(mpiType),amount(amount) { }
+namespace vlsv {
 
-
+   /** Constructor for struct Multi_IO_Unit.
+    * NOTE: MPI datatypes passed to Multi_IO_Unit are not committed or freed, 
+    * thus one should only use native MPI datatypes, e.g. as returned by 
+    * getMPIDatatype function.
+    * @param array In vlsv::Writer this is a pointer to array whose contents are
+    * written to file. In vlsv::ParallelReader this is a pointer to array where data 
+    * from file is to be read.
+    * @param mpiType MPI datatype defining the I/O operation.
+    * @param amount Amount of data to be written or read, in units of mpiType.*/
+   Multi_IO_Unit::Multi_IO_Unit(char* array,const MPI_Datatype& mpiType,const uint64_t& amount): array(array),mpiType(mpiType),amount(amount) { }
+   
+} // namespace vlsv

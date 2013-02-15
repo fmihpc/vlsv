@@ -25,7 +25,7 @@ namespace vlsvplugin {
 
    const int VTK_DATATYPE_NOT_FOUND = -999;
    
-   int getVtkDatatype(const VLSV::datatype& datatype,const uint64_t& dataSize);
+   int getVtkDatatype(const vlsv::datatype::type& datatype,const uint64_t& dataSize);
    
 } // namespace vlsvplugin
    

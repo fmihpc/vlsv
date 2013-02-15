@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011, 2012 Finnish Meteorological Institute
+ *  Copyright 2011-2013 Finnish Meteorological Institute
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -21,8 +21,8 @@
 
 #include "vlsv_common.h"
 
-namespace VLSV {
-   MPI_Datatype getMPIDatatype(VLSV::datatype dt,uint64_t dataSize);
+namespace vlsv {
+   MPI_Datatype getMPIDatatype(datatype::type dt,uint64_t dataSize);
 }
 
 #endif

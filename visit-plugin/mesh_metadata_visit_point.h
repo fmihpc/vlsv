@@ -31,7 +31,7 @@ namespace vlsvplugin {
       uint64_t getNumberOfRealCells(int domain) const;
       uint64_t getNumberOfTotalCells(int domain) const;
       
-      bool read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs);
+      bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
 	

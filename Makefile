@@ -36,10 +36,10 @@ DEPS_VLSVCOMMON = vlsv_common.h vlsv_common.cpp
 DEPS_VLSVCOMMON_MPI = ${DEPS_VLSVCOMMON} vlsv_common_mpi.h vlsv_common_mpi.cpp
 DEPS_READER = ${DEPS_VLSVCOMMON} vlsv_reader.h vlsv_reader.cpp
 DEPR_PARAREADER = ${DEPS_READER} vlsv_reader_parallel.h vlsv_reader_parallel.cpp
-DEPS_WRITER = ${DEPS_VLSVCOMMON} vlsvwriter.h vlsvwriter2.cpp
+DEPS_WRITER = ${DEPS_VLSVCOMMON} vlsv_writer.h vlsv_writer.cpp
 DEPS_VLSV2SILO = vlsv_reader.o muxml.o vlsv_common.o vlsv2silo.cpp
 
-OBJS=multi_io_unit.o muxml.o vlsv_common.o vlsv_common_mpi.o vlsv_reader.o vlsv_reader_parallel.o vlsvwriter.o
+OBJS=multi_io_unit.o muxml.o vlsv_common.o vlsv_common_mpi.o vlsv_reader.o vlsv_reader_parallel.o vlsv_writer.o
 
 # Build rules
 
@@ -64,8 +64,8 @@ vlsv_reader.o: ${DEPS_READER}
 vlsv_reader_parallel.o: ${DEPS_PARAREADER}
 	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsv_reader_parallel.o -c vlsv_reader_parallel.cpp
 
-vlsvwriter.o: ${DEPS_WRITER}
-	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsvwriter.o -c vlsvwriter2.cpp
+vlsv_writer.o: ${DEPS_WRITER}
+	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsv_writer.o -c vlsv_writer.cpp
 
 vlsv2silo: ${DEPS_VLSV2SILO}
 	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsv2silo vlsv2silo.cpp ${INC_SILO} -L${CURDIR} -lvlsv ${LIB_SILO}

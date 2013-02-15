@@ -41,18 +41,18 @@ namespace vlsvplugin {
       delete [] variableOffsets; variableOffsets = NULL;
    }
    
-   bool VisitQuadMultiMeshMetadata::getDomainInfo(VLSVReader* vlsv,int domain,const uint64_t*& domainOffsets,
+   bool VisitQuadMultiMeshMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 						  const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
       debug2 << "VLSV\t\t VisitQuadMultiMeshMetadata::getDomainInfo called, domain: " << domain << endl;
       
       // Check that VLSVReader exists:
-      if (vlsv == NULL) {
+      if (vlsvReader == NULL) {
 	 debug3 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
 	 return false;
       }
 
       // Read domain info:
-      if (readDomains(vlsv) == false) {
+      if (readDomains(vlsvReader) == false) {
 	 debug3 << "VLSV\t\t ERROR: Failed to read quad multimesh domains" << endl;
 	 return false;
       }
@@ -89,12 +89,12 @@ namespace vlsvplugin {
    
    const uint64_t* VisitQuadMultiMeshMetadata::getVariableOffsets() {return variableOffsets;}
    
-   bool VisitQuadMultiMeshMetadata::read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs) {
+   bool VisitQuadMultiMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       // Exit if mesh metadata has already been read:
       if (meshMetadataRead == true) return true;
       
       // Call superclass read function:
-      if (VisitMeshMetadata::read(vlsv,attribs) == false) return false;
+      if (VisitMeshMetadata::read(vlsvReader,attribs) == false) return false;
       
       // Check that we are reading multi-domain mesh metadata:
       map<string,string>::const_iterator it = attribs.find("type");
@@ -102,8 +102,8 @@ namespace vlsvplugin {
 	 debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
 	 return false;
       }      
-      if (it->second != VLSV::MESH_QUAD_MULTI) {
-	 debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << VLSV::MESH_QUAD_MULTI << "'" << endl;
+      if (it->second != vlsv::mesh::STRING_QUAD_MULTI) {
+	 debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << vlsv::mesh::STRING_QUAD_MULTI << "'" << endl;
 	 return false;
       }
       
@@ -121,7 +121,7 @@ namespace vlsvplugin {
       map<string,string> attribsOut;
       list<pair<string,string> > attribsIn;
       attribsIn.push_back(make_pair("mesh",getName()));
-      if (vlsv->getArrayAttributes("MESH_ZONES",attribsIn,attribsOut) == false) {
+      if (vlsvReader->getArrayAttributes("MESH_ZONES",attribsIn,attribsOut) == false) {
 	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_ZONES' attributes for mesh '" << getName() << "' from VLSV file" << endl;
 	 return false;
       }      
@@ -136,7 +136,7 @@ namespace vlsvplugin {
       
       // Read 'VARIABLE' XML tags to parse names of variables in this mesh:
       set<string> variableNames;
-      if (vlsv->getUniqueAttributeValues("VARIABLE","name",variableNames) == false) {
+      if (vlsvReader->getUniqueAttributeValues("VARIABLE","name",variableNames) == false) {
 	 debug3 << "VLSV\t\t ERROR: Failed to read variable names" << endl;
 	 return false;
       }
@@ -151,7 +151,7 @@ namespace vlsvplugin {
 	 attribsIn.push_back(make_pair("name",*it));
 	 
 	 // Skip variables belonging to other meshes:
-	 if (vlsv->getArrayAttributes("VARIABLE",attribsIn,attribsOut) == false) continue;
+	 if (vlsvReader->getArrayAttributes("VARIABLE",attribsIn,attribsOut) == false) continue;
 	 debug4 << "VLSV\t\t\t '" << *it << "' vectorsize: " << attribsOut["vectorsize"] << endl;
 	 
 	 bool success = true;
@@ -187,13 +187,13 @@ namespace vlsvplugin {
       return true;
    }
    
-   bool VisitQuadMultiMeshMetadata::readDomains(VLSVReader* vlsv) {
+   bool VisitQuadMultiMeshMetadata::readDomains(vlsv::Reader* vlsvReader) {
       // Exit if domain metadata has already been read:
       if (domainMetadataRead == true) return true;
       debug2 << "VLSV\t\t VisitQuadMultiMeshMetadata::readDomains called" << endl;      
       
       // Check that VLSVReader exists:
-      if (vlsv == NULL) {
+      if (vlsvReader == NULL) {
 	 debug3 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
 	 return false;
       }
@@ -202,7 +202,7 @@ namespace vlsvplugin {
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("mesh",name));
       delete [] meshCoordinates; meshCoordinates = NULL;
-      if (vlsv->read("MESH_BBOX",attribs,0,6,meshCoordinates) == false) {
+      if (vlsvReader->read("MESH_BBOX",attribs,0,6,meshCoordinates) == false) {
 	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
 	 return false;
       }
@@ -211,7 +211,7 @@ namespace vlsvplugin {
       
       // Read domain info:
       int64_t* domainInfo = NULL;
-      if (vlsv->read("MESH_ZONES",attribs,0,VisitMeshMetadata::N_domains,domainInfo) == false) {
+      if (vlsvReader->read("MESH_ZONES",attribs,0,VisitMeshMetadata::N_domains,domainInfo) == false) {
 	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_ZONES'" << endl;
 	 delete [] domainInfo; domainInfo = NULL;
 	 return false;

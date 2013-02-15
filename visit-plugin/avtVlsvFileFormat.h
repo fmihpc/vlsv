@@ -98,7 +98,7 @@ class avtVlsvFileFormat: public avtSTMDFileFormat {
 
  protected:
    // DATA MEMBERS
-   VLSVReader* vlsv;
+   vlsv::Reader* vlsvReader;
    std::string inputFile;
 
    bool dataTimestepFound;
@@ -110,11 +110,6 @@ class avtVlsvFileFormat: public avtSTMDFileFormat {
    #ifdef PARALLEL
       int mpiRank;         /**< MPI rank of process owning this instance of VLSV plugin.*/
       int mpiProcessCount; /**< Number of MPI processes in VisIt parallel engine.*/
-
-      // TEST
-//      int N_domains;
-//      uint64_t* domainOffsets;
-      // END TEST
    #endif
    
    bool metadataRead;

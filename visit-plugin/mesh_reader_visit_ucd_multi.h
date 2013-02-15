@@ -28,8 +28,8 @@ namespace vlsvplugin {
       VisitUCDMultiMeshReader();
       virtual ~VisitUCDMultiMeshReader();
       
-      virtual bool readMesh(VLSVReader* vlsv,MeshMetadata* md,int domain,void*& output);
-      virtual bool readVariable(VLSVReader* vlsv,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output);
+      virtual bool readMesh(vlsv::Reader* vlsvReader,MeshMetadata* md,int domain,void*& output);
+      virtual bool readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output);
       
     protected:
       float* crds_node_x;
@@ -40,7 +40,7 @@ namespace vlsvplugin {
       uint64_t N_nodes_y;
       uint64_t N_nodes_z;
       
-      virtual bool readNodeCoordinateArrays(VLSVReader* vlsv,const std::string& meshName);
+      virtual bool readNodeCoordinateArrays(vlsv::Reader* vlsvReader,const std::string& meshName);
    };
 
 } // namespace plugin

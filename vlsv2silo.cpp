@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011, 2012 Finnish Meteorological Institute
+ *  Copyright 2011-2013 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -90,10 +90,10 @@ static map<string,CurveData> curves; /**< Container for all curve data stored to
  * @param dataType Is the integer value signed or unsigned?
  * @param dataSize Byte size of the stored integer value.
  * @return Stored value converted to int64_t.*/
-int64_t convInt(const char* ptr,const VLSV::datatype& dataType,const uint64_t& dataSize) {
+int64_t convInt(const char* ptr,const vlsv::datatype::type& dataType,const uint64_t& dataSize) {
    switch (dataType) {
     // Convert signed integer to int64_t:
-    case (VLSV::INT):
+    case (vlsv::datatype::INT):
       switch(dataSize) {
        case (sizeof(int8_t)):
 	 return *reinterpret_cast<const int8_t*>(ptr);
@@ -114,7 +114,7 @@ int64_t convInt(const char* ptr,const VLSV::datatype& dataType,const uint64_t& d
       }
       break;
     // Convert unsigned integer to int64_t:  
-    case (VLSV::UINT):
+    case (vlsv::datatype::UINT):
       switch(dataSize) {
        case (sizeof(uint8_t)):
 	 return *reinterpret_cast<const uint8_t*>(ptr);
@@ -148,10 +148,10 @@ int64_t convInt(const char* ptr,const VLSV::datatype& dataType,const uint64_t& d
  * @param dataType Is the integer value signed or unsigned?
  * @param dataSize Byte size of the stored integer value.
  * @return Stored value converted to uint64_t.*/
-uint64_t convUInt(const char* ptr,const VLSV::datatype& dataType,const uint64_t& dataSize) {
+uint64_t convUInt(const char* ptr,const vlsv::datatype::type& dataType,const uint64_t& dataSize) {
    switch (dataType) {
     // Convert signed integer to uint64_t:
-    case (VLSV::INT):
+    case (vlsv::datatype::INT):
       switch (dataSize) {
        case sizeof(int8_t):
 	 return *reinterpret_cast<const int8_t*>(ptr);
@@ -172,7 +172,7 @@ uint64_t convUInt(const char* ptr,const VLSV::datatype& dataType,const uint64_t&
       }
       break;
     // Convert unsigned integer to uint64_t:
-    case (VLSV::UINT):
+    case (vlsv::datatype::UINT):
       switch (dataSize) {
        case sizeof(uint8_t):
 	 return *reinterpret_cast<const uint8_t*>(ptr);
@@ -204,24 +204,24 @@ uint64_t convUInt(const char* ptr,const VLSV::datatype& dataType,const uint64_t&
  * @param dataType Datatype. Either signed or unsigned integer, or floating point value.
  * @param dataSize Byte size of datatype.
  * @return Corresponding SILO datatype or -1 if conversion was not possible.*/
-int SiloType(const VLSV::datatype& dataType,const uint64_t& dataSize) {
+int SiloType(const vlsv::datatype::type& dataType,const uint64_t& dataSize) {
    switch (dataType) {
-    case VLSV::UNKNOWN:
+    case vlsv::datatype::UNKNOWN:
       return -1;
       break;
-    case VLSV::INT:
+    case vlsv::datatype::INT:
       if (dataSize == 2) return DB_SHORT;
       else if (dataSize == 4) return DB_INT;
       else if (dataSize == 8) return DB_LONG;
       else return -1;
       break;
-    case VLSV::UINT:
+    case vlsv::datatype::UINT:
       if (dataSize == 2) return DB_SHORT;
       else if (dataSize == 4) return DB_INT;
       else if (dataSize == 8) return DB_LONG;
       else return -1;
       break;
-    case VLSV::FLOAT:
+    case vlsv::datatype::FLOAT:
       if (dataSize == 4) return DB_FLOAT;
       else if (dataSize == 8) return DB_DOUBLE;
       else return -1;
@@ -475,7 +475,7 @@ struct NodeComp {
  * @param N_extra How many additional options are needed.
  * @param insertTimes If true, simulation time and time step are inserted to the option list.
  * @return Pointer to created option list or a NULL pointer.*/
-DBoptlist* getOptionList(VLSVReader& vlsvReader,const int& N_extra=0,const bool& insertTimes=true) {
+DBoptlist* getOptionList(vlsv::Reader& vlsvReader,const int& N_extra=0,const bool& insertTimes=true) {
    DBoptlist* optlist = NULL;
    if (insertTimes == false) {
       if (N_extra > 0) optlist = DBMakeOptlist(N_extra);
@@ -484,7 +484,7 @@ DBoptlist* getOptionList(VLSVReader& vlsvReader,const int& N_extra=0,const bool&
    
    list<pair<string,string> > attribs;
    uint64_t arraySize,vectorSize,dataSize;
-   VLSV::datatype dataType;
+   vlsv::datatype::type dataType;
 
    // Check if time value has been given in the file. If not, then return 
    // immediately with an empty list:
@@ -531,8 +531,8 @@ DBoptlist* getOptionList(VLSVReader& vlsvReader,const int& N_extra=0,const bool&
       char* valbuffer = new char[arraySize*vectorSize*dataSize];
       vlsvReader.readArray("PARAMETER",attribs,0,arraySize,valbuffer);
       
-      if (dataType == VLSV::INT) timestep = convInt(valbuffer,dataType,dataSize);
-      else if (dataType == VLSV::UINT) timestep = convUInt(valbuffer,dataType,dataSize);
+      if (dataType == vlsv::datatype::INT) timestep = convInt(valbuffer,dataType,dataSize);
+      else if (dataType == vlsv::datatype::UINT) timestep = convUInt(valbuffer,dataType,dataSize);
       else {
 	 cerr << "timestep given in unsupported datatype!" << endl;
       }
@@ -579,7 +579,7 @@ void parseCoordinateNames(DBoptlist* optlist,map<string,string>& attribsOut) {
  * @param meshName Name of the mesh, same as the name of resulting multimesh.
  * @param varName Name of the variable.
  * @param outputDir Variable in which the name of the output directory is copied.*/
-void createVariableDirectory(VLSVReader& vlsvReader,const string& meshName,const string& varName,string& outputDir) {
+void createVariableDirectory(vlsv::Reader& vlsvReader,const string& meshName,const string& varName,string& outputDir) {
    // By default variables are written to root directory:
    outputDir = "/";
    
@@ -654,7 +654,7 @@ void createVariableDirectory(VLSVReader& vlsvReader,const string& meshName,const
  * @param ghostDomains For each ghost cell, number of mesh piece containing the data.
  * @param fullName Variable in which the full name of the converted multimesh variable is copied (does not include filename).
  * @return If true, variable was converted successfully.*/
-bool convertMultimeshVariable(VLSVReader& vlsvReader,const string& meshName,const string& varName,const string& meshDir,
+bool convertMultimeshVariable(vlsv::Reader& vlsvReader,const string& meshName,const string& varName,const string& meshDir,
 			      int meshNumber,unsigned int* variableOffsets,uint64_t N_cells,uint64_t N_ghosts,
 			      unsigned int* ghostLocalIDs,unsigned int* ghostDomains,string& fullName) {
    bool success = true;
@@ -664,7 +664,7 @@ bool convertMultimeshVariable(VLSVReader& vlsvReader,const string& meshName,cons
    // only complication here is that some of the variables are actually vectors, i.e.
    // vectorSize > 1 (vectorSize == 1 for scalars). Format in which vectors are stored in VLSV
    // differ from format in which they are written to SILO files.
-   VLSV::datatype dataType;
+   vlsv::datatype::type dataType;
    uint64_t arraySize,vectorSize,dataSize;
    list<pair<string,string> > attributes;
    attributes.push_back(make_pair("mesh",meshName));
@@ -830,14 +830,14 @@ bool convertMultimeshVariable(VLSVReader& vlsvReader,const string& meshName,cons
    return success;
 }
 
-bool convertMeshVariable(VLSVReader& vlsvReader,const string& meshName,const string& varName) {   
+bool convertMeshVariable(vlsv::Reader& vlsvReader,const string& meshName,const string& varName) {   
    bool success = true;
 
    // Writing a unstructured grid variable is a rather straightforward process. The 
    // only compilation here is that some of the variables are actually vectors, i.e. 
    // vectorSize > 1 (vectorSize == 1 for scalars). Format in which vectors are stored in VLSV 
    // differ from format in which they are written to SILO files.
-   VLSV::datatype dataType;
+   vlsv::datatype::type dataType;
    uint64_t arraySize,vectorSize,dataSize;
    list<pair<string,string> > attributes;
    attributes.push_back(make_pair("mesh",meshName));
@@ -960,7 +960,7 @@ bool convertMeshVariable(VLSVReader& vlsvReader,const string& meshName,const str
    return success;
 }
 
-bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName) {
+bool convertPointMesh(vlsv::Reader& vlsvReader,const string& meshName) {
    bool success = true;
    //cerr << "Converting point mesh '" << meshName << "'" << endl;
    
@@ -968,12 +968,12 @@ bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName) {
    list<pair<string,string> > attributes;
    attributes.push_back(make_pair("name",meshName));
    uint64_t arraySize,vectorSize,dataSize;
-   VLSV::datatype dataType;
+   vlsv::datatype::type dataType;
    if (vlsvReader.getArrayInfo("MESH",attributes,arraySize,vectorSize,dataType,dataSize) == false) {
       cerr << "Array MESH info could not be obtained!" << endl;
       return false;
    }
-   if (dataType != VLSV::FLOAT) {
+   if (dataType != vlsv::datatype::FLOAT) {
       cerr << "Mesh coordinates are not floating point values!" << endl;
       return false; // Coordinates must be floating point values
    }
@@ -1121,11 +1121,11 @@ bool convertPointMesh(VLSVReader& vlsvReader,const string& meshName) {
  * @param amount Number of (i,j,k) tuples to read, i.e. total number of cells (local+ghosts) in the given mesh piece.
  * @param N_ghosts Number of ghost cells in given mesh piece.
  * @return If true, given mesh piece was successfully written to output file.*/
-bool convertQuadMesh2(VLSVReader& vlsvReader,const string& meshName,const string& siloMeshName,
+bool convertQuadMesh2(vlsv::Reader& vlsvReader,const string& meshName,const string& siloMeshName,
 		      const uint64_t& start,const uint64_t& amount,const uint64_t& N_ghosts) {
    bool success = true;
    
-   VLSV::datatype dataType;
+   vlsv::datatype::type dataType;
    uint64_t arraySize,vectorSize,dataSize;
    list<pair<string,string> > attributes;
    attributes.push_back(make_pair("mesh",meshName));
@@ -1147,7 +1147,7 @@ bool convertQuadMesh2(VLSVReader& vlsvReader,const string& meshName,const string
       delete [] meshBboxIn; meshBboxIn = NULL;
       return false;
    }
-   if (dataType != VLSV::FLOAT) {
+   if (dataType != vlsv::datatype::FLOAT) {
       cerr << "Incorrect datatype in array 'MESH_BBOX' !" << endl;
       delete [] meshBboxIn; meshBboxIn = NULL;
       return false;
@@ -1181,12 +1181,12 @@ bool convertQuadMesh2(VLSVReader& vlsvReader,const string& meshName,const string
    // Get info on array containing cell (i,j,k) indices:
    attributes.clear();
    attributes.push_back(make_pair("name",meshName));
-   attributes.push_back(make_pair("type",VLSV::MESH_QUAD_MULTI));
+   attributes.push_back(make_pair("type",vlsv::mesh::STRING_QUAD_MULTI));
    if (vlsvReader.getArrayInfo("MESH",attributes,arraySize,vectorSize,dataType,dataSize) == false) {
       cerr << "Array MESH info could not be obtained!" << endl;
       return false;
    }
-   if (dataType != VLSV::UINT && dataType != VLSV::INT) {
+   if (dataType != vlsv::datatype::UINT && dataType != vlsv::datatype::INT) {
       cerr << "Array 'MESH' does not contain integer indices!" << endl;
       return false;
    }
@@ -1233,7 +1233,7 @@ bool convertQuadMesh2(VLSVReader& vlsvReader,const string& meshName,const string
    
    switch (dataType) {
     // Eliminate duplicate nodes when (i,j,k) indices were given as signed integers:
-    case (VLSV::INT):
+    case (vlsv::datatype::INT):
       switch (dataSize) {
        case (sizeof(int16_t)):
 	 eliminateDuplicateNodes(amount,vectorSize,ptrMeshi2,zoneList,xcrds,ycrds,zcrds);
@@ -1250,7 +1250,7 @@ bool convertQuadMesh2(VLSVReader& vlsvReader,const string& meshName,const string
       }
       break;
     // Eliminate duplicate nodes when (i,j,k) indices were given as unsigned integers:
-    case (VLSV::UINT):
+    case (vlsv::datatype::UINT):
       switch (dataSize) {
        case (sizeof(uint16_t)):
 	 eliminateDuplicateNodes(amount,vectorSize,ptrMeshui2,zoneList,xcrds,ycrds,zcrds);
@@ -1300,7 +1300,7 @@ bool convertQuadMesh2(VLSVReader& vlsvReader,const string& meshName,const string
    DBAddOption(optlist,DBOPT_TIME,&connectivity);
    
    // Write UCD grid to SILO file:
-   if (DBPutUcdmesh(fileptr,siloMeshName.c_str(),N_dims,NULL,coords,N_nodes,N_zones,zoneListName.c_str(),NULL,SiloType(VLSV::FLOAT,sizeof(float)),optlist) < 0) success = false;
+   if (DBPutUcdmesh(fileptr,siloMeshName.c_str(),N_dims,NULL,coords,N_nodes,N_zones,zoneListName.c_str(),NULL,SiloType(vlsv::datatype::FLOAT,sizeof(float)),optlist) < 0) success = false;
    if (optlist != NULL) DBFreeOptlist(optlist);
    return success;
 }
@@ -1311,11 +1311,11 @@ bool convertQuadMesh2(VLSVReader& vlsvReader,const string& meshName,const string
  * @param fileName Name of input file.
  * @param outputFileName Name of output file.
  * @return If true, multimesh and associated variables were written successfully to output file.*/
-bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string& fileName,const string& outputFileName) {
+bool convertMultimesh(vlsv::Reader& vlsvReader,const string& meshName,const string& fileName,const string& outputFileName) {
    bool success = true;
    
    // Read array 'MESH' attributes first to check if the mesh is stored in another VLSV file:
-   VLSV::datatype meshDataType;
+   vlsv::datatype::type meshDataType;
    uint64_t meshArraySize,meshVectorSize,meshDataSize;
    list<pair<string,string> > attributes;
    map<string,string> meshAttributes;
@@ -1325,10 +1325,10 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
       return false;
    }
    
-   // Read mesh using a separate VLSVReader, this makes it easier to handle cases 
+   // Read mesh using a separate vlsv::Reader, this makes it easier to handle cases 
    // where the mesh only exists in some VLSV files. If array MESH_ZONES contains an attribute 
    // 'file', the mesh is read from that file. Otherwise mesh is read from variable fileName:
-   VLSVReader meshReader;
+   vlsv::Reader meshReader;
    bool writeMeshOut = true;
    if (meshAttributes.find("file") != meshAttributes.end()) {
       // Mesh already exists in an older SILO file, do not write it again:
@@ -1388,11 +1388,11 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
    for (uint64_t m=0; m<meshArraySize; ++m) {
       const uint64_t byteSize = meshVectorSize*meshDataSize;
       switch (meshDataType) {
-       case (VLSV::INT):
+       case (vlsv::datatype::INT):
 	 N_cells[m] = convInt(N_meshes+m*byteSize,meshDataType,meshDataSize);
 	 N_ghosts[m] = convInt(N_meshes+m*byteSize+meshDataSize,meshDataType,meshDataSize);
 	 break;
-       case (VLSV::UINT):
+       case (vlsv::datatype::UINT):
 	 N_cells[m] = convUInt(N_meshes+m*byteSize,meshDataType,meshDataSize);
 	 N_ghosts[m] = convUInt(N_meshes+m*byteSize+meshDataSize,meshDataType,meshDataSize);
 	 break;
@@ -1421,14 +1421,14 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
       if (N_cells[m] == 0) continue;
       
       // Read ghost cells local ids and domain array info for this mesh piece:
-      VLSV::datatype domainDatatype,localidDatatype;
+      vlsv::datatype::type domainDatatype,localidDatatype;
       uint64_t domainArraySize,domainVectorSize,domainDataSize;
       uint64_t localidArraySize,localidVectorSize,localidDataSize;
       if (meshReader.getArrayInfo("MESH_GHOST_DOMAINS",attributes,domainArraySize,domainVectorSize,domainDatatype,domainDataSize) == false) success = false;
       if (meshReader.getArrayInfo("MESH_GHOST_LOCALIDS",attributes,localidArraySize,localidVectorSize,localidDatatype,localidDataSize) == false) success = false;
       if (success == false) cerr << "ERROR" << endl;
-      if (domainVectorSize != 1 || (domainDatatype != VLSV::INT && domainDatatype != VLSV::UINT)) success = false;
-      if (localidVectorSize != 1 || (localidDatatype != VLSV::INT && localidDatatype != VLSV::UINT)) success = false;
+      if (domainVectorSize != 1 || (domainDatatype != vlsv::datatype::INT && domainDatatype != vlsv::datatype::UINT)) success = false;
+      if (localidVectorSize != 1 || (localidDatatype != vlsv::datatype::INT && localidDatatype != vlsv::datatype::UINT)) success = false;
       if (success == false) {
 	 cerr << "ERROR occurred while obtaining arrays 'MESH_GHOST_DOMAINS' and/or 'MESH_GHOST_LOCALIDS' !" << endl;
 	 exit(1);
@@ -1439,7 +1439,7 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
       unsigned int* ghostLocalIDs = NULL;
       if (meshReader.readArray("MESH_GHOST_LOCALIDS",attributes,ghostOffsets[m],N_ghosts[m],bfr) == false) success = false;
       if (success == true) {
-	 if (localidDatatype != VLSV::UINT || localidDataSize != sizeof(unsigned int)) {
+	 if (localidDatatype != vlsv::datatype::UINT || localidDataSize != sizeof(unsigned int)) {
 	    // File has wrong datatype, convert to uints:
 	    ghostLocalIDs = new unsigned int[N_ghosts[m]];
 	    for (uint64_t i=0; i<N_ghosts[m]; ++i) {
@@ -1457,7 +1457,7 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
       unsigned int* ghostDomains = NULL;
       if (meshReader.readArray("MESH_GHOST_DOMAINS",attributes,ghostOffsets[m],N_ghosts[m],bfr) == false) success = false;
       if (success == true) {
-	 if (domainDatatype != VLSV::UINT || domainDataSize != sizeof(unsigned int)) {
+	 if (domainDatatype != vlsv::datatype::UINT || domainDataSize != sizeof(unsigned int)) {
 	    // File has wrong datatype, convert to uints:
 	    ghostDomains = new unsigned int[N_ghosts[m]];
 	    for (uint64_t i=0; i<N_ghosts[m]; ++i) {
@@ -1630,7 +1630,7 @@ bool convertMultimesh(VLSVReader& vlsvReader,const string& meshName,const string
    return success;
 }
 
-bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
+bool convertQuadMesh(vlsv::Reader& vlsvReader,const string& meshName) {
    bool success = true;
    
    // First task is to push all unique node coordinates into a map.
@@ -1641,16 +1641,16 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
    map<NodeCrd<double>,uint64_t,NodeComp> nodes8;
    map<NodeCrd<long double>,uint64_t,NodeComp> nodes12;
    
-   VLSV::datatype dataType;
+   vlsv::datatype::type dataType;
    uint64_t arraySize,vectorSize,dataSize;
    list<pair<string,string> > attributes;
    attributes.push_back(make_pair("name",meshName));
-   attributes.push_back(make_pair("type",VLSV::MESH_QUAD));
+   attributes.push_back(make_pair("type",vlsv::mesh::STRING_QUAD));
    if (vlsvReader.getArrayInfo("MESH",attributes,arraySize,vectorSize,dataType,dataSize) == false) {
       cerr << "Array MESH info could not be obtained!" << endl;
       return false;
    }   
-   if (dataType != VLSV::FLOAT) {
+   if (dataType != vlsv::datatype::FLOAT) {
       cerr << "Mesh coordinates are not floating point values!" << endl;
       return false; // Coordinates must be floating point values
    }
@@ -1930,17 +1930,17 @@ bool convertQuadMesh(VLSVReader& vlsvReader,const string& meshName) {
 }
 
 /** Append curve (x,y) data pair to map curves. VLSV file array that contains 
- * data for y points must be of type VLSV::FLOAT. Furthermore, array and vector sizes 
+ * data for y points must be of type vlsv::datatype::FLOAT. Furthermore, array and vector sizes 
  * must equal unity, i.e. only single x-value and a single y-value. Finally, (x,y) values 
  * are written as doubles to the SILO file irrespective of their actual floating point types.
  * @param vlsvReader VLSV file reader that is used to read data.
  * @param varName Name of the array containing the curve data in VLSV file.
  * @param isTimeSeries If true, curve is a time series, i.e. time is used as x-value.
  * @param If true, curve data was successfully extracted from the file.*/
-bool appendCurveValue(VLSVReader& vlsvReader,const string& varName,bool isTimeSeries) {
+bool appendCurveValue(vlsv::Reader& vlsvReader,const string& varName,bool isTimeSeries) {
    bool success = true;
 
-   VLSV::datatype xDataType;
+   vlsv::datatype::type xDataType;
    uint64_t xArraySize,xVectorSize,xDataSize;
    list<pair<string,string> > attribs;
    map<string,string> attribsOut;
@@ -1951,7 +1951,7 @@ bool appendCurveValue(VLSVReader& vlsvReader,const string& varName,bool isTimeSe
    // Get x value from VLSV file:
    attribs.push_back(make_pair("name","time"));
    if (vlsvReader.getArrayInfo("PARAMETER",attribs,xArraySize,xVectorSize,xDataType,xDataSize) == false) return false;
-   if (xDataType != VLSV::FLOAT) return false;
+   if (xDataType != vlsv::datatype::FLOAT) return false;
    if (xArraySize != 1 || xVectorSize != 1) return false;
    if (vlsvReader.readArray("PARAMETER",attribs,0,xArraySize,buffer) == false) return false;
 
@@ -1973,7 +1973,7 @@ bool appendCurveValue(VLSVReader& vlsvReader,const string& varName,bool isTimeSe
    attribs.clear();
    attribs.push_back(make_pair("name",varName));
    if (vlsvReader.getArrayInfo("TIMESERIES",attribs,xArraySize,xVectorSize,xDataType,xDataSize) == false) return false;
-   if (xDataType != VLSV::FLOAT) return false;
+   if (xDataType != vlsv::datatype::FLOAT) return false;
    if (xArraySize != 1 || xVectorSize != 1) return false;
    
    // Get y-value array attributes:
@@ -2013,7 +2013,7 @@ bool convertSILO(const string& fname) {
    bool success = true;
    
    // Open VLSV file for reading:
-   VLSVReader vlsvReader;
+   vlsv::Reader vlsvReader;
    if (vlsvReader.open(fname) == false) {
       cerr << "Failed to open '" << fname << "'" << endl;
       return false;
@@ -2045,9 +2045,9 @@ bool convertSILO(const string& fname) {
 	 continue;
       }
       
-      if (attribsOut["type"] == VLSV::MESH_QUAD) convertQuadMesh(vlsvReader,*it);
-      else if (attribsOut["type"] == VLSV::MESH_POINT) convertPointMesh(vlsvReader,*it);
-      else if (attribsOut["type"] == VLSV::MESH_QUAD_MULTI) convertMultimesh(vlsvReader,*it,fname,fileout);
+      if (attribsOut["type"] == vlsv::mesh::STRING_QUAD) convertQuadMesh(vlsvReader,*it);
+      else if (attribsOut["type"] == vlsv::mesh::STRING_POINT) convertPointMesh(vlsvReader,*it);
+      else if (attribsOut["type"] == vlsv::mesh::STRING_QUAD_MULTI) convertMultimesh(vlsvReader,*it,fname,fileout);
       else {
 	 cout << "\t Skipping mesh '" << *it << "' because it has unknown type" << endl;
       }
@@ -2066,7 +2066,7 @@ bool convertCurveSILO(const string& fname,bool lastFile) {
    bool success = true;
    
    // Open VLSV file for reading:
-   VLSVReader vlsvReader;
+   vlsv::Reader vlsvReader;
    if (lastFile == false) {
       if (vlsvReader.open(fname) == false) {
 	 cerr << "Failed to open '" << fname << "'" << endl;
