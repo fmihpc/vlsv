@@ -23,13 +23,13 @@ using namespace std;
 
 namespace vlsvplugin {
 
-   int getVtkDatatype(const VLSV::datatype& datatype,const uint64_t& dataSize) {
+   int getVtkDatatype(const vlsv::datatype::type& datatype,const uint64_t& dataSize) {
       switch (datatype) {
-       case VLSV::UNKNOWN:
+       case vlsv::datatype::UNKNOWN:
 	 return VTK_DATATYPE_NOT_FOUND;
 	 break;
 	 
-       case VLSV::INT:
+       case vlsv::datatype::INT:
 	 switch (dataSize) {
 	  case sizeof(char):
 	    return VTK_CHAR;
@@ -49,7 +49,7 @@ namespace vlsvplugin {
 	 }
 	 break;
 	 
-       case VLSV::UINT:
+       case vlsv::datatype::UINT:
 	 switch (dataSize) {
 	  case sizeof(char):
 	    return VTK_UNSIGNED_CHAR;
@@ -69,7 +69,7 @@ namespace vlsvplugin {
 	 }
 	 break;
 	 
-       case VLSV::FLOAT:
+       case vlsv::datatype::FLOAT:
 	 switch (dataSize) {
 	  case sizeof(float):
 	    return VTK_FLOAT;

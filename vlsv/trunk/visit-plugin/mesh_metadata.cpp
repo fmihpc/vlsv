@@ -49,7 +49,7 @@ namespace vlsvplugin {
    
    uint64_t MeshMetadata::getDataSize() const {return dataSize;}
    
-   VLSV::datatype MeshMetadata::getDatatype() const {return datatype;}
+   vlsv::datatype::type MeshMetadata::getDatatype() const {return datatype;}
    
    std::string MeshMetadata::getName() const {return name;}
 
@@ -75,9 +75,9 @@ namespace vlsvplugin {
 
    std::string MeshMetadata::getZUnits() const {return zUnits;}
    
-   bool MeshMetadata::read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs) {
+   bool MeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       // Check that reader exists:
-      if (vlsv == NULL) return false;
+      if (vlsvReader == NULL) return false;
       
       bool success = true;
       map<string,string>::const_iterator it;
@@ -122,7 +122,7 @@ namespace vlsvplugin {
 	 debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'datatype'" << endl;
 	 success = false;
       } else {
-	 datatype = VLSV::getVLSVDatatype(it->second);
+	 datatype = vlsv::getVLSVDatatype(it->second);
       }
       
       // Get optional mesh parameters:

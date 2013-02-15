@@ -30,7 +30,7 @@ namespace vlsvplugin {
       VisitQuadMultiMeshMetadata();
       ~VisitQuadMultiMeshMetadata();
       
-      bool getDomainInfo(VLSVReader* vlsv,int domain,const uint64_t*& domainOffsets,
+      bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 			 const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
       const uint64_t* getDomainOffsets();
       const uint64_t* getGhostOffsets();
@@ -40,7 +40,7 @@ namespace vlsvplugin {
       uint64_t getNumberOfTotalCells(int domain) const;
       const uint64_t* getVariableOffsets();
       
-      bool read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs);
+      bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
       bool domainMetadataRead;        /**< If true, domain metadata has been read.*/
@@ -50,7 +50,7 @@ namespace vlsvplugin {
       uint64_t* variableOffsets;
       float* meshCoordinates;
       
-      bool readDomains(VLSVReader* vlsv);
+      bool readDomains(vlsv::Reader* vlsvReader);
    };
    
 } // namespace vlsvplugin

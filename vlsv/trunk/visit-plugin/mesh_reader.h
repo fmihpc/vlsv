@@ -29,8 +29,8 @@ namespace vlsvplugin {
       MeshReader();
       virtual ~MeshReader();
 
-      virtual bool readMesh(VLSVReader* vlsv,MeshMetadata* md,int domain,void*& output) =0;
-      virtual bool readVariable(VLSVReader* vlsv,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) =0;
+      virtual bool readMesh(vlsv::Reader* vlsvReader,MeshMetadata* md,int domain,void*& output) =0;
+      virtual bool readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) =0;
     protected:
 	
    };

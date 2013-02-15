@@ -41,9 +41,9 @@ namespace vlsvplugin {
       return MeshMetadata::getNumberOfTotalCells();
    }
    
-   bool VisitPointMeshMetadata::read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs) {
+   bool VisitPointMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       // Call superclass read function:
-      if (VisitMeshMetadata::read(vlsv,attribs) == false) return false;
+      if (VisitMeshMetadata::read(vlsvReader,attribs) == false) return false;
       
       // Check that we are reading point mesh metadata:
       bool success = true;
@@ -53,8 +53,8 @@ namespace vlsvplugin {
 	 success = false;
       }
       
-      if (it->second != VLSV::MESH_POINT) {
-	 debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << VLSV::MESH_POINT << "'" << endl;
+      if (it->second != vlsv::mesh::STRING_POINT) {
+	 debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << vlsv::mesh::STRING_POINT << "'" << endl;
 	 success = false;
       } else {
 	 meshType = AVT_POINT_MESH;

@@ -39,12 +39,12 @@ namespace vlsvplugin {
    
    VisitQuadMultiMeshReader::~VisitQuadMultiMeshReader() { }
    
-   bool VisitQuadMultiMeshReader::readMesh(VLSVReader* vlsv,MeshMetadata* md,int domain,void*& output) {
+   bool VisitQuadMultiMeshReader::readMesh(vlsv::Reader* vlsvReader,MeshMetadata* md,int domain,void*& output) {
       debug2 << "VLSV\t VisitQuadMultiMeshReader::readMesh called, domain: " << domain << endl;
       output = NULL;
       
       // Check that VLSVReader exists:
-      if (vlsv == NULL) {
+      if (vlsvReader == NULL) {
 	 debug2 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
 	 return false;
       }
@@ -71,7 +71,7 @@ namespace vlsvplugin {
       const uint64_t* cellOffsets = NULL;
       const uint64_t* ghostOffsets  = NULL;      
       const uint64_t* variableOffsets = NULL;
-      if (metadata->getDomainInfo(vlsv,domain,cellOffsets,ghostOffsets,variableOffsets) == false) {
+      if (metadata->getDomainInfo(vlsvReader,domain,cellOffsets,ghostOffsets,variableOffsets) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
 	 return false;
       }
@@ -89,7 +89,7 @@ namespace vlsvplugin {
       int32_t* cells = NULL;
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("name",metadata->getName()));
-      if (vlsv->read("MESH",attribs,cellOffsets[domain],cellOffsets[domain+1]-cellOffsets[domain],cells) == false) {
+      if (vlsvReader->read("MESH",attribs,cellOffsets[domain],cellOffsets[domain+1]-cellOffsets[domain],cells) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read cell indices" << endl;
 	 delete [] cells; cells = NULL;
 	 return false;
@@ -204,7 +204,7 @@ namespace vlsvplugin {
       return true;
    }
    
-   bool VisitQuadMultiMeshReader::readVariable(VLSVReader* vlsv,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) {
+   bool VisitQuadMultiMeshReader::readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) {
       debug2 << "VLSV\t VisitQuadMultiMeshReader::readVariable called, domain: " << domain << endl;
       if (output == NULL) {
 	 debug3 << "VLSV\t ERROR: Output array is NULL" << endl;	 
@@ -212,7 +212,7 @@ namespace vlsvplugin {
       }
 
       // Check that VLSVReader exists:
-      if (vlsv == NULL) {
+      if (vlsvReader == NULL) {
 	 debug2 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
 	 return false;
       }
@@ -234,7 +234,7 @@ namespace vlsvplugin {
       const uint64_t* cellOffsets = NULL;
       const uint64_t* ghostOffsets  = NULL;
       const uint64_t* variableOffsets = NULL;
-      if (metadata->getDomainInfo(vlsv,domain,cellOffsets,ghostOffsets,variableOffsets) == false) {
+      if (metadata->getDomainInfo(vlsvReader,domain,cellOffsets,ghostOffsets,variableOffsets) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
 	 return false;
       }
@@ -247,7 +247,7 @@ namespace vlsvplugin {
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("name",vmd.name));
       attribs.push_back(make_pair("mesh",md->getName()));
-      if (vlsv->read("VARIABLE",attribs,variableOffsets[domain],N_cells,output,false) == false) {
+      if (vlsvReader->read("VARIABLE",attribs,variableOffsets[domain],N_cells,output,false) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read domain's real cell variable data" << endl;
 	 return false;
       }
@@ -256,7 +256,7 @@ namespace vlsvplugin {
       list<pair<string,string> > meshAttribs;
       meshAttribs.push_back(make_pair("mesh",md->getName()));
       uint64_t* ghostDomains = NULL;
-      if (vlsv->read("MESH_GHOST_DOMAINS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostDomains,true) == false) {
+      if (vlsvReader->read("MESH_GHOST_DOMAINS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostDomains,true) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_DOMAINS array" << endl;
 	 delete [] ghostDomains; ghostDomains = NULL;
 	 return false;
@@ -264,7 +264,7 @@ namespace vlsvplugin {
       
       // Read array that tells local IDs of ghost cell data in each domain:
       uint64_t* ghostLocalIDs = NULL;
-      if (vlsv->read("MESH_GHOST_LOCALIDS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostLocalIDs,true) == false) {
+      if (vlsvReader->read("MESH_GHOST_LOCALIDS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostLocalIDs,true) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_LOCALIDS array" << endl;
 	 delete [] ghostDomains; ghostDomains = NULL;
 	 delete [] ghostLocalIDs; ghostLocalIDs = NULL;
@@ -277,7 +277,7 @@ namespace vlsvplugin {
       for (uint64_t i=0; i<N_ghosts; ++i) {
 	 const uint64_t ghostDomainID    = ghostDomains[i];
 	 const uint64_t ghostValueOffset = variableOffsets[ghostDomainID] + ghostLocalIDs[i];	 
-	 if (vlsv->read("VARIABLE",attribs,ghostValueOffset,1,ptr,false) == false) {
+	 if (vlsvReader->read("VARIABLE",attribs,ghostValueOffset,1,ptr,false) == false) {
 	    debug2 << "VLSV\t\t ERROR: Failed to read domain's ghost values" << endl;
 	    success = false;
 	    break;

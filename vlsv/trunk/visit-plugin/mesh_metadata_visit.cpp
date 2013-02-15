@@ -41,8 +41,8 @@ namespace vlsvplugin {
    
    int VisitMeshMetadata::getTopologicalDimension() const {return topologicalDimension;}
 
-   bool VisitMeshMetadata::read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs) {
-      return MeshMetadata::read(vlsv,attribs);
+   bool VisitMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
+      return MeshMetadata::read(vlsvReader,attribs);
    }
    
 } // namespace vlsvplugin

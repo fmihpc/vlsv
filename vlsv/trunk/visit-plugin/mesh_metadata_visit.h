@@ -37,7 +37,7 @@ namespace vlsvplugin {
       virtual int getSpatialDimension() const;
       virtual int getTopologicalDimension() const;
 
-      virtual bool read(VLSVReader* vlsv,const std::map<std::string,std::string>& attribs);
+      virtual bool read(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
       
     protected:
 

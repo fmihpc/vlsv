@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011, 2012 Finnish Meteorological Institute
+ *  Copyright 2011-2013 Finnish Meteorological Institute
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -23,24 +23,53 @@
 #include <iostream>
 #include <stdint.h>
 
-namespace VLSV {
-   const unsigned char LITTLE_END = 0;
-   const unsigned char BIG_END    = 1;
+namespace vlsv {
    
-   enum datatype {UNKNOWN,INT,UINT,FLOAT};
+   namespace datatype {
+      const unsigned char ENDIANNESS_LITTLE = 0;
+      const unsigned char ENDIANNESS_BIG    = 1;
+      
+      enum type {
+	 UNKNOWN,                                            /**< Unknown or unsupported datatype.*/
+	 INT,                                                /**< Signed integer datatype.*/
+	 UINT,                                               /**< Unsinged integer datatype.*/
+	 FLOAT                                               /**< Floating point datatype.*/
+      };
+   }
    
-   const std::string MESH_POINT = "point";
-   const std::string MESH_QUAD = "quad";
-   const std::string MESH_QUAD_MULTI = "multimesh";
-   const std::string MESH_UCD_MULTI = "multi_ucd";   /**< Unstructured nonuniform curvilinear multimesh.*/
-
-   const std::string GEOM_CARTESIAN = "cartesian";     /**< Cartesian mesh geometry.*/
-   const std::string GEOM_CYLINDRICAL = "cylindrical"; /**< Cylindrical mesh geometry.*/
-   const std::string GEOM_SPHERICAL = "spherical";     /**< Spherical mesh geometry.*/
+   namespace geometry {
+      enum type {
+	   UNKNOWN,                                          /**< Mesh has unknown or unsupported coordinate system.*/
+	   CARTESIAN,                                        /**< Mesh uses Cartesian (x,y,z) coordinate system.*/
+	   CYLINDRICAL,                                      /**< Mesh uses cylindrical (r,phi,z) coordinate system.*/
+	   SPHERICAL                                         /**< Mesh uses spherical (r,theta,phi) coordinate system.*/
+      };
+      
+      const std::string STRING_UNKNOWN = "unknown_geometry"; /**< Mesh has unknown or unsupported geometry.*/
+      const std::string STRING_CARTESIAN = "cartesian";      /**< Cartesian mesh geometry.*/
+      const std::string STRING_CYLINDRICAL = "cylindrical";  /**< Cylindrical mesh geometry.*/
+      const std::string STRING_SPHERICAL = "spherical";      /**< Spherical mesh geometry.*/
+   }
+   
+   namespace mesh {
+      enum type {
+	 UNKNOWN,
+	 POINT,
+	 QUAD,
+	 QUAD_MULTI,
+	 UCD_MULTI
+      };
+      
+      const std::string STRING_UNKNOWN = "unknown";          /**< Unknown or unsupported mesh type.*/
+      const std::string STRING_POINT = "point";              /**< Point mesh.*/
+      const std::string STRING_QUAD = "quad";
+      const std::string STRING_QUAD_MULTI = "multimesh";     /**< Multi-domain mesh with uniform cell size.*/
+      const std::string STRING_UCD_MULTI = "multi_ucd";      /**< Unstructured non-uniform curvilinear multi-domain mesh.*/
+   }
    
    template<typename T> T convertFloat(const char* const ptr);
    template<typename T> T convertInteger(const char* const ptr,const bool& swapEndianness=false);
-   template<typename T> void convertValue(T& value,const char* const ptr,VLSV::datatype dt,int dataSize,const bool& swapEndianness=false);
+   template<typename T> void convertValue(T& value,const char* const ptr,datatype::type dt,int dataSize,const bool& swapEndianness=false);
    
    /** Returns a string representation of an array that is to be written to file.
     * The correct C++ datatype can be deduced from the string value returned by this
@@ -49,7 +78,9 @@ namespace VLSV {
     * @return String representation of the datatype.*/
    template<typename T> std::string getStringDatatype();
    
-   VLSV::datatype getVLSVDatatype(const std::string& s);
+   const std::string& getMeshGeometry(geometry::type geom);
+   geometry::type getMeshGeometry(const std::string& s);
+   datatype::type getVLSVDatatype(const std::string& s);
    
    // ********************************************* //
    // ***** DEFINITIONS OF TEMPLATE FUNCTIONS ***** //
@@ -75,25 +106,25 @@ namespace VLSV {
    
    /** Driver function for convertFloat and convertInteger. Value from given buffer 
     * is converted into datatype given with template parameter T. Endianness of 
-    * integer datatypes is converted if necessary. Note that if VLSV::datatype is 
-    * VLSV::UNKNOWN the contents of buffer are simply copied into output variable 'value'.
+    * integer datatypes is converted if necessary. Note that if vlsv::datatype is 
+    * vlsv::UNKNOWN the contents of buffer are simply copied into output variable 'value'.
     * @param value Variable in which the value from buffer is copied.
     * @param buffer Byte array containing the desired value.
-    * @param dt VLSV::datatype of the value in buffer.
+    * @param dt vlsv::datatype of the value in buffer.
     * @param dataSize Byte size of the value in buffer.
     * @param swapEndianness If true, endianness of integer datatypes is swapped before
     * the value is copied to output variable 'value'.*/
    template<typename T> inline
-   void convertValue(T& value,const char* const buffer,VLSV::datatype dt,int dataSize,const bool& swapEndianness=false) {
+     void convertValue(T& value,const char* const buffer,datatype::type dt,int dataSize,const bool& swapEndianness=false) {
       char* valuePtr = NULL;
       // Switch according the native datatype of the value in buffer:
       switch (dt) {
-       case VLSV::UNKNOWN:
+       case datatype::UNKNOWN:
 	 // Unknown datatype, just byte-copy buffer to 'value':
 	 valuePtr = reinterpret_cast<char*>(&value);
 	 for (int i=0; i<dataSize; ++i) valuePtr[i] = buffer[i];
 	 break;
-       case VLSV::INT:
+       case datatype::INT:
 	 // Signed integer, switch according to byte size:
 	 switch (dataSize) {
 	  case sizeof(int8_t):
@@ -115,7 +146,7 @@ namespace VLSV {
 	    break;
 	 }
 	 break;
-       case VLSV::UINT:
+       case datatype::UINT:
 	 // Unsigned integer, switch according to byte size:
 	 switch (dataSize) {
 	  case sizeof(uint8_t):
@@ -137,7 +168,7 @@ namespace VLSV {
 	    break;
 	 }
 	 break;
-       case VLSV::FLOAT:
+       case datatype::FLOAT:
 	 // Floating point, switch according to byte size:
 	 switch (dataSize) {
 	  case sizeof(float):
@@ -178,19 +209,20 @@ namespace VLSV {
    template<> inline std::string getStringDatatype<float>() {return "float";}
    template<> inline std::string getStringDatatype<double>() {return "float";}
    template<> inline std::string getStringDatatype<long double>() {return "float";}
-}
 
-unsigned char detectEndianness();
+   unsigned char detectEndianness();
 
-int8_t convInt8(const char* const ptr,const bool& swapEndian=false);
-int16_t convInt16(const char* const ptr,const bool& swapEndian=false);
-int32_t convInt32(const char* const ptr,const bool& swapEndian=false);
-int64_t convInt64(const char* const ptr,const bool& swapEndian=false);
-uint8_t convUInt8(const char* const ptr,const bool& swapEndian=false);
-uint16_t convUInt16(const char* const ptr,const bool& swapEndian=false);
-uint32_t convUInt32(const char* const ptr,const bool& swapEndian=false);
-uint64_t convUInt64(const char* const ptr,const bool& swapEndian=false);
-float convReal4(const char* const ptr,const bool& swapEndian=false);
-double convReal8(const char* const ptr,const bool& swapEndian=false);
+   int8_t convInt8(const char* const ptr,const bool& swapEndian=false);
+   int16_t convInt16(const char* const ptr,const bool& swapEndian=false);
+   int32_t convInt32(const char* const ptr,const bool& swapEndian=false);
+   int64_t convInt64(const char* const ptr,const bool& swapEndian=false);
+   uint8_t convUInt8(const char* const ptr,const bool& swapEndian=false);
+   uint16_t convUInt16(const char* const ptr,const bool& swapEndian=false);
+   uint32_t convUInt32(const char* const ptr,const bool& swapEndian=false);
+   uint64_t convUInt64(const char* const ptr,const bool& swapEndian=false);
+   float convReal4(const char* const ptr,const bool& swapEndian=false);
+   double convReal8(const char* const ptr,const bool& swapEndian=false);
 
+} // namespace vlsv
+   
 #endif

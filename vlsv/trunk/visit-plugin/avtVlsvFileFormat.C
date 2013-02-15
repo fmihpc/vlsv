@@ -118,7 +118,7 @@ avtVlsvFileFormat::avtVlsvFileFormat(const char *filename): avtSTMDFileFormat(&f
    
    // INITIALIZE DATA MEMBERS
    inputFile = filename;
-   vlsv = NULL;
+   vlsvReader = NULL;
    
    /*
    // TEST
@@ -167,7 +167,7 @@ void avtVlsvFileFormat::FreeUpResources(void) {
    debug3 << "VLSV\t object " << objectNumber << " / " << objectCounter << endl;
 
    // Delete VLSVReader:
-   delete vlsv; vlsv = NULL;
+   delete vlsvReader; vlsvReader = NULL;
    dataTime = INVALID_TIME;
    dataTimeFound = false;
    dataTimestep = INVALID_CYCLE;
@@ -256,12 +256,12 @@ void avtVlsvFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData* md) {
 
    // ActivateTimeStep should get called prior to this function.
    // Check that a VLSV file is open:
-   if (vlsv == NULL) {
+   if (vlsvReader == NULL) {
       debug2 << "VLSV\t VLSVReader in NULL, calling ActivateTimestep()." << endl;
       ActivateTimestep();
    }
    string dummy;
-   if (vlsv->getFileName(dummy) == false) {
+   if (vlsvReader->getFileName(dummy) == false) {
       debug2 << "VLSV\t ERROR: Input file has not been opened." << endl;
       return;
    }
@@ -428,7 +428,7 @@ void avtVlsvFileFormat::ActivateTimestep(void) {
    debug3 << "VLSV\t object " << objectNumber << " / " << objectCounter << endl;
    
    // Delete old VLSVReader:
-   delete vlsv; vlsv = NULL;
+   delete vlsvReader; vlsvReader = NULL;
 
    /*
    // TEST
@@ -440,11 +440,11 @@ void avtVlsvFileFormat::ActivateTimestep(void) {
    */
    
    // Create new VLSVReader and open given file:
-   vlsv = new VLSVReader;
-   if (vlsv->open(inputFile) == false) {
+   vlsvReader = new vlsv::Reader;
+   if (vlsvReader->open(inputFile) == false) {
       debug2 << "VLSV\t ERROR: VLSVReader failed to open input file '" << inputFile << "'" << endl;
-      vlsv->close();
-      delete vlsv; vlsv = NULL;
+      vlsvReader->close();
+      delete vlsvReader; vlsvReader = NULL;
       EXCEPTION1(InvalidDBTypeException,"VLSV Plugin could not open the file.");
       return;
    }
@@ -453,8 +453,8 @@ void avtVlsvFileFormat::ActivateTimestep(void) {
    if (metadataRead == false) {
       if (readMetadata() == false) {
 	 debug2 << "VLSV\t ERROR: Failed to read metadata" << endl;
-	 vlsv->close();
-	 delete vlsv; vlsv = NULL;
+	 vlsvReader->close();
+	 delete vlsvReader; vlsvReader = NULL;
 	 EXCEPTION1(InvalidDBTypeException,"VLSV Plugin could not open the file.");
 	 return;
       }
@@ -484,7 +484,7 @@ vtkDataSet* avtVlsvFileFormat::GetMesh(int domain,const char *meshname) {
    debug3 << "VLSV\t object " << objectNumber << " / " << objectCounter << endl;
    
    // Check that VLSVReader exists:
-   if (vlsv == NULL) {
+   if (vlsvReader == NULL) {
       debug1 << "VLSV\t ERROR: VLSVReader is NULL" << endl;
       EXCEPTION1(InvalidVariableException, meshname);
       return NULL;
@@ -515,7 +515,7 @@ vtkDataSet* avtVlsvFileFormat::GetMesh(int domain,const char *meshname) {
 
    // Read mesh coordinates:
    void* meshOut = NULL;
-   if (reader->second->readMesh(vlsv,metadata->second,domain,meshOut) == false) {
+   if (reader->second->readMesh(vlsvReader,metadata->second,domain,meshOut) == false) {
       debug2 << "VLSV\t ERROR: Mesh reader failed to generate mesh" << endl;
    }
    
@@ -548,7 +548,7 @@ bool avtVlsvFileFormat::PrepareVariable(int domain,const char* varName,
    meshReader = meshReaders.end();
    
    // Check that VLSVReader exists:
-   if (vlsv == NULL) {
+   if (vlsvReader == NULL) {
       debug1 << "VLSV\t ERROR: VLSVReader is NULL" << endl;
       return false;
    }
@@ -639,7 +639,7 @@ vtkDataArray* avtVlsvFileFormat::ReadVariable(int domain,const char* varName) {
       return NULL;
    }
    
-   if (meshReader->second->readVariable(vlsv,metadata->second,*variableMetadata,domain,variablePointer) == false) {
+   if (meshReader->second->readVariable(vlsvReader,metadata->second,*variableMetadata,domain,variablePointer) == false) {
       debug1 << "VLSV\t ERROR: Failed to read variable data" << endl;
       rv->Delete();
       return NULL;
@@ -683,14 +683,14 @@ int avtVlsvFileFormat::GetCycle(void) {
    debug3 << "VLSV\t object " << objectNumber << " / " << objectCounter << endl;
 
    // Check that VLSVReader is not NULL:
-   if (vlsv == NULL) {
+   if (vlsvReader == NULL) {
       debug1 << "VLSV\t ERROR: VLSVReader is NULL." << endl;
       return INVALID_CYCLE;
    }
    
    // Read simulation timestep:
    dataTimestepFound = true;
-   if (vlsv->readParameter("timestep",dataTimestep) == false) {
+   if (vlsvReader->readParameter("timestep",dataTimestep) == false) {
       dataTimestep = INVALID_CYCLE;
       dataTimestepFound = false;
    }
@@ -705,14 +705,14 @@ double avtVlsvFileFormat::GetTime(void) {
    debug3 << "VLSV\t object " << objectNumber << " / " << objectCounter << endl;
 
    // Check that VLSVReader is not NULL:
-   if (vlsv == NULL) {
+   if (vlsvReader == NULL) {
       debug1 << "VLSV\t ERROR: VLSVReader is NULL." << endl;
       return INVALID_TIME;
    }
    
    // Read simulation time:
    dataTimeFound = true;
-   if (vlsv->readParameter("time",dataTime) == false) {
+   if (vlsvReader->readParameter("time",dataTime) == false) {
       dataTime = INVALID_TIME;
       dataTimeFound = false;
    }
@@ -736,13 +736,13 @@ bool avtVlsvFileFormat::readMetadata() {
    metadataRead = false;
 
    // Check that VLSVReader exists:
-   if (vlsv == NULL) {
+   if (vlsvReader == NULL) {
       return false;
    }
    
    // Read mesh names:
    set<string> meshNames;
-   if (vlsv->getUniqueAttributeValues("MESH","name",meshNames) == false) {
+   if (vlsvReader->getUniqueAttributeValues("MESH","name",meshNames) == false) {
       return false;
    }
    
@@ -754,7 +754,7 @@ bool avtVlsvFileFormat::readMetadata() {
       map<string,string> attribsOut;
       list<pair<string,string> > attribsIn;
       attribsIn.push_back(make_pair("name",*it));
-      vlsv->getArrayAttributes("MESH",attribsIn,attribsOut);
+      vlsvReader->getArrayAttributes("MESH",attribsIn,attribsOut);
       if (attribsOut.find("type") == attribsOut.end()) {
 	 debug4 << "VLSV\t skipping it because its type is unspecified" << endl;
 	 continue;
@@ -762,9 +762,9 @@ bool avtVlsvFileFormat::readMetadata() {
       
       // Check if mesh type corresponds to one of types supported by VisIt:
       bool supportedType = true;
-      if (attribsOut["type"] == VLSV::MESH_POINT) {
+      if (attribsOut["type"] == vlsv::mesh::STRING_POINT) {
 	 vlsvplugin::VisitPointMeshMetadata* pointMesh = new vlsvplugin::VisitPointMeshMetadata();
-	 if (pointMesh->read(vlsv,attribsOut) == false) {
+	 if (pointMesh->read(vlsvReader,attribsOut) == false) {
 	    debug2 << "VLSV\t\t Failed to read point mesh metadata" << endl;
 	    delete pointMesh; pointMesh = NULL;
 	 } else {
@@ -782,9 +782,9 @@ bool avtVlsvFileFormat::readMetadata() {
 	       meshMetadata.erase(tmp);
 	    }
 	 }
-      } else if (attribsOut["type"] == VLSV::MESH_QUAD_MULTI) {
+      } else if (attribsOut["type"] == vlsv::mesh::STRING_QUAD_MULTI) {
 	 vlsvplugin::VisitQuadMultiMeshMetadata* multiMesh = new vlsvplugin::VisitQuadMultiMeshMetadata();
-	 if (multiMesh->read(vlsv,attribsOut) == false) {
+	 if (multiMesh->read(vlsvReader,attribsOut) == false) {
 	    debug2 << "VLSV\t\t Failed to read multimesh metadata" << endl;
 	    delete multiMesh; multiMesh = NULL;
 	 } else {
@@ -802,9 +802,9 @@ bool avtVlsvFileFormat::readMetadata() {
 	       meshMetadata.erase(tmp);
 	    }
 	 }
-      } else if (attribsOut["type"] == VLSV::MESH_UCD_MULTI) {
+      } else if (attribsOut["type"] == vlsv::mesh::STRING_UCD_MULTI) {
 	 vlsvplugin::VisitUCDMultiMeshMetadata* multiUCD = new vlsvplugin::VisitUCDMultiMeshMetadata();
-	 if (multiUCD->read(vlsv,attribsOut) == false) {
+	 if (multiUCD->read(vlsvReader,attribsOut) == false) {
 	    debug2 << "VLSV\t\t Failed to read multimesh metadata" << endl;
 	    delete multiUCD; multiUCD = NULL;
 	 } else {

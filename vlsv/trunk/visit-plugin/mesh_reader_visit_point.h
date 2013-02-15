@@ -28,8 +28,8 @@ namespace vlsvplugin {
       VisitPointMeshReader();
       ~VisitPointMeshReader();
       
-      bool readMesh(VLSVReader* vlsv,MeshMetadata* md,int domain,void*& output);
-      bool readVariable(VLSVReader* vlsv,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output);
+      bool readMesh(vlsv::Reader* vlsvReader,MeshMetadata* md,int domain,void*& output);
+      bool readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output);
       
     protected:
 	      

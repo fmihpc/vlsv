@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011, 2012 Finnish Meteorological Institute
+ *  Copyright 2011-2013 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <mpi.h>
 
-namespace VLSV {
+namespace vlsv {
    /** Definition of a parallel file I/O unit. Processes can 
     * define zero or more file action units for a collective file I/O
     * operation in VLSVWriter and VLSVParReader. Those classes will then 

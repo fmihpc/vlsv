@@ -50,12 +50,12 @@ namespace vlsvplugin {
       delete [] crds_node_z; crds_node_z = NULL;
    }
    
-   bool VisitUCDMultiMeshReader::readMesh(VLSVReader* vlsv,MeshMetadata* md,int domain,void*& output) {
+   bool VisitUCDMultiMeshReader::readMesh(vlsv::Reader* vlsvReader,MeshMetadata* md,int domain,void*& output) {
       debug2 << "VLSV\t VisitUCDMultiMeshReader::readMesh called, domain: " << domain << endl;
       output = NULL;
       
       // Check that VLSVReader exists:
-      if (vlsv == NULL) {
+      if (vlsvReader == NULL) {
 	 debug2 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
 	 return false;
       }
@@ -83,7 +83,7 @@ namespace vlsvplugin {
       const uint64_t* domainOffsets = NULL;
       const uint64_t* ghostOffsets  = NULL;
       const uint64_t* variableOffsets = NULL;
-      if (metadata->getDomainInfo(vlsv,domain,domainOffsets,ghostOffsets,variableOffsets) == false) {
+      if (metadata->getDomainInfo(vlsvReader,domain,domainOffsets,ghostOffsets,variableOffsets) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
 	 return false;
       }
@@ -110,14 +110,14 @@ namespace vlsvplugin {
       uint64_t* blockGIDs = NULL;
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("name",metadata->getName()));
-      if (vlsv->read("MESH",attribs,domainOffsets[domain],domainOffsets[domain+1]-domainOffsets[domain],blockGIDs) == false) {
+      if (vlsvReader->read("MESH",attribs,domainOffsets[domain],domainOffsets[domain+1]-domainOffsets[domain],blockGIDs) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read block global indices" << endl;
 	 delete [] blockGIDs; blockGIDs = NULL;
 	 return false;
       }
 
       // Read bounding box nodes' (x,y,z) coordinate arrays:
-      if (readNodeCoordinateArrays(vlsv,metadata->getName()) == false) {
+      if (readNodeCoordinateArrays(vlsvReader,metadata->getName()) == false) {
 	 return false;
       }
       
@@ -168,25 +168,49 @@ namespace vlsvplugin {
       coordinates->SetNumberOfPoints(N_uniqueNodes);
       float* pointer = reinterpret_cast<float*>(coordinates->GetVoidPointer(0));
 
+      switch (metadata->getMeshGeometry()) {
+       case vlsv::geometry::CARTESIAN:
+	 // Cartesian geometry, no coordinate transformation:
+	 for (unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator
+	      it=nodeIndices.begin(); it!=nodeIndices.end(); ++it) {
+	    const vtkIdType position = it->second;
+	    pointer[3*position+0] = crds_node_x[it->first.i];
+	    pointer[3*position+1] = crds_node_y[it->first.j];
+	    pointer[3*position+2] = crds_node_z[it->first.k];
+	 }
+	 break;
+       case vlsv::geometry::CYLINDRICAL:
+	 // Cylindrical geometry, x' = r cos(phi) y' = r sin(phi) z' = z
+	 for (unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator
+	      it=nodeIndices.begin(); it!=nodeIndices.end(); ++it) {
+	    const float R   = crds_node_x[it->first.i];
+	    const float PHI = crds_node_y[it->first.j];
+	    const float Z   = crds_node_z[it->first.k];
+	    
+	    const vtkIdType position = it->second;
+	    pointer[3*position+0] = R*cos(PHI);
+	    pointer[3*position+1] = R*sin(PHI);
+	    pointer[3*position+2] = Z;
+	 }
+	 break;
+       case vlsv::geometry::SPHERICAL:
+	 for (unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator
+	      it=nodeIndices.begin(); it!=nodeIndices.end(); ++it) {
+	    const float R     = crds_node_x[it->first.i];
+	    const float THETA = crds_node_y[it->first.j];
+	    const float PHI   = crds_node_z[it->first.k];
+	    
+	    const vtkIdType position = it->second;
+	    pointer[3*position+0] = R*sin(THETA)*cos(PHI);
+	    pointer[3*position+1] = R*sin(THETA)*sin(PHI);
+	    pointer[3*position+2] = R*cos(THETA);
+	 }
+	 break;
+       default:
+	 return false;
+	 break;
+      }
       /*
-      for (unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator
-	   it=nodeIndices.begin(); it!=nodeIndices.end(); ++it) {
-	 const vtkIdType position = it->second;
-	 
-	 debug5 << "VLSV\t\t Vertex " << position;
-	 debug5 << " indices: ";
-	 debug5 << it->first.i << ' ' << it->first.j << ' ' << it->first.k;
-	 debug5 << " crds: ";
-	 debug5 << crds_node_x[it->first.i] << ' ';
-	 debug5 << crds_node_y[it->first.j] << ' ';
-	 debug5 << crds_node_z[it->first.k] << ' ';
-	 debug5 << endl;
-	 
-	 pointer[3*position+0] = crds_node_x[it->first.i];
-	 pointer[3*position+1] = crds_node_y[it->first.j];
-	 pointer[3*position+2] = crds_node_z[it->first.k];
-      }*/
-      
       const string& geometry = metadata->getMeshGeometry();
       if (geometry == VLSV::GEOM_CARTESIAN) {
 	 // Cartesian geometry, no coordinate transformation:
@@ -226,7 +250,7 @@ namespace vlsvplugin {
 	    pointer[3*position+1] = R*sin(THETA)*sin(PHI);
 	    pointer[3*position+2] = R*cos(THETA);
 	 }
-      }
+      }*/
       
       // Create vtkUnstructuredGrid:
       vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
@@ -286,7 +310,7 @@ namespace vlsvplugin {
       return true;
    }
 
-   bool VisitUCDMultiMeshReader::readNodeCoordinateArrays(VLSVReader* vlsv,const std::string& meshName) {
+   bool VisitUCDMultiMeshReader::readNodeCoordinateArrays(vlsv::Reader* vlsvReader,const std::string& meshName) {
       // Check if coordinate arrays are already cached:
       if (nodeCoordinateArraysRead == true) return nodeCoordinateArraysRead;
       
@@ -302,15 +326,15 @@ namespace vlsvplugin {
       
       
       // Read node coordinate arrays:
-      if (vlsv->read("MESH_NODE_CRDS_X",attribs,0,N_nodes_x,crds_node_x) == false) {
+      if (vlsvReader->read("MESH_NODE_CRDS_X",attribs,0,N_nodes_x,crds_node_x) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read node x-coordinate array" << endl;
 	 nodeCoordinateArraysRead = false;
       }
-      if (vlsv->read("MESH_NODE_CRDS_Y",attribs,0,N_nodes_y,crds_node_y) == false) {
+      if (vlsvReader->read("MESH_NODE_CRDS_Y",attribs,0,N_nodes_y,crds_node_y) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read node y-coordinate array" << endl;
 	 nodeCoordinateArraysRead = false;
       }
-      if (vlsv->read("MESH_NODE_CRDS_Z",attribs,0,N_nodes_z,crds_node_z) == false) {
+      if (vlsvReader->read("MESH_NODE_CRDS_Z",attribs,0,N_nodes_z,crds_node_z) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read node z-coordinate array" << endl;
 	 nodeCoordinateArraysRead = false;
       }
@@ -325,7 +349,7 @@ namespace vlsvplugin {
       return nodeCoordinateArraysRead;
    }
    
-   bool VisitUCDMultiMeshReader::readVariable(VLSVReader* vlsv,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) {
+   bool VisitUCDMultiMeshReader::readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) {
    
       return false;
    }

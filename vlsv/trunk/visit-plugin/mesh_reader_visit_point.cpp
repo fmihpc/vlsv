@@ -37,12 +37,12 @@ namespace vlsvplugin {
    
    VisitPointMeshReader::~VisitPointMeshReader() { }
    
-   bool VisitPointMeshReader::readMesh(VLSVReader* vlsv,MeshMetadata* md,int domain,void*& output) {
+   bool VisitPointMeshReader::readMesh(vlsv::Reader* vlsvReader,MeshMetadata* md,int domain,void*& output) {
       debug2 << "VLSV\t VisitPointMeshReader::read called" << endl;
       output = NULL;
       
       // Check that VLSVReader exists:
-      if (vlsv == NULL) {
+      if (vlsvReader == NULL) {
 	 debug2 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
 	 return false;
       }
@@ -59,18 +59,7 @@ namespace vlsvplugin {
 	 debug2 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitPointMeshMedata" << endl;
 	 return false;
       }
-      /*
-      // Read point mesh XML tag:      
-      uint64_t arraySize,vectorSize,dataSize;
-      VLSV::datatype datatype;
-      
-      list<pair<string,string> > attribs;
-      attribs.push_back(make_pair("name",metadata->getName()));
-      if (vlsv->getArrayInfo("MESH",attribs,arraySize,vectorSize,datatype,dataSize) == false) {
-	 debug2 << "VLSV\t\t ERROR: VLSVReader failed to read array info." << endl;
-	 return false;
-      }
-      */
+
       debug4 << "VLSV\t\t arraysize:  " << metadata->getArraySize() << endl;
       debug4 << "VLSV\t\t vectorsize: " << metadata->getVectorSize() << endl;
       debug4 << "VLSV\t\t datasize:   " << metadata->getDataSize() << endl;
@@ -95,7 +84,7 @@ namespace vlsvplugin {
       
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("name",metadata->getName()));
-      if (vlsv->readArray("MESH",attribs,readOffset,N_points,ptr) == false) {
+      if (vlsvReader->readArray("MESH",attribs,readOffset,N_points,ptr) == false) {
 	 debug2 << "VLSV\t\t ERROR: VLSVReader failed to read array" << endl;
 	 points->Delete();
 	 return false;
@@ -115,7 +104,7 @@ namespace vlsvplugin {
       return true;
    }
 
-   bool VisitPointMeshReader::readVariable(VLSVReader* vlsv,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) {
+   bool VisitPointMeshReader::readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) {
       output = NULL;
       return false;
    }

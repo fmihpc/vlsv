@@ -1,4 +1,18 @@
 *************************************
+***** CHANGES IN REVISION 00401 *****
+*************************************
+
+MINOR
+
+Changed namespace VLSV to vlsv to be in line with coding style used
+elsewhere. Also changed couple classnames.
+
+Mesh types, datatypes, and coordinate systems are now inside nested
+namespaces. This prevented some name clashes.
+
+Abovementioned changes had to be made in plugin as well.
+
+*************************************
 ***** CHANGES IN REVISION 00386 *****
 *************************************
 
