@@ -130,7 +130,8 @@ namespace vlsvplugin {
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
 
       // NOTE: only inserts inner blocks, not ghosts:
-      for (uint64_t block=0; block<N_blocks; ++block) {
+      for (uint64_t block=0; block<N_totalBlocks; ++block) {
+      //for (uint64_t block=0; block<N_blocks; ++block) {
 	 // Calculate block's (i,j,k) indices in the mesh bounding box:
 	 uint64_t i_block = blockGIDs[block];
 	 uint64_t k_block = i_block / (bbox[1]*bbox[0]);
@@ -210,60 +211,20 @@ namespace vlsvplugin {
 	 return false;
 	 break;
       }
-      /*
-      const string& geometry = metadata->getMeshGeometry();
-      if (geometry == VLSV::GEOM_CARTESIAN) {
-	 // Cartesian geometry, no coordinate transformation:
-	 for (unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator
-	      it=nodeIndices.begin(); it!=nodeIndices.end(); ++it) {
-	    const vtkIdType position = it->second;
-	    pointer[3*position+0] = crds_node_x[it->first.i];
-	    pointer[3*position+1] = crds_node_y[it->first.j];
-	    pointer[3*position+2] = crds_node_z[it->first.k];
-	 }
-      } else if (geometry == VLSV::GEOM_CYLINDRICAL) {
-	 // Cylindrical geometry, x' = r cos(phi) y' = r sin(phi) z' = z
-	 for (unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator
-	      it=nodeIndices.begin(); it!=nodeIndices.end(); ++it) {
-	    const float R   = crds_node_x[it->first.i];
-	    const float PHI = crds_node_y[it->first.j];
-	    const float Z   = crds_node_z[it->first.k];
-	    
-	    const vtkIdType position = it->second;
-	    pointer[3*position+0] = R*cos(PHI);
-	    pointer[3*position+1] = R*sin(PHI);
-	    pointer[3*position+2] = Z;
-	    
-	    //debug5 << "VLSV\t\t (R,PHI,Z): " << R << ' ' << PHI << ' ' << Z << "\t (x,y,z): ";
-	    //debug5 << pointer[3*position+0] << ' ' << pointer[3*position+1] << ' ' << pointer[3*position+2] << endl;
-	 }
-      } else if (geometry == VLSV::GEOM_SPHERICAL) {
-	 // Spherical geometry, x' = R sin(theta) cos(phi) y' = R sin(theta) sin(phi) z' = R cos(theta)
-	 for (unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator
-	      it=nodeIndices.begin(); it!=nodeIndices.end(); ++it) {
-	    const float R     = crds_node_x[it->first.i];
-	    const float THETA = crds_node_y[it->first.j];
-	    const float PHI   = crds_node_z[it->first.k];
-	    
-	    const vtkIdType position = it->second;
-	    pointer[3*position+0] = R*sin(THETA)*cos(PHI);
-	    pointer[3*position+1] = R*sin(THETA)*sin(PHI);
-	    pointer[3*position+2] = R*cos(THETA);
-	 }
-      }*/
       
       // Create vtkUnstructuredGrid:
       vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
       ugrid->SetPoints(coordinates);
       coordinates->Delete();
-      ugrid->Allocate(N_blocks*blockSize); // FIXME (N_blocks)
+      ugrid->Allocate(N_totalBlocks*blockSize);
 
       // Add all cells' connectivity information to vtkUnstructuredGrid:
       const int cellType = VTK_HEXAHEDRON;
       vtkIdType vertices[8];
       unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator nodeIt;
       debug5 << "VLSV\t\t Inserting cells to unstructured mesh:" << endl;
-      for (uint64_t block=0; block<N_blocks; ++block) { // FIXME (N_blocks)
+      for (uint64_t block=0; block<N_totalBlocks; ++block) {
+      //for (uint64_t block=0; block<N_blocks; ++block) { // FIXME (N_blocks)
 	 // Calculate block's (i,j,k) indices in the mesh bounding box:
 	 uint64_t i_block = blockGIDs[block];
 	 uint64_t k_block = i_block / (bbox[1]*bbox[0]);
@@ -305,6 +266,23 @@ namespace vlsvplugin {
 	 }
       }
       delete [] blockGIDs; blockGIDs = NULL;
+
+      // Determine correct values for real and ghost (internal to problem) zones:
+      unsigned char cellIsReal = 0;
+      unsigned char cellIsGhost = 0;
+      avtGhostData::AddGhostZoneType(cellIsGhost,DUPLICATED_ZONE_INTERNAL_TO_PROBLEM);
+      
+      // Create an array that flags each zone either as real or internal ghost:
+      vtkUnsignedCharArray* ghostZones = vtkUnsignedCharArray::New();
+      ghostZones->SetName("avtGhostZones");
+      ghostZones->Allocate(N_totalBlocks*blockSize);
+      for (uint64_t i=0; i<N_blocks*blockSize; ++i) ghostZones->InsertNextValue(cellIsReal);
+      for (uint64_t i=N_blocks*blockSize; i<N_totalBlocks*blockSize; ++i) ghostZones->InsertNextValue(cellIsGhost);
+
+      // Copy ghost cell information to vtkUnstructuredGrid:
+      ugrid->GetCellData()->AddArray(ghostZones);
+      ugrid->SetUpdateGhostLevel(0);
+      ghostZones->Delete();
 
       output = ugrid;
       return true;
@@ -350,8 +328,97 @@ namespace vlsvplugin {
    }
    
    bool VisitUCDMultiMeshReader::readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) {
-   
-      return false;
+      debug2 << "VLSV\t VisitUCDMultiMeshReader::readVariable called, domain: " << domain << endl;
+      if (output == NULL) {
+	 debug3 << "VLSV\t ERROR: Output array is NULL" << endl;
+	 return false;
+      }
+      
+      // Check that VLSVReader exists:
+      if (vlsvReader == NULL) {
+	 debug3 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
+	 return false;
+      }
+                
+      // Check that metadata is not NULL:
+      if (md == NULL) {
+	 debug3 << "VLSV\t\t ERROR: MeshMetadata object is NULL" << endl;
+	 return false;
+      }
+       
+      // Check that given mesh metadata is of correct type: FIXME
+      VisitUCDMultiMeshMetadata* const metadata = dynamic_cast<VisitUCDMultiMeshMetadata*>(md);
+      if (typeid(*md) != typeid(*metadata)) {
+	 debug3 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitUCDMultiMeshMedata" << endl;
+	 return false;
+      }
+      
+      // Get mesh bounding box:
+      const uint64_t* bbox = metadata->getMeshBoundingBox();
+      if (bbox == NULL) {
+	 debug3 << "VLSV\t\t ERROR: Mesh bounding box array is NULL" << endl;
+	 return false;
+      }
+      const uint64_t blockSize = bbox[3]*bbox[4]*bbox[5];
+      
+      // Get domain offset arrays:
+      const uint64_t* blockOffsets = NULL;
+      const uint64_t* ghostOffsets  = NULL;
+      const uint64_t* variableOffsets = NULL;
+      if (metadata->getDomainInfo(vlsvReader,domain,blockOffsets,ghostOffsets,variableOffsets) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
+	 return false;
+      }
+      const uint64_t N_totalBlocks = blockOffsets[domain+1] - blockOffsets[domain];
+      const uint64_t N_ghosts      = ghostOffsets[domain+1] - ghostOffsets[domain];
+      const uint64_t N_blocks      = N_totalBlocks - N_ghosts;
+      const uint64_t components    = vmd.vectorSize;
+      
+      // Read variable values from domain's real cells:
+      list<pair<string,string> > attribs;
+      attribs.push_back(make_pair("name",vmd.name));
+      attribs.push_back(make_pair("mesh",md->getName()));
+      if (vlsvReader->read("VARIABLE",attribs,variableOffsets[domain]*blockSize,N_blocks*blockSize,output,false) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to read domain's real cell variable data" << endl;
+	 return false;
+      }
+      
+      // Read array that tell which domains contain ghost block data:
+      list<pair<string,string> > meshAttribs;
+      meshAttribs.push_back(make_pair("mesh",md->getName()));
+      uint64_t* ghostDomains = NULL;
+      if (vlsvReader->read("MESH_GHOST_DOMAINS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostDomains,true) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_DOMAINS array" << endl;
+	 delete [] ghostDomains; ghostDomains = NULL;
+	 return false;
+      }
+      
+      // Read array that tells local IDs of ghost cell data in each domain:
+      uint64_t* ghostLocalIDs = NULL;
+      if (vlsvReader->read("MESH_GHOST_LOCALIDS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostLocalIDs,true) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_LOCALIDS array" << endl;
+	 delete [] ghostDomains; ghostDomains = NULL;
+	 delete [] ghostLocalIDs; ghostLocalIDs = NULL;
+	 return false;
+      }
+      
+      // Read variable values for domain's ghost cells:
+      bool success = true;
+      float* ptr = output + N_blocks*blockSize*components;
+      for (uint64_t i=0; i<N_ghosts; ++i) {
+	 const uint64_t ghostDomainID    = ghostDomains[i];
+	 const uint64_t ghostValueOffset = (variableOffsets[ghostDomainID] + ghostLocalIDs[i])*blockSize;
+	 if (vlsvReader->read("VARIABLE",attribs,ghostValueOffset,blockSize,ptr,false) == false) {
+	    debug2 << "VLSV\t\t ERROR: Failed to read domain's ghost values" << endl;
+	    success = false;
+	    break;
+	 }
+	 ptr += blockSize*components;
+      }
+      
+      delete [] ghostDomains; ghostDomains = NULL;
+      delete [] ghostLocalIDs; ghostLocalIDs = NULL;
+      return true;
    }
       
 } // namespace vlsvplugin

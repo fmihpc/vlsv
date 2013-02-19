@@ -68,6 +68,8 @@ namespace vlsvplugin {
       variableOffsets = this->variableOffsets;
       return true;
    }
+
+   uint64_t VisitUCDMultiMeshMetadata::getBlockSize() const {return blockSize;}
    
    const uint64_t* VisitUCDMultiMeshMetadata::getDomainOffsets() {return domainOffsets;}
    
@@ -78,7 +80,7 @@ namespace vlsvplugin {
    const vlsv::geometry::type& VisitUCDMultiMeshMetadata::getMeshGeometry() const {return geometry;}
    
    uint64_t VisitUCDMultiMeshMetadata::getNumberOfGhostCells(int domain) const {
-      return ghostOffsets[domain+1]-ghostOffsets[domain];
+      return blockSize*(ghostOffsets[domain+1]-ghostOffsets[domain]);
    }
    
    uint64_t VisitUCDMultiMeshMetadata::getNumberOfRealCells(int domain) const {
@@ -86,7 +88,7 @@ namespace vlsvplugin {
    }
    
    uint64_t VisitUCDMultiMeshMetadata::getNumberOfTotalCells(int domain) const {
-      return domainOffsets[domain+1]-domainOffsets[domain];
+      return blockSize*(domainOffsets[domain+1]-domainOffsets[domain]);
    }
    
    const uint64_t* VisitUCDMultiMeshMetadata::getVariableOffsets() {return variableOffsets;}
@@ -127,16 +129,8 @@ namespace vlsvplugin {
       else {
 	 geometry = vlsv::getMeshGeometry(it->second);
 	 if (geometry == vlsv::geometry::UNKNOWN) geometry = vlsv::geometry::CARTESIAN;
-	 /*
-	 if (it->second == vlsv::GEOM_CARTESIAN) geometry = vlsv::geometry::CARTESIAN;
-	 else if (it->second == VLSV::GEOM_CYLINDRICAL) geometry = vlsv::geometry::GEOM_CYLINDRICAL;
-	 else if (it->second == VLSV::GEOM_SPHERICAL) geometry = vlsv::geometry::GEOM_SPHERICAL;
-	 else {
-	    geometry = VLSV::GEOM_SPHERICAL;
-	    debug3 << "VLSV\t\t WARNING: Unknown mesh geometry, using Cartesian." << endl;
-	 }*/
       }
-      
+
       // Read XML tag 'MESH_ZONES' to figure out how many domains the mesh has:
       map<string,string> attribsOut;
       list<pair<string,string> > attribsIn;
@@ -226,6 +220,7 @@ namespace vlsvplugin {
 	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
 	 return false;
       }
+      blockSize = meshBoundingBox[3]*meshBoundingBox[4]*meshBoundingBox[5];
       debug4 << "VLSV\t\t Mesh size in blocks: " << meshBoundingBox[0] << ' ' << meshBoundingBox[1] << ' ' << meshBoundingBox[2];
       debug4 << " block sizes: " << meshBoundingBox[3] << ' ' << meshBoundingBox[4] << ' ' << meshBoundingBox[5] << endl;
       
