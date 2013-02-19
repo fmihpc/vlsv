@@ -32,6 +32,7 @@
 #include <vtkUnsignedCharArray.h>
 #include <vtkPoints.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkFloatArray.h>
 
 using namespace std;
 
@@ -327,12 +328,9 @@ namespace vlsvplugin {
       return nodeCoordinateArraysRead;
    }
    
-   bool VisitUCDMultiMeshReader::readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) {
+   bool VisitUCDMultiMeshReader::readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output) {
       debug2 << "VLSV\t VisitUCDMultiMeshReader::readVariable called, domain: " << domain << endl;
-      if (output == NULL) {
-	 debug3 << "VLSV\t ERROR: Output array is NULL" << endl;
-	 return false;
-      }
+      output = NULL;
       
       // Check that VLSVReader exists:
       if (vlsvReader == NULL) {
@@ -373,14 +371,21 @@ namespace vlsvplugin {
       const uint64_t N_ghosts      = ghostOffsets[domain+1] - ghostOffsets[domain];
       const uint64_t N_blocks      = N_totalBlocks - N_ghosts;
       const uint64_t components    = vmd.vectorSize;
+
+      // Create vtkDataArray for variable data:
+      bool success = true;
+      vtkFloatArray* rv = vtkFloatArray::New();
+      rv->SetNumberOfComponents(vmd.vectorSize);
+      rv->SetNumberOfTuples(N_totalBlocks*blockSize);
+      float* variableData = rv->GetPointer(0);
       
       // Read variable values from domain's real cells:
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("name",vmd.name));
       attribs.push_back(make_pair("mesh",md->getName()));
-      if (vlsvReader->read("VARIABLE",attribs,variableOffsets[domain]*blockSize,N_blocks*blockSize,output,false) == false) {
+      if (vlsvReader->read("VARIABLE",attribs,variableOffsets[domain]*blockSize,N_blocks*blockSize,variableData,false) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read domain's real cell variable data" << endl;
-	 return false;
+	 success = false;
       }
       
       // Read array that tell which domains contain ghost block data:
@@ -390,7 +395,7 @@ namespace vlsvplugin {
       if (vlsvReader->read("MESH_GHOST_DOMAINS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostDomains,true) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_DOMAINS array" << endl;
 	 delete [] ghostDomains; ghostDomains = NULL;
-	 return false;
+	 success = false;
       }
       
       // Read array that tells local IDs of ghost cell data in each domain:
@@ -399,26 +404,35 @@ namespace vlsvplugin {
 	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_LOCALIDS array" << endl;
 	 delete [] ghostDomains; ghostDomains = NULL;
 	 delete [] ghostLocalIDs; ghostLocalIDs = NULL;
-	 return false;
+	 success = false;
       }
       
       // Read variable values for domain's ghost cells:
-      bool success = true;
-      float* ptr = output + N_blocks*blockSize*components;
-      for (uint64_t i=0; i<N_ghosts; ++i) {
-	 const uint64_t ghostDomainID    = ghostDomains[i];
-	 const uint64_t ghostValueOffset = (variableOffsets[ghostDomainID] + ghostLocalIDs[i])*blockSize;
-	 if (vlsvReader->read("VARIABLE",attribs,ghostValueOffset,blockSize,ptr,false) == false) {
-	    debug2 << "VLSV\t\t ERROR: Failed to read domain's ghost values" << endl;
-	    success = false;
-	    break;
+      if (success == true) {
+	 float* ptr = variableData + N_blocks*blockSize*components;
+	 for (uint64_t i=0; i<N_ghosts; ++i) {
+	    const uint64_t ghostDomainID    = ghostDomains[i];
+	    const uint64_t ghostValueOffset = (variableOffsets[ghostDomainID] + ghostLocalIDs[i])*blockSize;
+	    if (vlsvReader->read("VARIABLE",attribs,ghostValueOffset,blockSize,ptr,false) == false) {
+	       debug2 << "VLSV\t\t ERROR: Failed to read domain's ghost values" << endl;
+	       success = false;
+	       break;
+	    }
+	    ptr += blockSize*components;
 	 }
-	 ptr += blockSize*components;
       }
       
       delete [] ghostDomains; ghostDomains = NULL;
       delete [] ghostLocalIDs; ghostLocalIDs = NULL;
-      return true;
+      
+      if (success == false) {
+	 rv->Delete();
+	 output = NULL;
+	 return false;
+      } else {
+	 output = rv;
+	 return true;
+      }
    }
       
 } // namespace vlsvplugin

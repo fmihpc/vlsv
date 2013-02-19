@@ -621,31 +621,13 @@ vtkDataArray* avtVlsvFileFormat::ReadVariable(int domain,const char* varName) {
       EXCEPTION1(InvalidVariableException, varName);
       return NULL;
    }
-   
-   // Get number of tuples (=total number of cells) in this domain, 
-   // and number of components in output vector (1 for scalars, 2 or 3 
-   // for vectors, 9 for tensors):
-   const int N_tuples = metadata->second->getNumberOfTotalCells(domain);
-   const int N_components = variableMetadata->vectorSize;
-   
-   // Create vtkFloatArray and read variable values to it:
-   vtkFloatArray* rv = vtkFloatArray::New();
-   rv->SetNumberOfComponents(N_components);
-   rv->SetNumberOfTuples(N_tuples);
-   float* variablePointer = rv->GetPointer(0);
-   if (variablePointer == NULL) {
-      debug4 << "VLSV\t ERROR: vtkFloatArray returned NULL pointer" << endl;
-      rv->Delete();
-      return NULL;
-   }
-   
-   if (meshReader->second->readVariable(vlsvReader,metadata->second,*variableMetadata,domain,variablePointer) == false) {
+
+   void* variableOut = NULL;
+   if (meshReader->second->readVariable(vlsvReader,metadata->second,*variableMetadata,domain,variableOut) == false) {
       debug1 << "VLSV\t ERROR: Failed to read variable data" << endl;
-      rv->Delete();
-      return NULL;
    }
    
-   return rv;
+   return reinterpret_cast<vtkDataArray*>(variableOut);
 }
 
 vtkDataArray* avtVlsvFileFormat::GetVar(int domain,const char* varname) {
