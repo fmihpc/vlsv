@@ -29,7 +29,7 @@ namespace vlsvplugin {
       virtual ~VisitUCDMultiMeshReader();
       
       virtual bool readMesh(vlsv::Reader* vlsvReader,MeshMetadata* md,int domain,void*& output);
-      virtual bool readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output);
+      virtual bool readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output);
       
     protected:
       float* crds_node_x;

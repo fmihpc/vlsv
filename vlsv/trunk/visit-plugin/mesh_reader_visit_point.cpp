@@ -104,7 +104,7 @@ namespace vlsvplugin {
       return true;
    }
 
-   bool VisitPointMeshReader::readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,float*& output) {
+   bool VisitPointMeshReader::readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output) {
       output = NULL;
       return false;
    }
