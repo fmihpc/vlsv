@@ -627,7 +627,7 @@ vtkDataArray* avtVlsvFileFormat::ReadVariable(int domain,const char* varName) {
    // for vectors, 9 for tensors):
    const int N_tuples = metadata->second->getNumberOfTotalCells(domain);
    const int N_components = variableMetadata->vectorSize;
-
+   
    // Create vtkFloatArray and read variable values to it:
    vtkFloatArray* rv = vtkFloatArray::New();
    rv->SetNumberOfComponents(N_components);

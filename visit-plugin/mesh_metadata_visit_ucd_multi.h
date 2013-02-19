@@ -30,6 +30,7 @@ namespace vlsvplugin {
       VisitUCDMultiMeshMetadata();
       virtual ~VisitUCDMultiMeshMetadata();
       
+      uint64_t getBlockSize() const;
       bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 			 const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
       const uint64_t* getDomainOffsets();
@@ -49,6 +50,7 @@ namespace vlsvplugin {
       bool meshMetadataRead;          /**< If true, mesh metadata has been read.*/
       
       vlsv::geometry::type geometry;  /**< Mesh geometry (Cartesian, Cylindrical, etc.).*/
+      uint64_t blockSize;
       uint64_t* domainOffsets;
       uint64_t* ghostOffsets;
       uint64_t* variableOffsets;
