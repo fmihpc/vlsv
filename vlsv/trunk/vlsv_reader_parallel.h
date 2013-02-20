@@ -57,6 +57,7 @@ namespace vlsv {
       int masterRank;                 /**< MPI rank of master process.*/
       bool multireadStarted;          /**< If true, multiread mode has been initialized successfully.*/
       int myRank;                     /**< MPI rank of this process in communicator comm.*/
+      bool parallelFileOpen;          /**< If true, all processes have opened input file successfully.*/
       int processes;                  /**< Number of MPI processes in communicator comm.*/
    
       bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);

@@ -36,8 +36,10 @@ namespace vlsv {
 
    bool ParallelReader::close() {
       multireadStarted = false;
-      if (fileOpen == false) return true;
-      MPI_File_close(&filePtr);
+      if (parallelFileOpen == true) {
+	 MPI_File_close(&filePtr);
+	 parallelFileOpen = false;
+      }
    
       if (myRank == masterRank) filein.close();
       return true;
@@ -241,7 +243,7 @@ namespace vlsv {
     * @see multiReadAddUnit.
     * @see multiReadEnd.*/
    bool ParallelReader::multiReadStart(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {
-      if (fileOpen == false) return false;
+      if (parallelFileOpen == false) return false;
       bool success = true;
       multiReadUnits.clear();
       if (getArrayInfo(tagName,attribs) == false) return false;
@@ -268,13 +270,17 @@ namespace vlsv {
       fileName = fname;
       int accessMode = MPI_MODE_RDONLY;
       if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&filePtr) != MPI_SUCCESS) success = false;
-      else fileOpen = true;
+      else parallelFileOpen = true;
+      
+      if (success == false) cerr << "Failed to open parallel file" << endl;
       
       // Only master process reads file footer and endianness. This is done using 
       // VLSVReader open() member function:
       if (myRank == masterRank) {
-	 Reader::open(fname);
+	 if (Reader::open(fname) == false) success = false;
       }
+      
+      if (success == false) cerr << "MASTER failed to open VLSV file" << endl;
    
       // Check that all processes have opened the file successfully:
       unsigned char globalSuccess = 0;
@@ -311,7 +317,7 @@ namespace vlsv {
     * @return If true, this process read its data successfully.*/
    bool ParallelReader::readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
 				  const uint64_t& begin,const uint64_t& amount,char* buffer) {
-      if (fileOpen == false) return false;
+      if (parallelFileOpen == false) return false;
       bool success = true;
    
       // Fetch array info to all processes:

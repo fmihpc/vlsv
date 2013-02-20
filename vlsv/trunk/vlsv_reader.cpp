@@ -40,6 +40,7 @@ namespace vlsv {
    bool Reader::close() {
       filein.close();
       xmlReader.clear();
+      fileOpen = false;
       return true;
    }
 
