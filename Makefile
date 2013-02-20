@@ -35,7 +35,7 @@ DEPS_MUXML = muxml.h muxml.cpp
 DEPS_VLSVCOMMON = vlsv_common.h vlsv_common.cpp
 DEPS_VLSVCOMMON_MPI = ${DEPS_VLSVCOMMON} vlsv_common_mpi.h vlsv_common_mpi.cpp
 DEPS_READER = ${DEPS_VLSVCOMMON} vlsv_reader.h vlsv_reader.cpp
-DEPR_PARAREADER = ${DEPS_READER} vlsv_reader_parallel.h vlsv_reader_parallel.cpp
+DEPS_PARAREADER = ${DEPS_READER} vlsv_reader_parallel.h vlsv_reader_parallel.cpp
 DEPS_WRITER = ${DEPS_VLSVCOMMON} vlsv_writer.h vlsv_writer.cpp
 DEPS_VLSV2SILO = vlsv_reader.o muxml.o vlsv_common.o vlsv2silo.cpp
 
