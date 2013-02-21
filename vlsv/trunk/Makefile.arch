@@ -1,0 +1,25 @@
+##############################################
+###         ARCHITECTURE-DEPENDENT         ###
+### MAKEFILE FOR VLSV PARALLEL FILE FORMAT ###
+###                                        ###
+###    Make a copy of this file and edit   ###
+###     include and library paths below    ###
+##############################################
+
+# Compiler and its flags. Leave FLAGS empty, it is 
+# intended to be used to override the options given here.
+# For example,
+# make "FLAGS=-O0 -g" "ARCH=arch"
+# would re-set optimization level to 0 and define debugging flag -g.
+
+# Name of MPI compiler and its flags:
+CMP = mpic++
+CXXFLAGS = -O3 -std=c++0x -Wall
+FLAGS =
+
+# Name of archiver:
+AR = ar
+
+# SILO include and library paths:
+INC_SILO=-I<path to SILO include dir>
+LIB_SILO=-L<path to SILO library dir> -lsilo
