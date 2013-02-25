@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011, 2012 Finnish Meteorological Institute
+ *  Copyright 2011-2013 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -37,17 +37,17 @@ template<typename T> inline MPI_Datatype MPI_Type() {
 template<> inline MPI_Datatype MPI_Type<char>() {return MPI_CHAR;}
 
 // Signed integer types
-template<> inline MPI_Datatype MPI_Type<int8_t>() {return MPI_CHAR;}
-template<> inline MPI_Datatype MPI_Type<int16_t>() {return MPI_SHORT;}
-template<> inline MPI_Datatype MPI_Type<int32_t>() {return MPI_INT;}
-template<> inline MPI_Datatype MPI_Type<int64_t>() {return MPI_LONG;}
+template<> inline MPI_Datatype MPI_Type<signed char>() {return MPI_CHAR;}
+template<> inline MPI_Datatype MPI_Type<short>() {return MPI_SHORT;}
+template<> inline MPI_Datatype MPI_Type<int>() {return MPI_INT;}
+template<> inline MPI_Datatype MPI_Type<long int>() {return MPI_LONG;}
 template<> inline MPI_Datatype MPI_Type<long long int>() {return MPI_LONG_LONG;}
 
 // Unsigned integer types
-template<> inline MPI_Datatype MPI_Type<uint8_t>() {return MPI_UNSIGNED_CHAR;}
-template<> inline MPI_Datatype MPI_Type<uint16_t>() {return MPI_UNSIGNED_SHORT;}
-template<> inline MPI_Datatype MPI_Type<uint32_t>() {return MPI_UNSIGNED;}
-template<> inline MPI_Datatype MPI_Type<uint64_t>() {return MPI_UNSIGNED_LONG;}
+template<> inline MPI_Datatype MPI_Type<unsigned char>() {return MPI_UNSIGNED_CHAR;}
+template<> inline MPI_Datatype MPI_Type<unsigned short>() {return MPI_UNSIGNED_SHORT;}
+template<> inline MPI_Datatype MPI_Type<unsigned int>() {return MPI_UNSIGNED;}
+template<> inline MPI_Datatype MPI_Type<unsigned long int>() {return MPI_UNSIGNED_LONG;}
 template<> inline MPI_Datatype MPI_Type<unsigned long long int>() {return MPI_UNSIGNED_LONG_LONG;}
 
 // Floating point types
