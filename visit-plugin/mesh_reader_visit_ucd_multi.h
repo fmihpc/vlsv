@@ -19,7 +19,12 @@
 #ifndef MESH_READER_VISIT_UCD_MULTI_H
 #define MESH_READER_VISIT_UCD_MULTI_H
 
+#include <unordered_map>
 #include <mesh_reader.h>
+#include <duplicate_node_elimination.h>
+
+#include <vtkCellData.h>
+#include <vtkUnstructuredGrid.h>
 
 namespace vlsvplugin {
 
@@ -32,6 +37,9 @@ namespace vlsvplugin {
       virtual bool readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output);
       
     protected:
+      bool xPeriodic;
+      bool yPeriodic;
+      bool zPeriodic;
       float* crds_node_x;
       float* crds_node_y;
       float* crds_node_z;
@@ -39,7 +47,23 @@ namespace vlsvplugin {
       uint64_t N_nodes_x;
       uint64_t N_nodes_y;
       uint64_t N_nodes_z;
+
+      virtual void cartesianNodeLookup(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+				       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+				       vtkUnstructuredGrid* ugrid);
+      virtual void cylindricalNodeLookup(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+					 uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+					 vtkUnstructuredGrid* ugrid);
+      virtual void sphericalNodeLookup(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+				       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+				       vtkUnstructuredGrid* ugrid);
       
+      virtual void insertCartesianNodes(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+					uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox);
+      virtual void insertCylindricalNodes(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+					  uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox);
+      virtual void insertSphericalNodes(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+					uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox);
       virtual bool readNodeCoordinateArrays(vlsv::Reader* vlsvReader,const std::string& meshName);
    };
 

@@ -49,6 +49,7 @@ namespace vlsvplugin {
       virtual uint64_t getArraySize() const;
       virtual uint64_t getDataSize() const;
       virtual vlsv::datatype::type getDatatype() const;
+      virtual void getMeshPeriodicity(bool& xPeriodic,bool& yPeriodic,bool& zPeriodic) const;
       virtual std::string getName() const;
       virtual uint64_t getNumberOfGhostCells() const;
       virtual uint64_t getNumberOfGhostCells(int domain) const =0;
@@ -82,6 +83,9 @@ namespace vlsvplugin {
       std::string xLabel;       /**< x-coordinate axis label.*/
       std::string yLabel;       /**< y-coordinate axis label.*/
       std::string zLabel;       /**< z-coordinate axis label.*/
+      bool xPeriodic;           /**< If true, mesh is periodic in x.*/
+      bool yPeriodic;           /**< If true, mesh is periodic in y.*/
+      bool zPeriodic;           /**< If true, mesh is periodic in z.*/
       std::string xUnits;       /**< Unit for x-coordinate.*/
       std::string yUnits;       /**< Unit for y-coordinate.*/
       std::string zUnits;       /**< Unit for z-coordinate.*/
