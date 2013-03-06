@@ -65,9 +65,9 @@ namespace vlsvplugin {
    
    std::string MeshMetadata::getXLabel() const {return xLabel;}
    
-   std::string MeshMetadata::getYLabel() const {return xLabel;}
+   std::string MeshMetadata::getYLabel() const {return yLabel;}
    
-   std::string MeshMetadata::getZLabel() const {return xLabel;}
+   std::string MeshMetadata::getZLabel() const {return zLabel;}
    
    std::string MeshMetadata::getXUnits() const {return xUnits;}
    
@@ -129,9 +129,9 @@ namespace vlsvplugin {
       it = attribs.find("xlabel"); if (it != attribs.end()) xLabel = it->second;
       it = attribs.find("ylabel"); if (it != attribs.end()) yLabel = it->second;
       it = attribs.find("zlabel"); if (it != attribs.end()) zLabel = it->second;
-      it = attribs.find("xunit"); if (it != attribs.end()) xUnits = it->second;
-      it = attribs.find("yunit"); if (it != attribs.end()) yUnits = it->second;
-      it = attribs.find("zunit"); if (it != attribs.end()) zUnits = it->second;
+      it = attribs.find("xunits"); if (it != attribs.end()) xUnits = it->second;
+      it = attribs.find("yunits"); if (it != attribs.end()) yUnits = it->second;
+      it = attribs.find("zunits"); if (it != attribs.end()) zUnits = it->second;
       
       return success;
    }

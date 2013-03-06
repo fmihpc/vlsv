@@ -132,8 +132,6 @@ namespace vlsvplugin {
 
       // NOTE: only inserts inner blocks, not ghosts:
       for (uint64_t block=0; block<N_totalBlocks; ++block) {
-      //for (uint64_t block=0; block<N_blocks; ++block) {
-	 // Calculate block's (i,j,k) indices in the mesh bounding box:
 	 uint64_t i_block = blockGIDs[block];
 	 uint64_t k_block = i_block / (bbox[1]*bbox[0]);
 	 i_block -= k_block*(bbox[1]*bbox[0]);
@@ -225,15 +223,12 @@ namespace vlsvplugin {
       unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator nodeIt;
       debug5 << "VLSV\t\t Inserting cells to unstructured mesh:" << endl;
       for (uint64_t block=0; block<N_totalBlocks; ++block) {
-      //for (uint64_t block=0; block<N_blocks; ++block) { // FIXME (N_blocks)
-	 // Calculate block's (i,j,k) indices in the mesh bounding box:
 	 uint64_t i_block = blockGIDs[block];
 	 uint64_t k_block = i_block / (bbox[1]*bbox[0]);
 	 i_block -= k_block*(bbox[1]*bbox[0]);
 	 uint64_t j_block = i_block / bbox[0];
 	 i_block -= j_block*bbox[0];
 
-	 //debug5 << "VLSV\t\t block GID: " << blockGIDs[block] << " indices: " << i_block << ' ' << j_block << ' ' << k_block << endl;
 	 
 	 // For each cell in the block, find indices of its eight nodes:
 	 for (uint64_t k=0; k<bbox[5]; ++k) {
