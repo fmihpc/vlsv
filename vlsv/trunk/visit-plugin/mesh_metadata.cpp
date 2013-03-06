@@ -38,6 +38,9 @@ namespace vlsvplugin {
       xLabel = "x-coordinate";
       yLabel = "y-coordinate";
       zLabel = "z-coordinate";
+      xPeriodic = false;
+      yPeriodic = false;
+      zPeriodic = false;
       xUnits = "";
       yUnits = "";
       zUnits = "";
@@ -50,6 +53,12 @@ namespace vlsvplugin {
    uint64_t MeshMetadata::getDataSize() const {return dataSize;}
    
    vlsv::datatype::type MeshMetadata::getDatatype() const {return datatype;}
+   
+   void MeshMetadata::getMeshPeriodicity(bool& xPeriodic,bool& yPeriodic,bool& zPeriodic) const {
+      xPeriodic = this->xPeriodic;
+      yPeriodic = this->yPeriodic;
+      zPeriodic = this->zPeriodic;
+   }
    
    std::string MeshMetadata::getName() const {return name;}
 
@@ -132,6 +141,9 @@ namespace vlsvplugin {
       it = attribs.find("xunits"); if (it != attribs.end()) xUnits = it->second;
       it = attribs.find("yunits"); if (it != attribs.end()) yUnits = it->second;
       it = attribs.find("zunits"); if (it != attribs.end()) zUnits = it->second;
+      it = attribs.find("xperiodic"); if (it != attribs.end()) if (it->second == "yes") xPeriodic = true;
+      it = attribs.find("yperiodic"); if (it != attribs.end()) if (it->second == "yes") yPeriodic = true;
+      it = attribs.find("zperiodic"); if (it != attribs.end()) if (it->second == "yes") zPeriodic = true;
       
       return success;
    }
