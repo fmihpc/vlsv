@@ -29,6 +29,8 @@ namespace vlsvplugin {
    
    VisitPointMeshMetadata::~VisitPointMeshMetadata() { }
 
+   const vlsv::geometry::type& VisitPointMeshMetadata::getMeshGeometry() const {return geometry;}
+   
    uint64_t VisitPointMeshMetadata::getNumberOfGhostCells(int domain) const {
       return MeshMetadata::getNumberOfGhostCells();
    }
@@ -68,6 +70,13 @@ namespace vlsvplugin {
       N_totalCells = atoi(it->second.c_str());
       N_realCells = N_totalCells;
       N_ghostCells = 0;
+
+      // Get coordinate system:
+      it = attribs.find("geometry");
+      if (it == attribs.end()) geometry = vlsv::geometry::CARTESIAN;
+      else {
+	 geometry = vlsv::getMeshGeometry(it->second);
+      }
       
       return success;
    }
