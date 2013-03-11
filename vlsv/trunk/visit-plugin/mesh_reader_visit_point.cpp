@@ -70,31 +70,72 @@ namespace vlsvplugin {
       
       // Determine VTK datatype that corresponds to the one in VLSV file:
       vtkPoints* points = NULL;
+      int vtkDatatype = VTK_FLOAT;
+      /*
       int vtkDatatype = vlsvplugin::getVtkDatatype(metadata->getDatatype(),metadata->getDataSize());
       if (vtkDatatype == VTK_DATATYPE_NOT_FOUND) {
 	 debug4 << "VLSV\t\t ERROR: Could not find VTK datatype for VLSV datatype '" << metadata->getDatatype();
 	 debug4 << "' datasize '" << metadata->getDataSize() << endl;
 	 return false;
       }
+       */
+      // Get mesh geometry:
+      const vlsv::geometry::type& geometry = metadata->getMeshGeometry();
       
       // Create new vtkPoints object and read data directly to its internal array:
       points = vtkPoints::New(vtkDatatype);
       points->SetNumberOfPoints(N_points);
-      char* ptr = reinterpret_cast<char*>(points->GetVoidPointer(0));
+      float* ptr = reinterpret_cast<float*>(points->GetVoidPointer(0));
+      //char* ptr = reinterpret_cast<char*>(points->GetVoidPointer(0));
       
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("name",metadata->getName()));
-      if (vlsvReader->readArray("MESH",attribs,readOffset,N_points,ptr) == false) {
+      if (vlsvReader->read("MESH",attribs,readOffset,N_points,ptr,false) == false) {
+      //if (vlsvReader->readArray("MESH",attribs,readOffset,N_points,ptr) == false) {
 	 debug2 << "VLSV\t\t ERROR: VLSVReader failed to read array" << endl;
 	 points->Delete();
 	 return false;
       }
-      
+
+      // Transform to Cartesian coordinates if necessary:
+      float x,y,z;
+      switch (geometry) {
+       case vlsv::geometry::UNKNOWN:
+	  debug2 << "VLSV\t\t WARNING: Unknown coordinate system, assuming Cartesian" << endl;
+	 break;
+       case vlsv::geometry::CARTESIAN:
+	 break;
+       case vlsv::geometry::CYLINDRICAL:
+	 cerr << "cylindrical coordinates" << endl;
+	 for (uint64_t p=0; p<N_points; ++p) {
+	    x = ptr[3*p+0];
+	    y = ptr[3*p+1];
+	    ptr[3*p+0] = x * cos(y);
+	    ptr[3*p+1] = x * sin(y);
+	 }
+	 break;
+       case vlsv::geometry::SPHERICAL:
+	 cerr << "spherical coordinates" << endl;
+	 for (uint64_t p=0; p<N_points; ++p) {
+	    x = ptr[3*p+0];
+	    y = ptr[3*p+1];
+	    z = ptr[3*p+2];
+	    ptr[3*p+0] = x * sin(y) * cos(z);
+	    ptr[3*p+1] = x * sin(y) * sin(z);
+	    ptr[3*p+2] = x * cos(y);
+	 }
+	 break;
+       default:
+	 debug2 << "VLSV\t\t WARNING: Unknown coordinate system, assuming Cartesian" << endl;
+	 break;
+      }
+
       // Create new unstructured grid that only contains single vertices (=points):
       vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
       ugrid->SetPoints(points);
       points->Delete();
       ugrid->Allocate(N_points);
+      
       for (uint64_t i=0; i<N_points; ++i) {
 	 vtkIdType onevertex = static_cast<vtkIdType>(i);
 	 ugrid->InsertNextCell(VTK_VERTEX,1,&onevertex);
