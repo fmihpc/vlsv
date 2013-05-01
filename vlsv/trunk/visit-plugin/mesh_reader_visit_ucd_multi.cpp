@@ -29,6 +29,7 @@
 #include <vtkUnsignedCharArray.h>
 #include <vtkPoints.h>
 #include <vtkFloatArray.h>
+#include <vtkDoubleArray.h>
 
 using namespace std;
 
@@ -651,10 +652,12 @@ namespace vlsvplugin {
 
       // Create vtkDataArray for variable data:
       bool success = true;
-      vtkFloatArray* rv = vtkFloatArray::New();
+      //vtkFloatArray* rv = vtkFloatArray::New();
+      vtkDoubleArray* rv = vtkDoubleArray::New();
       rv->SetNumberOfComponents(vmd.vectorSize);
       rv->SetNumberOfTuples(N_totalBlocks*blockSize);
-      float* variableData = rv->GetPointer(0);
+      //float* variableData = rv->GetPointer(0);
+      double* variableData = rv->GetPointer(0);
       
       // Read variable values from domain's real cells:
       list<pair<string,string> > attribs;
@@ -686,7 +689,8 @@ namespace vlsvplugin {
       
       // Read variable values for domain's ghost cells:
       if (success == true) {
-	 float* ptr = variableData + N_blocks*blockSize*components;
+	 //float* ptr = variableData + N_blocks*blockSize*components;
+	 double* ptr = variableData + N_blocks*blockSize*components;
 	 for (uint64_t i=0; i<N_ghosts; ++i) {
 	    const uint64_t ghostDomainID    = ghostDomains[i];
 	    const uint64_t ghostValueOffset = (variableOffsets[ghostDomainID] + ghostLocalIDs[i])*blockSize;
