@@ -106,7 +106,6 @@ namespace vlsvplugin {
        case vlsv::geometry::CARTESIAN:
 	 break;
        case vlsv::geometry::CYLINDRICAL:
-	 cerr << "cylindrical coordinates" << endl;
 	 for (uint64_t p=0; p<N_points; ++p) {
 	    x = ptr[3*p+0];
 	    y = ptr[3*p+1];
@@ -115,7 +114,6 @@ namespace vlsvplugin {
 	 }
 	 break;
        case vlsv::geometry::SPHERICAL:
-	 cerr << "spherical coordinates" << endl;
 	 for (uint64_t p=0; p<N_points; ++p) {
 	    x = ptr[3*p+0];
 	    y = ptr[3*p+1];
