@@ -373,7 +373,6 @@ namespace vlsvplugin {
       // NodeIndices, tells node's index.
       //vtkIdType counter = 0;
       unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual> nodeIndices;
-      //pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
 
       switch (geometry) {
        case vlsv::geometry::UNKNOWN:
@@ -392,35 +391,6 @@ namespace vlsvplugin {
 	 insertCartesianNodes(nodeIndices,N_totalBlocks,blockGIDs,bbox);
 	 break;
       }
-      
-      /*
-      for (uint64_t block=0; block<N_totalBlocks; ++block) {
-	 uint64_t i_block = blockGIDs[block];
-	 uint64_t k_block = i_block / (bbox[1]*bbox[0]);
-	 i_block -= k_block*(bbox[1]*bbox[0]);
-	 uint64_t j_block = i_block / bbox[0];
-	 i_block -= j_block*bbox[0];
-
-	 debug5 << "VLSV\t\t block GID: " << blockGIDs[block] << " indices: " << i_block << ' ' << j_block << ' ' << k_block << endl;
-	 
-	 // Attempt to insert all (WX+1)*(WY+1)*(WZ+1) nodes into unordered_map:
-	 for (uint64_t k=0; k<bbox[5]+1; ++k) {
-	    const uint64_t k_cell = k_block*bbox[5] + k;
-	    for (uint64_t j=0; j<bbox[4]+1; ++j) {
-	       const uint64_t j_cell = j_block*bbox[4] + j;
-	       for (uint64_t i=0; i<bbox[3]+1; ++i) {
-		  const uint64_t i_cell = i_block*bbox[3] + i;
-		  result = nodeIndices.insert(make_pair(NodeIndices(i_cell,j_cell,k_cell),counter));
-		  
-		  if (result.second == true)
-		    debug5 << "VLSV\t\t\t node inserted: " << i_cell << ' ' << j_cell << ' ' << k_cell << " position: " << counter << endl;
-		  
-		  if (result.second == true) ++counter;
-	       }
-	    }
-	 }
-      }
-      */
       
       // unordered_map now contains all unique nodes. Its size is equal to
       // number of nodes in this domain:
@@ -482,7 +452,6 @@ namespace vlsvplugin {
       ugrid->Allocate(N_totalBlocks*blockSize);
 
       // Add all cells' connectivity information to vtkUnstructuredGrid:
-      //const int cellType = VTK_HEXAHEDRON;
       switch (geometry) {
        case vlsv::geometry::UNKNOWN:
 	 cartesianNodeLookup(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
@@ -500,50 +469,6 @@ namespace vlsvplugin {
 	 cartesianNodeLookup(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
 	 break;
       }
-      /*
-      vtkIdType vertices[8];
-      unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator nodeIt;
-      debug5 << "VLSV\t\t Inserting cells to unstructured mesh:" << endl;
-      for (uint64_t block=0; block<N_totalBlocks; ++block) {
-	 uint64_t i_block = blockGIDs[block];
-	 uint64_t k_block = i_block / (bbox[1]*bbox[0]);
-	 i_block -= k_block*(bbox[1]*bbox[0]);
-	 uint64_t j_block = i_block / bbox[0];
-	 i_block -= j_block*bbox[0];
-
-	 
-	 // For each cell in the block, find indices of its eight nodes:
-	 for (uint64_t k=0; k<bbox[5]; ++k) {
-	    for (uint64_t j=0; j<bbox[4]; ++j) {
-	       for (uint64_t i=0; i<bbox[3]; ++i) {
-		  // Calculate cell's bounding box global indices:
-		  const uint64_t i_cell = i_block*bbox[3] + i;
-		  const uint64_t j_cell = j_block*bbox[4] + j;
-		  const uint64_t k_cell = k_block*bbox[5] + k;
-		  
-		  nodeIt = nodeIndices.find(NodeIndices(i_cell+0,j_cell+1,k_cell+0));
-		  vertices[0] = nodeIt->second;
-		  nodeIt = nodeIndices.find(NodeIndices(i_cell+0,j_cell+0,k_cell+0));
-		  vertices[1] = nodeIt->second;
-		  nodeIt = nodeIndices.find(NodeIndices(i_cell+1,j_cell+0,k_cell+0));
-		  vertices[2] = nodeIt->second;
-		  nodeIt = nodeIndices.find(NodeIndices(i_cell+1,j_cell+1,k_cell+0));
-		  vertices[3] = nodeIt->second;
-		  nodeIt = nodeIndices.find(NodeIndices(i_cell+0,j_cell+1,k_cell+1));
-		  vertices[4] = nodeIt->second;
-		  nodeIt = nodeIndices.find(NodeIndices(i_cell+0,j_cell+0,k_cell+1));
-		  vertices[5] = nodeIt->second;
-		  nodeIt = nodeIndices.find(NodeIndices(i_cell+1,j_cell+0,k_cell+1));
-		  vertices[6] = nodeIt->second;
-		  nodeIt = nodeIndices.find(NodeIndices(i_cell+1,j_cell+1,k_cell+1));
-		  vertices[7] = nodeIt->second;
-		  
-		  ugrid->InsertNextCell(cellType,8,vertices);
-	       }
-	    }
-	 }
-      }
-       */
       delete [] blockGIDs; blockGIDs = NULL;
 
       // Determine correct values for real and ghost (internal to problem) zones:
