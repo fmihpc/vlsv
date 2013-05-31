@@ -23,6 +23,55 @@ using namespace std;
 
 namespace vlsvplugin {
 
+   int getNumberOfVertices(uint32_t cellType) {
+      switch (cellType) {
+       case VTK_VERTEX:
+	 return 1;
+	 break;
+       case VTK_LINE:
+	 return 2;
+	 break;
+       case VTK_TRIANGLE:
+	 return 3;
+	 break;
+       case VTK_QUAD:
+	 return 4;
+	 break;
+       case VTK_TETRA:
+	 return 4;
+	 break;
+       case VTK_HEXAHEDRON:
+	 return 8;
+	 break;
+       case VTK_PYRAMID:
+	 return 6;
+	 break;
+       default:
+	 cerr << "Unsupported VTK cell type, id# " << cellType << endl;
+	 exit(1);
+	 break;
+      }
+   }
+   
+   int getVtkCelltype(uint32_t cellType) {
+      switch (cellType) {
+       case vlsv::celltype::UNKNOWN:
+	 cerr << "UNKNOWN VTK cell type, exiting" << endl;
+	 exit(1);
+	 break;
+       case vlsv::celltype::TRIANGLE:
+	 return VTK_TRIANGLE;
+	 break;
+       case vlsv::celltype::QUAD:
+	 return VTK_QUAD;
+	 break;
+       default:
+	 cerr << "Unsupported VTK cell type, exiting" << endl;
+	 exit(1);
+	 break;
+      }
+   }
+   
    int getVtkDatatype(const vlsv::datatype::type& datatype,const uint64_t& dataSize) {
       switch (datatype) {
        case vlsv::datatype::UNKNOWN:

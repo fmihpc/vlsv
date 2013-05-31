@@ -74,10 +74,10 @@ namespace vlsvplugin {
       uint64_t dataSize;
       vlsv::datatype::type datatype;
       std::vector<VariableMetadata> variableMetadata;
-      
-      uint64_t N_ghostCells;      /**< Total number of ghost cells in the mesh, summed over all domains.*/
-      uint64_t N_realCells;       /**< Total number of real cells in the mesh, summed over all domains.*/
-      uint64_t N_totalCells;      /**< Total number of cells (real+ghost) in the mesh, summed over all domains.*/
+
+      uint64_t N_ghostCells;    /**< Total number of ghost cells in the mesh, summed over all domains.*/
+      uint64_t N_realCells;     /**< Total number of real cells in the mesh, summed over all domains.*/
+      uint64_t N_totalCells;    /**< Total number of cells (real+ghost) in the mesh, summed over all domains.*/
       
       std::string name;         /**< Name of the mesh.*/
       std::string xLabel;       /**< x-coordinate axis label.*/
