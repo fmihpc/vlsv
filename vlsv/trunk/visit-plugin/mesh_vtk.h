@@ -20,11 +20,14 @@
 #define MESH_VTK_H
 
 #include <vlsv_common.h>
+#include <vtkCellType.h>
 
 namespace vlsvplugin {
 
    const int VTK_DATATYPE_NOT_FOUND = -999;
-   
+
+   int getNumberOfVertices(uint32_t cellType);
+   int getVtkCelltype(uint32_t cellType);
    int getVtkDatatype(const vlsv::datatype::type& datatype,const uint64_t& dataSize);
    
 } // namespace vlsvplugin
