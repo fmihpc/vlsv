@@ -58,6 +58,9 @@ namespace vlsv {
        case geometry::SPHERICAL:
 	 return geometry::STRING_SPHERICAL;
 	 break;
+       case geometry::UNSTRUCTURED:
+	 return geometry::STRING_UNSTRUCTURED;
+	 break;
        default:
 	 return geometry::STRING_UNKNOWN;
 	 break;
@@ -69,6 +72,7 @@ namespace vlsv {
       else if (s == geometry::STRING_CARTESIAN) return geometry::CARTESIAN;
       else if (s == geometry::STRING_CYLINDRICAL) return geometry::CYLINDRICAL;
       else if (s == geometry::STRING_SPHERICAL) return geometry::SPHERICAL;
+      else if (s == geometry::STRING_UNSTRUCTURED) return geometry::UNSTRUCTURED;
       return geometry::UNKNOWN;
    }
 
