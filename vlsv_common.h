@@ -24,6 +24,20 @@
 #include <stdint.h>
 
 namespace vlsv {
+
+   namespace celltype {
+      enum type {
+	 UNKNOWN,
+	 VERTEX,
+	 LINE,
+	 TRIANGLE,
+	 QUAD,
+	 TETRA,
+	 PYRAMID,
+	 WEDGE,
+	 HEXAHEDRON
+      };
+   }
    
    namespace datatype {
       const unsigned char ENDIANNESS_LITTLE = 0;
@@ -42,13 +56,15 @@ namespace vlsv {
 	   UNKNOWN,                                          /**< Mesh has unknown or unsupported coordinate system.*/
 	   CARTESIAN,                                        /**< Mesh uses Cartesian (x,y,z) coordinate system.*/
 	   CYLINDRICAL,                                      /**< Mesh uses cylindrical (r,phi,z) coordinate system.*/
-	   SPHERICAL                                         /**< Mesh uses spherical (r,theta,phi) coordinate system.*/
+	   SPHERICAL,                                        /**< Mesh uses spherical (r,theta,phi) coordinate system.*/
+	   UNSTRUCTURED                                      /**< Mesh is unstructured.*/
       };
       
-      const std::string STRING_UNKNOWN = "unknown_geometry"; /**< Mesh has unknown or unsupported geometry.*/
-      const std::string STRING_CARTESIAN = "cartesian";      /**< Cartesian mesh geometry.*/
-      const std::string STRING_CYLINDRICAL = "cylindrical";  /**< Cylindrical mesh geometry.*/
-      const std::string STRING_SPHERICAL = "spherical";      /**< Spherical mesh geometry.*/
+      const std::string STRING_UNKNOWN = "unknown_geometry";  /**< Mesh has unknown or unsupported geometry.*/
+      const std::string STRING_CARTESIAN = "cartesian";       /**< Cartesian mesh geometry.*/
+      const std::string STRING_CYLINDRICAL = "cylindrical";   /**< Cylindrical mesh geometry.*/
+      const std::string STRING_SPHERICAL = "spherical";       /**< Spherical mesh geometry.*/
+      const std::string STRING_UNSTRUCTURED = "unstructured"; /**< Unstructured mesh geometry.*/
    }
    
    namespace mesh {
@@ -57,7 +73,8 @@ namespace vlsv {
 	 POINT,
 	 QUAD,
 	 QUAD_MULTI,
-	 UCD_MULTI
+	 UCD_MULTI,
+	 UCD_GENERIC_MULTI
       };
       
       const std::string STRING_UNKNOWN = "unknown";          /**< Unknown or unsupported mesh type.*/
@@ -65,6 +82,7 @@ namespace vlsv {
       const std::string STRING_QUAD = "quad";
       const std::string STRING_QUAD_MULTI = "multimesh";     /**< Multi-domain mesh with uniform cell size.*/
       const std::string STRING_UCD_MULTI = "multi_ucd";      /**< Unstructured non-uniform curvilinear multi-domain mesh.*/
+      const std::string STRING_UCD_GENERIC_MULTI = "multi_ucd_generic"; /**< Generic unstructured multi-domain mesh.*/
    }
    
    template<typename T> T convertFloat(const char* const ptr);
