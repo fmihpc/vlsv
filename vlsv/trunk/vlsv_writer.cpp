@@ -150,7 +150,7 @@ namespace vlsv {
     * @param comm MPI communicator used in writing.
     * @param masterProcessID ID of the MPI master process.
     * @return If true, a file was opened successfully.*/
-   bool Writer::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID) {
+   bool Writer::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo) {
       #ifdef PROFILE
          profile::start("open",fileOpenID);
       #endif
@@ -178,11 +178,10 @@ namespace vlsv {
       // failed quite often in meteo, at least when writing many small files. It was 
       // possibly caused by MPI_File_delete call, that's the reason for the barrier.
       int accessMode = (MPI_MODE_WRONLY | MPI_MODE_CREATE);
-      MPI_Info MPIinfo = MPI_INFO_NULL;
       fileName = fname;
-      if (myrank == masterRank) MPI_File_delete(const_cast<char*>(fname.c_str()),MPI_INFO_NULL);
+      if (myrank == masterRank) MPI_File_delete(const_cast<char*>(fname.c_str()),mpiInfo);
       MPI_Barrier(comm);
-      if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,MPIinfo,&fileptr) != MPI_SUCCESS) {
+      if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&fileptr) != MPI_SUCCESS) {
 	 fileOpen = false;
 	 return fileOpen;
       }
@@ -191,7 +190,7 @@ namespace vlsv {
       #endif
    
       offset = 0;           //offset set to 0 when opening a new file
-      MPI_File_set_view(fileptr,0,MPI_BYTE,MPI_BYTE,const_cast<char*>("native"),MPI_INFO_NULL);
+      MPI_File_set_view(fileptr,0,MPI_BYTE,MPI_BYTE,const_cast<char*>("native"),mpiInfo);
        
       // Only master process needs these arrays:
       if (myrank == masterRank) {
