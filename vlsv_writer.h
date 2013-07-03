@@ -60,7 +60,7 @@ namespace vlsv {
       bool close();
       uint64_t getBytesWritten() const;
       bool endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs);
-      bool open(const std::string& fname,MPI_Comm comm,const int& masterProcessID);
+      bool open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo=MPI_INFO_NULL);
       bool startMultiwrite(const std::string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize);
       bool writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
 		      const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array);
