@@ -28,9 +28,12 @@ namespace vlsvplugin {
       ~VisitPointMeshMetadata();
 
       const vlsv::geometry::type& getMeshGeometry() const;
-      uint64_t getNumberOfGhostCells(int domain) const;
-      uint64_t getNumberOfRealCells(int domain) const;
-      uint64_t getNumberOfTotalCells(int domain) const;
+      uint64_t getNumberOfGhostNodes(int domain) const;
+      uint64_t getNumberOfGhostZones(int domain) const;
+      uint64_t getNumberOfLocalNodes(int domain) const;
+      uint64_t getNumberOfLocalZones(int domain) const;
+      uint64_t getNumberOfTotalNodes(int domain) const;
+      uint64_t getNumberOfTotalZones(int domain) const;
       
       bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       

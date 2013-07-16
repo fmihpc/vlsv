@@ -75,15 +75,27 @@ namespace vlsvplugin {
    
    const float* VisitQuadMultiMeshMetadata::getMeshBoundingBox() {return meshCoordinates;}
 
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfGhostCells(int domain) const {
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfGhostNodes(int domain) const {
+      return 0;
+   }
+   
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfGhostZones(int domain) const {
       return ghostOffsets[domain+1]-ghostOffsets[domain];
    }
    
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfRealCells(int domain) const {
-      return getNumberOfTotalCells(domain)-getNumberOfGhostCells(domain);
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfLocalNodes(int domain) const {
+      return 0;
    }
    
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfTotalCells(int domain) const {
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfLocalZones(int domain) const {
+      return getNumberOfTotalZones(domain)-getNumberOfGhostZones(domain);
+   }
+   
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfTotalNodes(int domain) const {
+      return 0;
+   }
+   
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfTotalZones(int domain) const {
       return domainOffsets[domain+1]-domainOffsets[domain];
    }
    
@@ -115,7 +127,7 @@ namespace vlsvplugin {
       // Figure out total number of cells in the mesh:
       it = attribs.find("arraysize");
       if (it == attribs.end()) return false;
-      MeshMetadata::N_totalCells = atoi(it->second.c_str());
+      MeshMetadata::N_totalZones = atoi(it->second.c_str());
       
       // Read XML tag 'MESH_ZONES' to figure out how many domains the mesh has:
       map<string,string> attribsOut;
@@ -232,8 +244,8 @@ namespace vlsvplugin {
       delete [] domainInfo; domainInfo = NULL;
       
       // Compute total number of real and ghost cells:
-      N_ghostCells = ghostOffsets[VisitMeshMetadata::N_domains];
-      N_realCells  = variableOffsets[VisitMeshMetadata::N_domains];
+      N_ghostZones = ghostOffsets[VisitMeshMetadata::N_domains];
+      N_localZones  = variableOffsets[VisitMeshMetadata::N_domains];
       
       domainMetadataRead = true;
       return true;

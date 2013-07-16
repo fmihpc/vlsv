@@ -30,17 +30,29 @@ namespace vlsvplugin {
    VisitPointMeshMetadata::~VisitPointMeshMetadata() { }
 
    const vlsv::geometry::type& VisitPointMeshMetadata::getMeshGeometry() const {return geometry;}
+
+   uint64_t VisitPointMeshMetadata::getNumberOfGhostNodes(int domain) const {
+      return MeshMetadata::getNumberOfGhostZones();
+   }
    
-   uint64_t VisitPointMeshMetadata::getNumberOfGhostCells(int domain) const {
-      return MeshMetadata::getNumberOfGhostCells();
+   uint64_t VisitPointMeshMetadata::getNumberOfGhostZones(int domain) const {
+      return MeshMetadata::getNumberOfGhostZones();
    }
 
-   uint64_t VisitPointMeshMetadata::getNumberOfRealCells(int domain) const {
-      return MeshMetadata::getNumberOfRealCells();
+   uint64_t VisitPointMeshMetadata::getNumberOfLocalNodes(int domain) const {
+      return MeshMetadata::getNumberOfLocalZones();
+   }
+   
+   uint64_t VisitPointMeshMetadata::getNumberOfLocalZones(int domain) const {
+      return MeshMetadata::getNumberOfLocalZones();
    }
 
-   uint64_t VisitPointMeshMetadata::getNumberOfTotalCells(int domain) const {
-      return MeshMetadata::getNumberOfTotalCells();
+   uint64_t VisitPointMeshMetadata::getNumberOfTotalNodes(int domain) const {
+      return MeshMetadata::getNumberOfTotalZones();
+   }
+   
+   uint64_t VisitPointMeshMetadata::getNumberOfTotalZones(int domain) const {
+      return MeshMetadata::getNumberOfTotalZones();
    }
    
    bool VisitPointMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
@@ -67,9 +79,9 @@ namespace vlsvplugin {
 
       it = attribs.find("arraysize");
       if (it == attribs.end()) success = false;
-      N_totalCells = atoi(it->second.c_str());
-      N_realCells = N_totalCells;
-      N_ghostCells = 0;
+      N_totalZones = atoi(it->second.c_str());
+      N_localZones = N_totalZones;
+      N_ghostZones = 0;
 
       // Get coordinate system:
       it = attribs.find("geometry");

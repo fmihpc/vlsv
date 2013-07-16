@@ -51,12 +51,18 @@ namespace vlsvplugin {
       virtual vlsv::datatype::type getDatatype() const;
       virtual void getMeshPeriodicity(bool& xPeriodic,bool& yPeriodic,bool& zPeriodic) const;
       virtual std::string getName() const;
-      virtual uint64_t getNumberOfGhostCells() const;
-      virtual uint64_t getNumberOfGhostCells(int domain) const =0;
-      virtual uint64_t getNumberOfRealCells() const;
-      virtual uint64_t getNumberOfRealCells(int domain) const =0;
-      virtual uint64_t getNumberOfTotalCells() const;
-      virtual uint64_t getNumberOfTotalCells(int domain) const =0;
+      virtual uint64_t getNumberOfGhostNodes() const;
+      virtual uint64_t getNumberOfGhostNodes(int domain) const =0;
+      virtual uint64_t getNumberOfGhostZones() const;
+      virtual uint64_t getNumberOfGhostZones(int domain) const =0;
+      virtual uint64_t getNumberOfLocalNodes() const;
+      virtual uint64_t getNumberOfLocalNodes(int domain) const =0;
+      virtual uint64_t getNumberOfLocalZones() const;
+      virtual uint64_t getNumberOfLocalZones(int domain) const =0;
+      virtual uint64_t getNumberOfTotalNodes() const;
+      virtual uint64_t getNumberOfTotalNodes(int domain) const =0;
+      virtual uint64_t getNumberOfTotalZones() const;
+      virtual uint64_t getNumberOfTotalZones(int domain) const =0;
       virtual const std::vector<VariableMetadata>& getVariables() const;
       virtual uint64_t getVectorSize() const;
       virtual std::string getXLabel() const;
@@ -75,9 +81,12 @@ namespace vlsvplugin {
       vlsv::datatype::type datatype;
       std::vector<VariableMetadata> variableMetadata;
 
-      uint64_t N_ghostCells;    /**< Total number of ghost cells in the mesh, summed over all domains.*/
-      uint64_t N_realCells;     /**< Total number of real cells in the mesh, summed over all domains.*/
-      uint64_t N_totalCells;    /**< Total number of cells (real+ghost) in the mesh, summed over all domains.*/
+      uint64_t N_ghostNodes;    /**< Total number of ghost nodes in the mesh, summed over all domains.*/
+      uint64_t N_ghostZones;    /**< Total number of ghost zones in the mesh, summed over all domains.*/
+      uint64_t N_localNodes;    /**< Total number of local nodes in the mesh, summer over all domains.*/
+      uint64_t N_localZones;    /**< Total number of local zones in the mesh, summed over all domains.*/
+      uint64_t N_totalNodes;    /**< Total number of zones (local+ghost) in the mesh, summer over all domains.*/
+      uint64_t N_totalZones;    /**< Total number of zones (local+ghost) in the mesh, summed over all domains.*/
       
       std::string name;         /**< Name of the mesh.*/
       std::string xLabel;       /**< x-coordinate axis label.*/

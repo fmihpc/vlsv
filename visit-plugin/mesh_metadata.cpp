@@ -32,9 +32,12 @@ namespace vlsvplugin {
       arraySize = 0;
       dataSize = 0;
       vectorSize = 0;
-      N_ghostCells = 0;
-      N_realCells  = 0;
-      N_totalCells = 0;
+      N_ghostNodes = 0;
+      N_ghostZones = 0;
+      N_localNodes = 0;
+      N_localZones = 0;
+      N_totalNodes = 0;
+      N_totalZones = 0;
       xLabel = "x-coordinate";
       yLabel = "y-coordinate";
       zLabel = "z-coordinate";
@@ -62,11 +65,17 @@ namespace vlsvplugin {
    
    std::string MeshMetadata::getName() const {return name;}
 
-   uint64_t MeshMetadata::getNumberOfGhostCells() const {return N_ghostCells;}
+   uint64_t MeshMetadata::getNumberOfGhostNodes() const {return N_ghostNodes;}
+   
+   uint64_t MeshMetadata::getNumberOfGhostZones() const {return N_ghostZones;}
 
-   uint64_t MeshMetadata::getNumberOfRealCells() const {return N_realCells;}
+   uint64_t MeshMetadata::getNumberOfLocalNodes() const {return N_localNodes;}
+   
+   uint64_t MeshMetadata::getNumberOfLocalZones() const {return N_localZones;}
 
-   uint64_t MeshMetadata::getNumberOfTotalCells() const {return N_totalCells;}
+   uint64_t MeshMetadata::getNumberOfTotalNodes() const {return N_totalNodes;}
+   
+   uint64_t MeshMetadata::getNumberOfTotalZones() const {return N_totalZones;}
    
    const std::vector<VariableMetadata>& MeshMetadata::getVariables() const {return variableMetadata;}
    

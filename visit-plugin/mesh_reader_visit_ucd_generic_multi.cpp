@@ -41,6 +41,99 @@ namespace vlsvplugin {
    
    VisitUCDGenericMultiMeshReader::~VisitUCDGenericMultiMeshReader() { }
 
+   bool VisitUCDGenericMultiMeshReader::readCellVariable(vlsv::Reader* vlsvReader,VisitUCDGenericMultiMeshMetadata*  metadata,
+							 const VariableMetadata& vmd,int domain,void*& output) {
+      // Get mesh bounding box:
+      const uint64_t* bbox = metadata->getMeshBoundingBox();
+      if (bbox == NULL) {
+	 debug3 << "VLSV\t\t ERROR: Mesh bounding box array is NULL" << endl;
+	 return false;
+      }
+      const uint64_t blockSize =
+	bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_X]
+	* bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Y]
+	* bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Z];
+      
+      // Get domain offset arrays:
+      const uint64_t* blockOffsets = NULL;
+      const uint64_t* ghostOffsets  = NULL;
+      const uint64_t* variableOffsets = NULL;
+      if (metadata->getDomainInfoZones(vlsvReader,domain,blockOffsets,ghostOffsets,variableOffsets) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
+	 return false;
+      }
+      const uint64_t N_totalBlocks = blockOffsets[domain+1] - blockOffsets[domain];
+      const uint64_t N_ghosts      = ghostOffsets[domain+1] - ghostOffsets[domain];
+      const uint64_t N_blocks      = N_totalBlocks - N_ghosts;
+      const uint64_t components    = vmd.vectorSize;
+            
+      // Create vtkDataArray for variable data:
+      bool success = true;
+      //vtkFloatArray* rv = vtkFloatArray::New();
+      vtkDoubleArray* rv = vtkDoubleArray::New();
+      rv->SetNumberOfComponents(vmd.vectorSize);
+      rv->SetNumberOfTuples(N_totalBlocks*blockSize);
+      //float* variableData = rv->GetPointer(0);
+      double* variableData = rv->GetPointer(0);
+      
+      // Read variable values from domain's real cells:
+      list<pair<string,string> > attribs;
+      attribs.push_back(make_pair("name",vmd.name));
+      attribs.push_back(make_pair("mesh",metadata->getName()));
+      if (vlsvReader->read("VARIABLE",attribs,variableOffsets[domain]*blockSize,N_blocks*blockSize,variableData,false) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to read domain's real cell variable data" << endl;
+	 success = false;
+      }
+      
+      // Read array that tells which domains contain ghost block data:
+      list<pair<string,string> > meshAttribs;
+      meshAttribs.push_back(make_pair("mesh",metadata->getName()));
+      uint64_t* ghostDomains = NULL;
+      if (vlsvReader->read("MESH_GHOST_DOMAINS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostDomains,true) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_DOMAINS array" << endl;
+	 delete [] ghostDomains; ghostDomains = NULL;
+	 success = false;
+      }
+      
+      // Read array that tells local IDs of ghost cell data in each domain:
+      uint64_t* ghostLocalIDs = NULL;
+      if (vlsvReader->read("MESH_GHOST_LOCALIDS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostLocalIDs,true) == false) {
+	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_LOCALIDS array" << endl;
+	 delete [] ghostDomains; ghostDomains = NULL;
+	 delete [] ghostLocalIDs; ghostLocalIDs = NULL;
+	 success = false;
+      }
+      
+      // Read variable values for domain's ghost cells:
+      if (success == true) {
+	 //float* ptr = variableData + N_blocks*blockSize*components;
+	 double* ptr = variableData + N_blocks*blockSize*components;
+	 for (uint64_t i=0; i<N_ghosts; ++i) {
+	    const uint64_t ghostDomainID    = ghostDomains[i];
+	    const uint64_t ghostValueOffset = (variableOffsets[ghostDomainID] + ghostLocalIDs[i])*blockSize;
+	    if (vlsvReader->read("VARIABLE",attribs,ghostValueOffset,blockSize,ptr,false) == false) {
+	       debug2 << "VLSV\t\t ERROR: Failed to read domain's ghost values" << endl;
+	       success = false;
+	       break;
+	    }
+	    ptr += blockSize*components;
+	 }
+      }
+
+      // Deallocate memory and exit:
+      delete [] ghostDomains; ghostDomains = NULL;
+      delete [] ghostLocalIDs; ghostLocalIDs = NULL;
+      
+      if (success == false) {
+	 rv->Delete();
+	 output = NULL;
+      } else {
+	 output = rv;
+      }
+      
+      return success;
+   }
+   
    bool VisitUCDGenericMultiMeshReader::readMesh(vlsv::Reader* vlsvReader,MeshMetadata* md,int domain,void*& output) {
       debug2 << "VLSV\t VisitUCDGenericMultiMeshReader::readMesh called, domain: " << domain << endl;
       output = NULL;
@@ -74,7 +167,7 @@ namespace vlsvplugin {
       const uint64_t* domainOffsets = NULL;
       const uint64_t* ghostOffsets  = NULL;
       const uint64_t* variableOffsets = NULL;
-      if (metadata->getDomainInfo(vlsvReader,domain,domainOffsets,ghostOffsets,variableOffsets) == false) {
+      if (metadata->getDomainInfoZones(vlsvReader,domain,domainOffsets,ghostOffsets,variableOffsets) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
 	 return false;
       }
@@ -91,7 +184,10 @@ namespace vlsvplugin {
 	 debug2 << "VLSV\t\t ERROR: Failed to obtain mesh bounding box" << endl;
 	 return false;
       }
-      const uint64_t blockSize = bbox[3]*bbox[4]*bbox[5];
+      const uint64_t blockSize =
+	  bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_X]
+	* bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Y]
+	* bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Z];
       
       // Create vtkPoints object and read node coordinates to it:
       const size_t N_uniqueNodes = metadata->getNumberOfNodes(domain);
@@ -115,7 +211,7 @@ namespace vlsvplugin {
       // Read cell connectivity from VLSV file:
       list<pair<string,string> > xmlAttributes;
       xmlAttributes.push_back(make_pair("name",metadata->getName()));
-      const uint32_t connectivityOffset = metadata->getCellOffset(domain);
+      const uint32_t connectivityOffset = metadata->getZoneOffset(domain);
       const uint32_t connectivitySize = metadata->getCellConnectivitySize(domain);
       debug4 << "VLSV\t\t offset to connectivity array: " << connectivityOffset << " size: " << connectivitySize << endl;
       
@@ -139,7 +235,7 @@ namespace vlsvplugin {
 	 for (int i=0; i<entrySize; ++i) debug5 << cellConnectivity[counter+i] << ' ';
 	 debug5 << endl;
 	 
-	 ugrid->InsertNextCell(cellType,entrySize,cellConnectivity+counter);
+	 ugrid->InsertNextCell(vtkCelltype,entrySize,cellConnectivity+counter);
 	 counter += entrySize;
       }
       delete [] cellConnectivity; cellConnectivity = NULL;
@@ -180,6 +276,11 @@ namespace vlsvplugin {
       return nodeCoordinateArraysRead;
    }
    
+   bool VisitUCDGenericMultiMeshReader::readNodeVariable(vlsv::Reader* vlsvReader,VisitUCDGenericMultiMeshMetadata*  metadata,
+							 const VariableMetadata& vmd,int domain,void*& output) {
+      
+   }
+   
    bool VisitUCDGenericMultiMeshReader::readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output) {
       debug2 << "VLSV\t VisitUCDGenericMultiMeshReader::readVariable called, domain: " << domain << endl;
       output = NULL;
@@ -202,14 +303,70 @@ namespace vlsvplugin {
 	 debug3 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitUCDGenericMultiMeshMedata" << endl;
 	 return false;
       }
+
+      /*
+      if (vmd.centering == vlsvplugin::ZONE_CENTERED) {
+	 return readCellVariable(vlsvReader,metadata,vmd,domain,output);
+      } else {
+	 output = NULL;
+	 return false;
+      }*/
       
+      // Get domain offset arrays:
+      const uint64_t* dummy = NULL;
+      const uint64_t* ghostOffsets  = NULL;
+      const uint64_t* variableOffsets = NULL;
+      if (vmd.centering == vlsvplugin::NODE_CENTERED) {
+	 if (metadata->getDomainInfoNodes(vlsvReader,domain,dummy,ghostOffsets,variableOffsets) == false) {
+	    debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
+	    return false;
+	 }
+      } else {
+	 if (metadata->getDomainInfoNodes(vlsvReader,domain,dummy,ghostOffsets,variableOffsets) == false) {
+	    debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
+	    return false;
+	 }
+      }
+
+      // Figure out total number of variable values to read:
+      uint32_t blockSize = 1;
+      uint64_t N_totalValues = 0;
+      uint64_t N_ghostValues = 0;
+      uint64_t N_localValues = 0;
+      const uint64_t N_components  = vmd.vectorSize;
+      
+      if (vmd.centering == vlsvplugin::NODE_CENTERED) {
+	 N_totalValues = metadata->getNumberOfTotalNodes(domain);
+	 N_ghostValues = metadata->getNumberOfGhostNodes(domain);
+	 N_localValues = metadata->getNumberOfLocalNodes(domain);
+      } else {
+	 N_totalValues = metadata->getNumberOfTotalZones(domain);
+	 N_ghostValues = metadata->getNumberOfGhostZones(domain);
+	 N_localValues = metadata->getNumberOfLocalZones(domain);
+	 
+	 // Get mesh bounding box:
+	 const uint64_t* bbox = metadata->getMeshBoundingBox();
+	 if (bbox == NULL) {
+	    debug3 << "VLSV\t\t ERROR: Mesh bounding box array is NULL" << endl;
+	    return false;
+	 }
+	 blockSize =
+	     bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_X]
+	   * bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Y]
+	   * bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Z];
+      }
+      
+      /*
       // Get mesh bounding box:
       const uint64_t* bbox = metadata->getMeshBoundingBox();
       if (bbox == NULL) {
 	 debug3 << "VLSV\t\t ERROR: Mesh bounding box array is NULL" << endl;
 	 return false;
       }
-      const uint64_t blockSize = bbox[3]*bbox[4]*bbox[5];
+      const uint64_t blockSize =
+	  bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_X]
+	* bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Y]
+	* bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Z];
       
       // Get domain offset arrays:
       const uint64_t* blockOffsets = NULL;
@@ -223,13 +380,13 @@ namespace vlsvplugin {
       const uint64_t N_ghosts      = ghostOffsets[domain+1] - ghostOffsets[domain];
       const uint64_t N_blocks      = N_totalBlocks - N_ghosts;
       const uint64_t components    = vmd.vectorSize;
-
+      */
       // Create vtkDataArray for variable data:
       bool success = true;
       //vtkFloatArray* rv = vtkFloatArray::New();
       vtkDoubleArray* rv = vtkDoubleArray::New();
       rv->SetNumberOfComponents(vmd.vectorSize);
-      rv->SetNumberOfTuples(N_totalBlocks*blockSize);
+      rv->SetNumberOfTuples(N_totalValues*blockSize);
       //float* variableData = rv->GetPointer(0);
       double* variableData = rv->GetPointer(0);
       
@@ -237,7 +394,7 @@ namespace vlsvplugin {
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("name",vmd.name));
       attribs.push_back(make_pair("mesh",md->getName()));
-      if (vlsvReader->read("VARIABLE",attribs,variableOffsets[domain]*blockSize,N_blocks*blockSize,variableData,false) == false) {
+      if (vlsvReader->read("VARIABLE",attribs,variableOffsets[domain]*blockSize,N_localValues*blockSize,variableData,false) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read domain's real cell variable data" << endl;
 	 success = false;
       }
@@ -246,7 +403,7 @@ namespace vlsvplugin {
       list<pair<string,string> > meshAttribs;
       meshAttribs.push_back(make_pair("mesh",md->getName()));
       uint64_t* ghostDomains = NULL;
-      if (vlsvReader->read("MESH_GHOST_DOMAINS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostDomains,true) == false) {
+      if (vlsvReader->read("MESH_GHOST_DOMAINS",meshAttribs,ghostOffsets[domain],N_ghostValues,ghostDomains,true) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_DOMAINS array" << endl;
 	 delete [] ghostDomains; ghostDomains = NULL;
 	 success = false;
@@ -254,7 +411,7 @@ namespace vlsvplugin {
       
       // Read array that tells local IDs of ghost cell data in each domain:
       uint64_t* ghostLocalIDs = NULL;
-      if (vlsvReader->read("MESH_GHOST_LOCALIDS",meshAttribs,ghostOffsets[domain],N_ghosts,ghostLocalIDs,true) == false) {
+      if (vlsvReader->read("MESH_GHOST_LOCALIDS",meshAttribs,ghostOffsets[domain],N_ghostValues,ghostLocalIDs,true) == false) {
 	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_LOCALIDS array" << endl;
 	 delete [] ghostDomains; ghostDomains = NULL;
 	 delete [] ghostLocalIDs; ghostLocalIDs = NULL;
@@ -264,8 +421,8 @@ namespace vlsvplugin {
       // Read variable values for domain's ghost cells:
       if (success == true) {
 	 //float* ptr = variableData + N_blocks*blockSize*components;
-	 double* ptr = variableData + N_blocks*blockSize*components;
-	 for (uint64_t i=0; i<N_ghosts; ++i) {
+	 double* ptr = variableData + N_localValues*blockSize*N_components;
+	 for (uint64_t i=0; i<N_ghostValues; ++i) {
 	    const uint64_t ghostDomainID    = ghostDomains[i];
 	    const uint64_t ghostValueOffset = (variableOffsets[ghostDomainID] + ghostLocalIDs[i])*blockSize;
 	    if (vlsvReader->read("VARIABLE",attribs,ghostValueOffset,blockSize,ptr,false) == false) {
@@ -273,7 +430,7 @@ namespace vlsvplugin {
 	       success = false;
 	       break;
 	    }
-	    ptr += blockSize*components;
+	    ptr += blockSize*N_components;
 	 }
       }
       

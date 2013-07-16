@@ -216,7 +216,7 @@ void avtVlsvFileFormat::addMesh(avtDatabaseMetaData* md,const vlsvplugin::VisitM
    mesh->yUnits = meshMetadata->getYUnits();
    mesh->zUnits = meshMetadata->getZUnits();
    
-   mesh->SetNumberCells(meshMetadata->getNumberOfTotalCells());
+   mesh->SetNumberCells(meshMetadata->getNumberOfTotalZones());
    mesh->hasLogicalBounds = false;
    mesh->hasSpatialExtents = false;
    

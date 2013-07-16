@@ -21,7 +21,7 @@
 
 #include <unordered_map>
 #include <mesh_reader.h>
-#include <duplicate_node_elimination.h>
+#include <mesh_metadata_visit_ucd_generic_multi.h>
 
 #include <vtkPoints.h>
 #include <vtkCellData.h>
@@ -43,6 +43,8 @@ namespace vlsvplugin {
       bool zPeriodic;
       bool nodeCoordinateArraysRead;
 
+      virtual bool readCellVariable(vlsv::Reader* vlsvReader,VisitUCDGenericMultiMeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output);
+      virtual bool readNodeVariable(vlsv::Reader* vlsvReader,VisitUCDGenericMultiMeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output);
       virtual bool readNodeCoordinateArrays(vlsv::Reader* vlsvReader,const std::string& meshName,uint64_t offset,uint64_t amount,vtkPoints* points);
    };
 
