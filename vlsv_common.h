@@ -40,8 +40,8 @@ namespace vlsv {
    }
    
    namespace datatype {
-      const unsigned char ENDIANNESS_LITTLE = 0;
-      const unsigned char ENDIANNESS_BIG    = 1;
+      const uint8_t ENDIANNESS_LITTLE = 0;
+      const uint8_t ENDIANNESS_BIG    = 1;
       
       enum type {
 	 UNKNOWN,                                            /**< Unknown or unsupported datatype.*/
@@ -85,6 +85,41 @@ namespace vlsv {
       const std::string STRING_UCD_GENERIC_MULTI = "multi_ucd_generic"; /**< Generic unstructured multi-domain mesh.*/
    }
    
+   namespace ucdgenericmulti {
+      namespace bbox {
+	 /**< Definition of elements in MESH_BBOX array.*/
+	 enum elements {
+	    X_BLOCKS,      /**< Number of blocks in x-direction in mesh bounding box.*/
+	    Y_BLOCKS,      /**< Number of blocks in y-direction in mesh bounding box.*/
+	    Z_BLOCKS,      /**< Number of blocks in z-direction in mesh bounding box.*/
+	    BLOCK_WIDTH_X, /**< Number of cells in block/patch in x-direction.*/
+	    BLOCK_WIDTH_Y, /**< Number of cells in block/patch in y-direction.*/
+	    BLOCK_WIDTH_Z, /**< Number of cells in block/patch in z-direction.*/
+	    SIZE           /**< Size of MESH_BBOX array.*/
+	 };
+      }
+      
+      namespace domainsizes {
+	 /**< Definition of elements in MESH_DOMAIN_SIZES array.*/
+	 enum elements {
+	    TOTAL_BLOCKS, /**< Total number of blocks/patches in domain.*/
+	    GHOST_BLOCKS, /**< Number of ghost blocks/patches in domain.*/
+	    TOTAL_NODES,  /**< Total number of nodes in domain.*/
+	    GHOST_NODES,  /**< Number of ghost nodes in domain.*/
+	    SIZE          /**< Size of MESH_DOMAIN_SIZES entry for each domain.*/
+	 };
+      }
+      
+      namespace meshoffsets {
+	 /** Definition of elements in MESH_OFFSETS array.*/
+	 enum elements {
+	    ZONE_ENTRIES, /**< Number of zone connectivity entries in domain.*/
+	    NODE_ENTRIES, /**< Number of nodes in domain.*/
+	    SIZE          /**< Size of MESH_OFFSETS entry for each domain.*/
+	 };
+      }
+   }
+   
    template<typename T> T convertFloat(const char* const ptr);
    template<typename T> T convertInteger(const char* const ptr,const bool& swapEndianness=false);
    template<typename T> void convertValue(T& value,const char* const ptr,datatype::type dt,int dataSize,const bool& swapEndianness=false);
@@ -95,7 +130,7 @@ namespace vlsv {
     * with byte size of 8 usually means that the values are doubles.
     * @return String representation of the datatype.*/
    template<typename T> std::string getStringDatatype();
-   
+
    const std::string& getMeshGeometry(geometry::type geom);
    geometry::type getMeshGeometry(const std::string& s);
    datatype::type getVLSVDatatype(const std::string& s);
