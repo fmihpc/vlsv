@@ -110,7 +110,7 @@ namespace vlsv {
 	 };
       }
       
-      namespace meshoffsets {
+      namespace offsets {
 	 /** Definition of elements in MESH_OFFSETS array.*/
 	 enum elements {
 	    ZONE_ENTRIES, /**< Number of zone connectivity entries in domain.*/

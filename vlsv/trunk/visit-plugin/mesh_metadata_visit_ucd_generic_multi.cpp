@@ -408,7 +408,7 @@ namespace vlsvplugin {
       for (int64_t i=0; i<VisitMeshMetadata::N_domains; ++i) {
 	 zoneOffsets[i+1] = 
 	     zoneOffsets[i]
-	   + domainInfo[i*vlsv::ucdgenericmulti::meshoffsets::SIZE+vlsv::ucdgenericmulti::meshoffsets::ZONE_ENTRIES];
+	   + domainInfo[i*vlsv::ucdgenericmulti::offsets::SIZE+vlsv::ucdgenericmulti::offsets::ZONE_ENTRIES];
       }
       delete [] domainInfo; domainInfo = NULL;
       domainMetadataRead = true;
