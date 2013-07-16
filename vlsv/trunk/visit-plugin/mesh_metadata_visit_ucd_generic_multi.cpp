@@ -28,26 +28,58 @@ namespace vlsvplugin {
    VisitUCDGenericMultiMeshMetadata::VisitUCDGenericMultiMeshMetadata(): VisitMeshMetadata() {
       domainMetadataRead = false;
       meshMetadataRead = false;
-      cellOffsets = NULL;
+      zoneOffsets = NULL;
       nodeOffsets = NULL;
-      domainOffsets = NULL;
-      ghostOffsets = NULL;
+      zoneOffsets = NULL;
+      ghostNodeOffsets = NULL;
+      ghostZoneOffsets = NULL;
       meshBoundingBox = NULL;
-      variableOffsets = NULL;
+      zoneVariableOffsets = NULL;
+      nodeVariableOffsets = NULL;
    }
    
    VisitUCDGenericMultiMeshMetadata::~VisitUCDGenericMultiMeshMetadata() {
-      delete [] cellOffsets; cellOffsets = NULL;
+      delete [] zoneOffsets; zoneOffsets = NULL;
       delete [] nodeOffsets; nodeOffsets = NULL;
-      delete [] domainOffsets; domainOffsets = NULL;
-      delete [] ghostOffsets; ghostOffsets = NULL;
+      delete [] zoneOffsets; zoneOffsets = NULL;
+      delete [] ghostNodeOffsets; ghostNodeOffsets = NULL;
+      delete [] ghostZoneOffsets; ghostZoneOffsets = NULL;
       delete [] meshBoundingBox; meshBoundingBox = NULL;
-      delete [] variableOffsets; variableOffsets = NULL;
+      delete [] zoneVariableOffsets; zoneVariableOffsets = NULL;
+      delete [] nodeVariableOffsets; nodeVariableOffsets = NULL;
    }
    
-   bool VisitUCDGenericMultiMeshMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
-						  const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
-      debug2 << "VLSV\t\t VisitUCDGenericMultiMeshMetadata::getDomainInfo called, domain: " << domain << endl;
+   bool VisitUCDGenericMultiMeshMetadata::getDomainInfoNodes(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+							     const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
+      debug2 << "VLSV\t\t VisitUCDGenericMultiMeshMetadata::getDomainInfoNodes called, domain: " << domain << endl;
+       
+      // Check that vlsv::Reader exists:
+      if (vlsvReader == NULL) {
+	 debug3 << "VLSV\t\t ERROR: vlsv::Reader is NULL" << endl;
+	 return false;
+      }
+      
+      // Read domain info:
+      if (readDomains(vlsvReader) == false) {
+	 debug3 << "VLSV\t\t ERROR: Failed to read quad multimesh domains" << endl;
+	 return false;
+      }
+      
+      debug4 << "VLSV\t\t Domain: " << domain << " node offsets: ";
+      debug4 << nodeOffsets[domain] << ' ' << nodeOffsets[domain+1];
+      debug4 << " ghost offsets: " << ghostNodeOffsets[domain] << ' ' << ghostNodeOffsets[domain+1];
+      debug4 << " variable offsets: " << nodeVariableOffsets[domain] << ' ' << nodeVariableOffsets[domain+1];
+      debug4 << endl;
+      
+      domainOffsets   = this->nodeOffsets;
+      ghostOffsets    = this->ghostNodeOffsets;
+      variableOffsets = this->nodeVariableOffsets;
+      return true;
+   }
+   
+   bool VisitUCDGenericMultiMeshMetadata::getDomainInfoZones(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+							     const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
+      debug2 << "VLSV\t\t VisitUCDGenericMultiMeshMetadata::getDomainInfoZones called, domain: " << domain << endl;
       
       // Check that vlsv::Reader exists:
       if (vlsvReader == NULL) {
@@ -62,28 +94,26 @@ namespace vlsvplugin {
       }
       
       debug4 << "VLSV\t\t Domain: " << domain << " cell offsets: ";
-      debug4 << (this->domainOffsets)[domain] << ' ' << (this->domainOffsets)[domain+1];
-      debug4 << " ghost offsets: " << (this->ghostOffsets)[domain] << ' ' << (this->ghostOffsets)[domain+1];
-      debug4 << " variable offsets: " << (this->variableOffsets)[domain] << ' ' << (this->variableOffsets)[domain+1];
+      debug4 << zoneOffsets[domain] << ' ' << zoneOffsets[domain+1];
+      debug4 << " ghost offsets: " << ghostZoneOffsets[domain] << ' ' << ghostZoneOffsets[domain+1];
+      debug4 << " variable offsets: " << (this->zoneVariableOffsets)[domain] << ' ' << (this->zoneVariableOffsets)[domain+1];
       debug4 << endl;
       
-      domainOffsets   = this->domainOffsets;
-      ghostOffsets    = this->ghostOffsets;
-      variableOffsets = this->variableOffsets;
+      domainOffsets   = this->zoneOffsets;
+      ghostOffsets    = this->ghostZoneOffsets;
+      variableOffsets = this->zoneVariableOffsets;
       return true;
    }
 
    uint64_t VisitUCDGenericMultiMeshMetadata::getBlockSize() const {return blockSize;}
 
    const uint64_t VisitUCDGenericMultiMeshMetadata::getCellConnectivitySize(int domain) const {
-      return cellOffsets[domain+1]-cellOffsets[domain];
+      return zoneOffsets[domain+1]-zoneOffsets[domain];
    }
    
-   const uint64_t VisitUCDGenericMultiMeshMetadata::getCellOffset(int domain) const {return cellOffsets[domain];}
+   const uint64_t* VisitUCDGenericMultiMeshMetadata::getDomainOffsets() {return zoneOffsets;}
    
-   const uint64_t* VisitUCDGenericMultiMeshMetadata::getDomainOffsets() {return domainOffsets;}
-   
-   const uint64_t* VisitUCDGenericMultiMeshMetadata::getGhostOffsets() {return ghostOffsets;}
+   const uint64_t* VisitUCDGenericMultiMeshMetadata::getGhostOffsets() {return ghostZoneOffsets;}
    
    const uint64_t* VisitUCDGenericMultiMeshMetadata::getMeshBoundingBox() {return meshBoundingBox;}
 
@@ -101,20 +131,34 @@ namespace vlsvplugin {
       return nodeOffsets[domain+1]-nodeOffsets[domain];
    }
    
-   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfGhostCells(int domain) const {
-      return blockSize*(ghostOffsets[domain+1]-ghostOffsets[domain]);
+   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfGhostNodes(int domain) const {
+      return ghostNodeOffsets[domain+1]-ghostNodeOffsets[domain];
    }
    
-   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfRealCells(int domain) const {
-      return getNumberOfTotalCells(domain)-getNumberOfGhostCells(domain);
+   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfGhostZones(int domain) const {
+      return blockSize*(ghostZoneOffsets[domain+1]-ghostZoneOffsets[domain]);
    }
    
-   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfTotalCells(int domain) const {
-      return blockSize*(domainOffsets[domain+1]-domainOffsets[domain]);
+   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfLocalNodes(int domain) const {
+      return getNumberOfTotalNodes(domain)-getNumberOfGhostNodes(domain);
    }
    
-   const uint64_t* VisitUCDGenericMultiMeshMetadata::getVariableOffsets() {return variableOffsets;}
+   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfLocalZones(int domain) const {
+      return getNumberOfTotalZones(domain)-getNumberOfGhostZones(domain);
+   }
+   
+   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfTotalNodes(int domain) const {
+      return nodeVariableOffsets[domain+1]-nodeVariableOffsets[domain];
+   }
+   
+   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfTotalZones(int domain) const {
+      return blockSize*(zoneVariableOffsets[domain+1]-zoneVariableOffsets[domain]);
+   }
+   
+   const uint64_t* VisitUCDGenericMultiMeshMetadata::getVariableOffsets() {return zoneVariableOffsets;}
 
+   const uint64_t VisitUCDGenericMultiMeshMetadata::getZoneOffset(int domain) const {return zoneOffsets[domain];}
+   
    bool VisitUCDGenericMultiMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       debug2 << "VLSV\t\t VisitUCDGenericMultiMeshMetadata::read called" << endl;
       
@@ -143,7 +187,7 @@ namespace vlsvplugin {
       // Figure out total number of cells in the mesh:
       it = attribs.find("arraysize");
       if (it == attribs.end()) return false;
-      MeshMetadata::N_totalCells = atoi(it->second.c_str());
+      MeshMetadata::N_totalZones = atoi(it->second.c_str());
 
       // Get mesh geometry:
       it = attribs.find("geometry");
@@ -262,13 +306,41 @@ namespace vlsvplugin {
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("mesh",name));
       delete [] meshBoundingBox; meshBoundingBox = NULL;
-      if (vlsvReader->read("MESH_BBOX",attribs,0,6,meshBoundingBox) == false) {
+      if (vlsvReader->read("MESH_BBOX",attribs,0,vlsv::ucdgenericmulti::bbox::SIZE,meshBoundingBox) == false) {
 	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
 	 return false;
       }
-      blockSize = meshBoundingBox[3]*meshBoundingBox[4]*meshBoundingBox[5];
-      debug4 << "VLSV\t\t Mesh size in blocks: " << meshBoundingBox[0] << ' ' << meshBoundingBox[1] << ' ' << meshBoundingBox[2];
-      debug4 << " block sizes: " << meshBoundingBox[3] << ' ' << meshBoundingBox[4] << ' ' << meshBoundingBox[5] << endl;
+      blockSize =
+	  meshBoundingBox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_X]
+	* meshBoundingBox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Y]
+	* meshBoundingBox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Z];
+      
+      debug4 << "VLSV\t\t Mesh size in blocks: " 
+	<< meshBoundingBox[vlsv::ucdgenericmulti::bbox::X_BLOCKS] << ' ' 
+	<< meshBoundingBox[vlsv::ucdgenericmulti::bbox::Y_BLOCKS] << ' ' 
+	<< meshBoundingBox[vlsv::ucdgenericmulti::bbox::Z_BLOCKS];
+      debug4 << " block sizes: " 
+	<< meshBoundingBox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_X] << ' '
+	<< meshBoundingBox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Y] << ' ' 
+	<< meshBoundingBox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Z] << endl;
+      
+      // Check that MESH_DOMAIN_SIZES has correct vectorsize (=4):
+      map<string,string> attribsOut;
+      map<string,string>::const_iterator it;
+      if (vlsvReader->getArrayAttributes("MESH_DOMAIN_SIZES",attribs,attribsOut) == false) {
+	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_DOMAIN_SIZES' attributes for mesh '" << getName() << "' from VLSV file" << endl;
+	 return false;
+      }
+      it = attribsOut.find("vectorsize");
+      if (it == attribsOut.end()) {
+	 debug3 << "VLSV\t\t ERROR: Array 'MESH_DOMAIN_SIZES' XML tag does not have attribute 'vectorsize'" << endl;
+	 return false;
+      }
+      if (atol(it->second.c_str()) != vlsv::ucdgenericmulti::domainsizes::SIZE) {
+	 debug3 << "VLSV\t\t ERROR: Array 'MESH_DOMAIN_SIZES' has incorrect vectorsize '" << it->second
+	   << "' when it should be '" << vlsv::ucdgenericmulti::domainsizes::SIZE << "'" << endl;
+	 return false;
+      }
       
       // Read domain info:
       int64_t* domainInfo = NULL;
@@ -279,18 +351,50 @@ namespace vlsvplugin {
       }
       
       // Calculate offsets where data for each domain begins:
-      delete [] domainOffsets;   domainOffsets   = new uint64_t[VisitMeshMetadata::N_domains+1];
-      delete [] ghostOffsets;    ghostOffsets    = new uint64_t[VisitMeshMetadata::N_domains+1];
-      delete [] variableOffsets; variableOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
-      domainOffsets[0]   = 0;
-      ghostOffsets[0]    = 0;
-      variableOffsets[0] = 0;
+      delete [] nodeOffsets; nodeOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
+      delete [] ghostNodeOffsets; ghostNodeOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
+      delete [] ghostZoneOffsets; ghostZoneOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
+      delete [] zoneVariableOffsets; zoneVariableOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
+      delete [] nodeVariableOffsets; nodeVariableOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
+      nodeOffsets[0]         = 0;
+      ghostNodeOffsets[0]    = 0;
+      ghostZoneOffsets[0]    = 0;
+      zoneVariableOffsets[0] = 0;
+      nodeVariableOffsets[0] = 0;
+      MeshMetadata::N_localZones = 0;
       for (int64_t i=0; i<VisitMeshMetadata::N_domains; ++i) {
-	 domainOffsets[i+1]   = domainOffsets[i] + domainInfo[i*2];
-	 ghostOffsets[i+1]    = ghostOffsets[i] + domainInfo[i*2+1];
-	 variableOffsets[i+1] = variableOffsets[i] + domainInfo[i*2+0]-domainInfo[i*2+1];
+	 // Count number of local zones in domain i:
+	 const uint64_t localZones = 
+	   domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::TOTAL_BLOCKS]
+	   - domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::GHOST_BLOCKS];
+	 MeshMetadata::N_localZones += localZones;
+	 
+	 ghostZoneOffsets[i+1] =
+	     ghostZoneOffsets[i]
+	   + domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::GHOST_BLOCKS];
+	 nodeOffsets[i+1] =
+	     nodeOffsets[i]
+	   + domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::TOTAL_NODES];
+	 ghostNodeOffsets[i+1] =
+	     ghostNodeOffsets[i]
+	   + domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::GHOST_NODES];
+
+	 // Offset to domain i's cell variable values is the sum of local blocks, i.e., 
+	 // total cells - ghost cells values, in all previous domains:
+	 zoneVariableOffsets[i+1]
+	   = zoneVariableOffsets[i] 
+	   + domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::TOTAL_BLOCKS]
+	   - domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::GHOST_BLOCKS];
+	 
+	 // Offset to domain i's node variable values is the sum of local nodes, i.e., 
+	 // total nodes - ghost nodes values, in all previous domains:
+	 nodeVariableOffsets[i+1]
+	   = nodeVariableOffsets[i] 
+	   + domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::TOTAL_NODES]
+	   - domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::GHOST_NODES];
       }
       delete [] domainInfo; domainInfo = NULL;
+      MeshMetadata::N_ghostZones = ghostZoneOffsets[VisitMeshMetadata::N_domains];
 
       // Read offsets into cell connectivity array:
       if (vlsvReader->read("MESH_OFFSETS",attribs,0,VisitMeshMetadata::N_domains,domainInfo) == false) {
@@ -299,20 +403,14 @@ namespace vlsvplugin {
 	 return false;
       }
       
-      delete [] cellOffsets; cellOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
-      delete [] nodeOffsets; nodeOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
-      cellOffsets[0] = 0;
-      nodeOffsets[0] = 0;
+      delete [] zoneOffsets; zoneOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
+      zoneOffsets[0] = 0;
       for (int64_t i=0; i<VisitMeshMetadata::N_domains; ++i) {
-	 cellOffsets[i+1] = cellOffsets[i] + domainInfo[i*2+0];
-	 nodeOffsets[i+1] = nodeOffsets[i] + domainInfo[i*2+1];
+	 zoneOffsets[i+1] = 
+	     zoneOffsets[i]
+	   + domainInfo[i*vlsv::ucdgenericmulti::meshoffsets::SIZE+vlsv::ucdgenericmulti::meshoffsets::ZONE_ENTRIES];
       }
       delete [] domainInfo; domainInfo = NULL;
-      
-      // Compute total number of real and ghost cells:
-      MeshMetadata::N_ghostCells = ghostOffsets[VisitMeshMetadata::N_domains];
-      MeshMetadata::N_realCells  = variableOffsets[VisitMeshMetadata::N_domains];
-   
       domainMetadataRead = true;
       return true;
    }

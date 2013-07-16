@@ -35,9 +35,12 @@ namespace vlsvplugin {
       const uint64_t* getDomainOffsets();
       const uint64_t* getGhostOffsets();
       const float* getMeshBoundingBox();
-      uint64_t getNumberOfGhostCells(int domain) const;
-      uint64_t getNumberOfRealCells(int domain) const;
-      uint64_t getNumberOfTotalCells(int domain) const;
+      uint64_t getNumberOfGhostNodes(int domain) const;
+      uint64_t getNumberOfGhostZones(int domain) const;
+      uint64_t getNumberOfLocalNodes(int domain) const;
+      uint64_t getNumberOfLocalZones(int domain) const;
+      uint64_t getNumberOfTotalNodes(int domain) const;
+      uint64_t getNumberOfTotalZones(int domain) const;
       const uint64_t* getVariableOffsets();
       
       bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
