@@ -168,6 +168,7 @@ namespace vlsvplugin {
       // Call superclass read function:
       if (VisitMeshMetadata::read(vlsvReader,attribs) == false) return false;
       
+      // Parse values from XML tag 'MESH' associated with this mesh.
       // Check that we are reading multi-domain unstructured mesh metadata:
       map<string,string>::const_iterator it = attribs.find("type");
       if (it == attribs.end()) {
@@ -183,6 +184,16 @@ namespace vlsvplugin {
       meshTypeString = "AVT_UNSTRUCTURED_MESH";
       spatialDimension = 3;
       topologicalDimension = 3;
+      
+      // Check for definition of spatial dimensions (could be two):
+      it = attribs.find("spatial_dimension");
+      if (it != attribs.end()) {
+	 spatialDimension = atoi(it->second.c_str());
+	 if (spatialDimension < 2 || spatialDimension > 3) {
+	    debug3 << "VLSV\t\t ERROR: Spatial dimension must be 2 or 3, value '" << it->second << "' given in XML attributes" << endl;
+	    return false;
+	 }
+      }
       
       // Figure out total number of cells in the mesh:
       it = attribs.find("arraysize");

@@ -135,7 +135,7 @@ namespace vlsv {
 	 cerr << "vlsv::Reader ERROR: Unknown datatype in tag!" << endl;
 	 return false;
       }   
-      if (arrayOpen.arraySize == 0) return false;
+      //if (arrayOpen.arraySize == 0) return false;
       if (arrayOpen.vectorSize == 0) return false;
       if (arrayOpen.dataSize == 0) return false;
    

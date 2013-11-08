@@ -48,7 +48,44 @@ namespace vlsvplugin {
       delete [] crds_node_z; crds_node_z = NULL;
    }
 
-   void VisitUCDMultiMeshReader::cartesianNodeLookup(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+   void VisitUCDMultiMeshReader::cartesianNodeLookup2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+						       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+						       vtkUnstructuredGrid* ugrid) {
+      const int cellType = VTK_QUAD;
+      vtkIdType vertices[4];
+      unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator nodeIt;
+      debug5 << "VLSV\t\t Inserting Cartesian cells to unstructured mesh:" << endl;
+      for (uint64_t block=0; block<N_totalBlocks; ++block) {
+	 uint64_t i_block = blockGIDs[block];
+	 uint64_t k_block = i_block / (bbox[1]*bbox[0]);
+	 i_block -= k_block*(bbox[1]*bbox[0]);
+	 uint64_t j_block = i_block / bbox[0];
+	 i_block -= j_block*bbox[0];
+	 
+	 // For each cell in the block, find indices of its eight nodes:
+	 for (uint64_t j=0; j<bbox[4]; ++j) {
+	    for (uint64_t i=0; i<bbox[3]; ++i) {
+	       // Calculate cell's bounding box global indices:
+	       const uint64_t i_cell = i_block*bbox[3] + i;
+	       const uint64_t j_cell = j_block*bbox[4] + j;
+	       //const uint64_t k_cell = k_block*bbox[5] + k;
+
+	       nodeIt = nodeIndices.find(NodeIndices(i_cell+0,j_cell+1,0));
+	       vertices[0] = nodeIt->second;
+	       nodeIt = nodeIndices.find(NodeIndices(i_cell+0,j_cell+0,0));
+	       vertices[1] = nodeIt->second;
+	       nodeIt = nodeIndices.find(NodeIndices(i_cell+1,j_cell+0,0));
+	       vertices[2] = nodeIt->second;
+	       nodeIt = nodeIndices.find(NodeIndices(i_cell+1,j_cell+1,0));
+	       vertices[3] = nodeIt->second;
+	       
+	       ugrid->InsertNextCell(cellType,4,vertices);
+	    }
+	 }
+      }
+   }
+   
+   void VisitUCDMultiMeshReader::cartesianNodeLookup3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
 						     uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
 						     vtkUnstructuredGrid* ugrid) {
       const int cellType = VTK_HEXAHEDRON;
@@ -95,13 +132,52 @@ namespace vlsvplugin {
       }
    }
 
-   void VisitUCDMultiMeshReader::cylindricalNodeLookup(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-						       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
-						       vtkUnstructuredGrid* ugrid) {
+   void VisitUCDMultiMeshReader::cylindricalNodeLookup2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+							 uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+							 vtkUnstructuredGrid* ugrid) {
+      const int cellType = VTK_QUAD;
+      vtkIdType vertices[4];
+      unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator nodeIt;
+      debug5 << "VLSV\t\t Inserting cylindrical cells to unstructured mesh:" << endl;
+      for (uint64_t block=0; block<N_totalBlocks; ++block) {
+	 uint64_t i_block = blockGIDs[block];
+	 uint64_t j_block = i_block / bbox[0];
+	 i_block -= j_block*bbox[0];
+
+	 // For each cell in the block, find indices of its four nodes:
+	 for (uint64_t j=0; j<bbox[4]; ++j) {      
+	    for (uint64_t i=0; i<bbox[3]; ++i) {
+	       // Calculate cell's bounding box global indices:
+   	       const uint64_t i_cell = i_block*bbox[3] + i;
+	       const uint64_t j_cell = j_block*bbox[4] + j;
+	       
+	       uint64_t j_cell_plus_1 = j_cell + 1;
+	       if (yPeriodic == true) {
+		  if (j_cell_plus_1 >= (N_nodes_y-1)) j_cell_plus_1 -= (N_nodes_y-1);
+	       }
+
+	       nodeIt = nodeIndices.find(NodeIndices(i_cell+0,j_cell_plus_1,0));
+	       vertices[0] = nodeIt->second;
+	       nodeIt = nodeIndices.find(NodeIndices(i_cell+0,j_cell       ,0));
+	       vertices[1] = nodeIt->second;
+	       nodeIt = nodeIndices.find(NodeIndices(i_cell+1,j_cell       ,0));
+	       vertices[2] = nodeIt->second;
+	       nodeIt = nodeIndices.find(NodeIndices(i_cell+1,j_cell_plus_1,0));
+	       vertices[3] = nodeIt->second;
+
+	       ugrid->InsertNextCell(cellType,4,vertices);
+	    }
+	 }
+      }
+   }
+      
+   void VisitUCDMultiMeshReader::cylindricalNodeLookup3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+							 uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+							 vtkUnstructuredGrid* ugrid) {
       const int cellType = VTK_HEXAHEDRON;
       vtkIdType vertices[8];
       unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator nodeIt;
-      debug5 << "VLSV\t\t Inserting Cartesian cells to unstructured mesh:" << endl;
+      debug5 << "VLSV\t\t Inserting cylindrical cells to unstructured mesh:" << endl;
       for (uint64_t block=0; block<N_totalBlocks; ++block) {
 	 uint64_t i_block = blockGIDs[block];
 	 uint64_t k_block = i_block / (bbox[1]*bbox[0]);
@@ -198,8 +274,33 @@ namespace vlsvplugin {
       }
    }   
    
-   void VisitUCDMultiMeshReader::insertCartesianNodes(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-						      uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
+   void VisitUCDMultiMeshReader::insertCartesianNodes2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+							uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
+      vtkIdType counter = 0;
+      pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
+      
+      for (uint64_t block=0; block<N_totalBlocks; ++block) {
+	 uint64_t i_block = blockGIDs[block];
+	 //uint64_t k_block = i_block / (bbox[1]*bbox[0]);
+	 //i_block -= k_block*(bbox[1]*bbox[0]);
+	 uint64_t j_block = i_block / bbox[0];
+	 i_block -= j_block*bbox[0];
+	 
+	 // Attempt to insert all (WX+1)*(WY+1)*(WZ+1) nodes into unordered_map:
+	 for (uint64_t j=0; j<bbox[4]+1; ++j) {
+	    const uint64_t j_cell = j_block*bbox[4] + j;
+	    for (uint64_t i=0; i<bbox[3]+1; ++i) {
+	       const uint64_t i_cell = i_block*bbox[3] + i;
+	       result = nodeIndices.insert(make_pair(NodeIndices(i_cell,j_cell,0),counter));
+	       if (result.second == true) ++counter;
+	    }
+	 }
+      }
+      
+   }
+   	  
+   void VisitUCDMultiMeshReader::insertCartesianNodes3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+							uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
       vtkIdType counter = 0;
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
       
@@ -226,8 +327,35 @@ namespace vlsvplugin {
       
    }
    
-   void VisitUCDMultiMeshReader::insertCylindricalNodes(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-							uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
+   void VisitUCDMultiMeshReader::insertCylindricalNodes2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+							  uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
+      vtkIdType counter = 0;
+      pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
+      
+      for (uint64_t block=0; block<N_totalBlocks; ++block) {
+	 uint64_t i_block = blockGIDs[block];
+	 uint64_t j_block = i_block / bbox[0];
+	 i_block -= j_block*bbox[0];
+	       
+	 // Attempt to insert all (WX+1)*(WY+1)*(WZ+1) nodes into unordered_map:
+	 for (uint64_t j=0; j<bbox[4]+1; ++j) {
+	    uint64_t j_cell = j_block*bbox[4] + j;
+	    
+	    if (yPeriodic == true) {
+	       if (j_cell >= (N_nodes_y-1)) j_cell -= (N_nodes_y-1);
+	    }
+	    
+	    for (uint64_t i=0; i<bbox[3]+1; ++i) {
+	       const uint64_t i_cell = i_block*bbox[3] + i;
+	       result = nodeIndices.insert(make_pair(NodeIndices(i_cell,j_cell,0),counter));
+	       if (result.second == true) ++counter;
+	    }
+	 }
+      }
+   }
+	 
+   void VisitUCDMultiMeshReader::insertCylindricalNodes3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
+							  uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
       vtkIdType counter = 0;
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
       
@@ -376,19 +504,26 @@ namespace vlsvplugin {
 
       switch (geometry) {
        case vlsv::geometry::UNKNOWN:
-	 insertCartesianNodes(nodeIndices,N_totalBlocks,blockGIDs,bbox);
+	 insertCartesianNodes3D(nodeIndices,N_totalBlocks,blockGIDs,bbox);
 	 break;
        case vlsv::geometry::CARTESIAN:
-	 insertCartesianNodes(nodeIndices,N_totalBlocks,blockGIDs,bbox);
+	 if (metadata->getSpatialDimension() == 2) {
+	    insertCartesianNodes2D(nodeIndices,N_totalBlocks,blockGIDs,bbox);
+	 } else {
+	    insertCartesianNodes3D(nodeIndices,N_totalBlocks,blockGIDs,bbox);
+	 }
 	 break;
        case vlsv::geometry::CYLINDRICAL:
-	 insertCylindricalNodes(nodeIndices,N_totalBlocks,blockGIDs,bbox);
+	 if (metadata->getSpatialDimension() == 2) {
+	    insertCylindricalNodes2D(nodeIndices,N_totalBlocks,blockGIDs,bbox);
+	 } else {
+	    insertCylindricalNodes3D(nodeIndices,N_totalBlocks,blockGIDs,bbox);
+	 }
 	 break;
        case vlsv::geometry::SPHERICAL:
 	 insertSphericalNodes(nodeIndices,N_totalBlocks,blockGIDs,bbox);
 	 break;
        default:
-	 insertCartesianNodes(nodeIndices,N_totalBlocks,blockGIDs,bbox);
 	 break;
       }
       
@@ -454,19 +589,27 @@ namespace vlsvplugin {
       // Add all cells' connectivity information to vtkUnstructuredGrid:
       switch (geometry) {
        case vlsv::geometry::UNKNOWN:
-	 cartesianNodeLookup(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
+	 cartesianNodeLookup3D(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
 	 break;
        case vlsv::geometry::CARTESIAN:
-	 cartesianNodeLookup(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
+	 if (metadata->getSpatialDimension() == 2) {
+	    cartesianNodeLookup2D(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
+	 } else {
+	    cartesianNodeLookup3D(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
+	 }
 	 break;
        case vlsv::geometry::CYLINDRICAL:
-	 cylindricalNodeLookup(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
+	 if (metadata->getSpatialDimension() == 2) {
+	    cylindricalNodeLookup2D(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
+	 } else {
+	    cylindricalNodeLookup3D(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
+	 }
 	 break;
        case vlsv::geometry::SPHERICAL:
 	 sphericalNodeLookup(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
 	 break;
        default:
-	 cartesianNodeLookup(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
+	 cartesianNodeLookup3D(nodeIndices,N_totalBlocks,blockGIDs,bbox,ugrid);
 	 break;
       }
       delete [] blockGIDs; blockGIDs = NULL;

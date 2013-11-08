@@ -322,7 +322,7 @@ namespace vlsvplugin {
 	    return false;
 	 }
       } else {
-	 if (metadata->getDomainInfoNodes(vlsvReader,domain,dummy,ghostOffsets,variableOffsets) == false) {
+	 if (metadata->getDomainInfoZones(vlsvReader,domain,dummy,ghostOffsets,variableOffsets) == false) {
 	    debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
 	    return false;
 	 }
@@ -334,7 +334,7 @@ namespace vlsvplugin {
       uint64_t N_ghostValues = 0;
       uint64_t N_localValues = 0;
       const uint64_t N_components  = vmd.vectorSize;
-      
+
       if (vmd.centering == vlsvplugin::NODE_CENTERED) {
 	 N_totalValues = metadata->getNumberOfTotalNodes(domain);
 	 N_ghostValues = metadata->getNumberOfGhostNodes(domain);

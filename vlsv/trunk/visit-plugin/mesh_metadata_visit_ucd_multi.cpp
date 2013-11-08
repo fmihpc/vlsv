@@ -130,6 +130,17 @@ namespace vlsvplugin {
       spatialDimension = 3;
       topologicalDimension = 3;
       
+      // Check for definition of spatial dimensions (could be two):
+      it = attribs.find("spatial_dimension");
+      if (it != attribs.end()) {
+	 spatialDimension = atoi(it->second.c_str());
+	 if (spatialDimension < 2 || spatialDimension > 3) {
+	    debug3 << "VLSV\t\t ERROR: Spatial dimension must be 2 or 3, value '" << it->second << "' given in XML attributes" << endl;
+	    return false;
+	 }
+	 topologicalDimension = spatialDimension;
+      }
+
       // Figure out total number of cells in the mesh:
       it = attribs.find("arraysize");
       if (it == attribs.end()) return false;
