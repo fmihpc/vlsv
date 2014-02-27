@@ -246,9 +246,6 @@ namespace vlsvplugin {
 		  const uint64_t k_cell = k_block*bbox[5] + k;
 
 		  uint64_t k_cell_plus_1 = k_cell + 1;
-		  if (zPeriodic == true) {
-		     if (k_cell_plus_1 >= (N_nodes_z-1)) k_cell_plus_1 -= (N_nodes_z-1);
-		  }
 		  
 		  nodeIt = nodeIndices.find(NodeIndices(i_cell+0,j_cell+1,k_cell       ));
 		  vertices[0] = nodeIt->second;
@@ -398,17 +395,14 @@ namespace vlsvplugin {
 	 i_block -= k_block*(bbox[1]*bbox[0]);
 	 uint64_t j_block = i_block / bbox[0];
 	 i_block -= j_block*bbox[0];
-	       
+
 	 // Attempt to insert all (WX+1)*(WY+1)*(WZ+1) nodes into unordered_map:
 	 for (uint64_t k=0; k<bbox[5]+1; ++k) {
 	    uint64_t k_cell = k_block*bbox[5] + k;
 	    
-	    if (zPeriodic == true) {
-	       if (k_cell >= (N_nodes_z-1)) k_cell -= (N_nodes_z-1);
-	    }
-	    
 	    for (uint64_t j=0; j<bbox[4]+1; ++j) {
-	       const uint64_t j_cell = j_block*bbox[4] + j;
+	       uint64_t j_cell = j_block*bbox[4] + j;
+
 	       for (uint64_t i=0; i<bbox[3]+1; ++i) {
 		  const uint64_t i_cell = i_block*bbox[3] + i;
 		  result = nodeIndices.insert(make_pair(NodeIndices(i_cell,j_cell,k_cell),counter));
@@ -494,7 +488,7 @@ namespace vlsvplugin {
       // Get mesh geometry and periodicity:
       const vlsv::geometry::type& geometry = metadata->getMeshGeometry();
       metadata->getMeshPeriodicity(xPeriodic,yPeriodic,zPeriodic);
-      
+
       // For each block, attempt to insert its (WX+1)*(WY+1)*(WZ+1) nodes into unordered_map.
       // The insertion will fail if the node already exists in the unordered_map, in which case 
       // counter is not increased. Counter, i.e. the value of unordered_map for given
