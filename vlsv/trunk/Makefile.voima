@@ -1,0 +1,24 @@
+##############################################
+###         ARCHITECTURE-DEPENDENT         ###
+### MAKEFILE FOR VLSV PARALLEL FILE FORMAT ###
+###                                        ###
+###    Make a copy of this file and edit   ###
+###     include and library paths below    ###
+##############################################
+
+### This Makefile is for FMI meteo supercomputer ###
+
+CMP=CC
+CXXFLAGS=-O3 -DMPICH_IGNORE_CXX_SEEK -std=c++0x -Wall
+FLAGS=
+
+CC_BRAND=gcc
+CC_BRAND_VERSION=4.5.2
+MPT_VERSION=3.4.1
+SILO_VERSION=4.8
+LIBRARY_PREFIX=/stornext/field/users/honkonen/libraries
+
+INC_SILO=-I$(LIBRARY_PREFIX)/mpt/$(MPT_VERSION)/$(CC_BRAND)/$(CC_BRAND_VERSION)/silo/$(SILO_VERSION)/include
+LIB_SILO=-L$(LIBRARY_PREFIX)/mpt/$(MPT_VERSION)/$(CC_BRAND)/$(CC_BRAND_VERSION)/silo/$(SILO_VERSION)/lib -lsilo
+
+AR = ar
