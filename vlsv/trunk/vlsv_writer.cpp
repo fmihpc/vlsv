@@ -77,9 +77,17 @@ namespace vlsv {
       #ifdef PROFILE
          profile::start("add mw unit",addMWunitID);
       #endif
+
+      // addMultiwriteUnit does not call any collective MPI functions so 
+      // it is safe to exit immediately here if error(s) have occurred:
       if (initialized == false) return false;
       if (multiwriteInitialized == false) return false;
+      
+      // Do not add zero-size arrays to multiWriteUnits:
+      if (arrayElements == 0) return true;
+      
       multiwriteUnits[0].push_back(Multi_IO_Unit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
+
       #ifdef PROFILE
          profile::stop();
       #endif
@@ -235,10 +243,12 @@ namespace vlsv {
    }
 
    bool Writer::startMultiwrite(const string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize) {
-      // Check that a file is open before continuing:
-      if (fileOpen == false) return false;
-      if (initialized == false) return false;
-   
+      // Check that all processes have made it this far without error(s):
+      bool success = true;
+      if (fileOpen == false) success = false;
+      if (initialized == false) success = false;
+      if (checkSuccess(success,comm) == false) return false;
+
       // Clear per-thread storage:
 	{
 	   vector<list<Multi_IO_Unit> > dummy(1);
@@ -337,7 +347,7 @@ namespace vlsv {
 	    ++i;
 	 }
       }
-   
+
       // Write data to file:
       if (N_multiwriteUnits > 0) {
 	 // Create an MPI struct containing the multiwrite units:
@@ -353,7 +363,7 @@ namespace vlsv {
       
 	 // Synchronize MPI processes. This is to make sure that file writing is not started 
 	 // until every process has finished adding their multiwrite units:
-	 MPI_Barrier(comm);
+	 //MPI_Barrier(comm);
       
 	 // Write data to output file with a single collective call:
          #ifdef PROFILE
@@ -365,6 +375,10 @@ namespace vlsv {
             profile::stop();
          #endif
       } else {
+	 // Synchronize MPI processes. This is to make sure that file writing is not started
+	 // until every process has finished adding their multiwrite units:
+	 //MPI_Barrier(comm);
+	 
 	 // Process has no data to write but needs to participate in the collective call to prevent deadlock:
          #ifdef PROFILE
             profile::start("write",endMWwriteID);
@@ -374,7 +388,7 @@ namespace vlsv {
             profile::stop();
          #endif
       }
-      
+
       // Deallocate memory:
       delete [] blockLengths; blockLengths = NULL;
       delete [] displacements; displacements = NULL;
