@@ -19,17 +19,29 @@
 #include <cstdlib>
 #include <iostream>
 
+#include "mpiconversion.h"
 #include "vlsv_common.h"
 
 using namespace std;
 
 namespace vlsv {
    
-   unsigned char detectEndianness() {
-      const int number = 1;
-      const char* const ptr = reinterpret_cast<const char*>(&number);
-      if (ptr[0] == 1) return datatype::ENDIANNESS_LITTLE;
-      else return datatype::ENDIANNESS_BIG;
+   /** Check that all processes have the same success status.
+    * @param myStatus If true, this process has successfully executed all code.
+    * @return If true, all processes called checkSuccess with myStatus set to 'true'.*/
+   bool checkSuccess(const bool& myStatus,MPI_Comm comm) {
+      // If myStatus is false, set mySuccess to value 1:
+      int32_t mySuccess = 0;
+      int32_t globalSuccess = 0;
+      if (myStatus == false) mySuccess = 1;
+
+      // Sum mySuccess values to master process and broadcast to all processes:
+      MPI_Reduce(&mySuccess,&globalSuccess,1,MPI_Type<int32_t>(),MPI_SUM,0,MPI_COMM_WORLD);
+      MPI_Bcast(&globalSuccess,1,MPI_Type<int32_t>(),0,MPI_COMM_WORLD);
+
+      // If globalSuccess equals zero all processes called this function with myStatus set to 'true':
+      if (globalSuccess == 0) return true;
+      return false;
    }
 
    uint64_t convUInt64(const char* const ptr,const bool& swapEndian) {
@@ -42,6 +54,13 @@ namespace vlsv {
 	 ++index;
       }
       return tmp;
+   }
+   
+   unsigned char detectEndianness() {
+      const int number = 1;
+      const char* const ptr = reinterpret_cast<const char*>(&number);
+      if (ptr[0] == 1) return datatype::ENDIANNESS_LITTLE;
+      else return datatype::ENDIANNESS_BIG;
    }
 
    const std::string& getMeshGeometry(geometry::type geom) {
