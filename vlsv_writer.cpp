@@ -291,10 +291,12 @@ namespace vlsv {
     * @param attribs Attributes for the XML tag.
     * @return If true, array was successfully written to file.*/
    bool Writer::endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs) {
-      // Check that multiwrite mode has started successfully:
-      if (initialized == false) return false;
-      if (multiwriteInitialized == false) return false;
-   
+      // Check that multiwrite mode has started successfully on all processes:
+      bool success = true;
+      if (initialized == false) success = false;
+      if (multiwriteInitialized == false) success = false;
+      if (checkSuccess(success,comm) == false) return false;
+
       // Allocate memory for an MPI_Struct that is used to 
       // write all multiwrite units with a single collective call.
 
@@ -401,7 +403,7 @@ namespace vlsv {
       }
    
       multiwriteInitialized = false;
-      return true;;
+      return success;
    }
 
    bool Writer::writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
