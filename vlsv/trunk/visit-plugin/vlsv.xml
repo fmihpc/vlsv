@@ -3,6 +3,7 @@
     <CXXFLAGS>
       -std=c++0x
       -I/home/sandroos/Codes/vlsv
+      -DNEW_VTK_API
     </CXXFLAGS>
     <LDFLAGS>
       -L/home/sandroos/Codes/vlsv
