@@ -47,7 +47,7 @@ lib: ${OBJS}
 	${AR} r libvlsv.a ${OBJS}
 
 multi_io_unit.o: ${DEPS_MULTI_IO}
-	${CMP} ${CXXFLAGS} ${FLAGS} -c multi_io_unit.cpp
+	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -c multi_io_unit.cpp
 
 muxml.o: ${DEPS_MUXML}
 	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -c muxml.cpp
@@ -56,16 +56,16 @@ vlsv_common.o: ${DEPS_VLSVCOMMON}
 	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -c vlsv_common.cpp
 
 vlsv_common_mpi.o: ${DEPS_VLSVCOMMON_MPI}
-	${CMP} ${CXXFLAGS} ${FLAGS} -c vlsv_common_mpi.cpp
+	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -c vlsv_common_mpi.cpp
 
 vlsv_reader.o: ${DEPS_READER}
 	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -o vlsv_reader.o -c vlsv_reader.cpp
 
 vlsv_reader_parallel.o: ${DEPS_PARAREADER}
-	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsv_reader_parallel.o -c vlsv_reader_parallel.cpp
+	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -o vlsv_reader_parallel.o -c vlsv_reader_parallel.cpp
 
 vlsv_writer.o: ${DEPS_WRITER}
-	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsv_writer.o -c vlsv_writer.cpp
+	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -o vlsv_writer.o -c vlsv_writer.cpp
 
 vlsv2silo: ${DEPS_VLSV2SILO}
 	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsv2silo vlsv2silo.cpp ${INC_SILO} -L${CURDIR} -lvlsv ${LIB_SILO}

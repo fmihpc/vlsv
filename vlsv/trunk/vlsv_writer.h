@@ -51,6 +51,8 @@
 
 namespace vlsv {
 
+   bool checkSuccess(const bool& myStatus,MPI_Comm comm);
+   
    class Writer {
     public:
       Writer();
