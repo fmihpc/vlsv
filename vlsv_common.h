@@ -22,7 +22,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <stdint.h>
-#include <mpi.h>
 
 namespace vlsv {
 
@@ -120,8 +119,6 @@ namespace vlsv {
 	 };
       }
    }
-
-   bool checkSuccess(const bool& myStatus,MPI_Comm comm);
    
    template<typename T> T convertFloat(const char* const ptr);
    template<typename T> T convertInteger(const char* const ptr,const bool& swapEndianness=false);

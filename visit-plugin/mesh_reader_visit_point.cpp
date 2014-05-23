@@ -104,6 +104,12 @@ namespace vlsvplugin {
 	  debug2 << "VLSV\t\t WARNING: Unknown coordinate system, assuming Cartesian" << endl;
 	 break;
        case vlsv::geometry::CARTESIAN:
+	 for (uint64_t p=0; p<N_points; ++p) {
+	    x = ptr[3*p+0];
+	    y = ptr[3*p+1];
+	    z = ptr[3*p+2];
+	    debug5 << "VLSV\t\t Point #" << p << "\t coords " << x << '\t' << y << '\t' << z << endl;
+	 }
 	 break;
        case vlsv::geometry::CYLINDRICAL:
 	 for (uint64_t p=0; p<N_points; ++p) {
@@ -121,6 +127,8 @@ namespace vlsvplugin {
 	    ptr[3*p+0] = x * sin(y) * cos(z);
 	    ptr[3*p+1] = x * sin(y) * sin(z);
 	    ptr[3*p+2] = x * cos(y);
+	    
+	    debug5 << "VLSV\t\t Point #" << p << "\t coords " << x << '\t' << y << '\t' << z << endl;
 	 }
 	 break;
        default:
