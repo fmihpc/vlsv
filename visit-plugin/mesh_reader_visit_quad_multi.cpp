@@ -32,6 +32,7 @@
 #include <vtkPoints.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkFloatArray.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 
 using namespace std;
 
@@ -198,7 +199,11 @@ namespace vlsvplugin {
       
       // Copy ghost cell information to vtkUnstructuredGrid:
       ugrid->GetCellData()->AddArray(ghostZones);
-      ugrid->SetUpdateGhostLevel(0);
+      #ifdef NEW_VTK_API
+         vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(ugrid->GetInformation(), 0);
+      #else
+         ugrid->SetUpdateGhostLevel(0);
+      #endif
       ghostZones->Delete();
 	
       output = ugrid;
