@@ -10,6 +10,7 @@
     </LDFLAGS>
     <LIBS>
       -lvlsv
+      -lmpi
     </LIBS>
     <FilePatterns>
       *.vlsv
