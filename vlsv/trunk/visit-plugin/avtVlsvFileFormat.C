@@ -386,6 +386,8 @@ void avtVlsvFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData* md) {
 	  case 9:
 	    AddTensorVarToMetaData(md,(*var).name,it->second->getName(),centering,9);
 	    break;
+	  default:
+	    break;
 	 }
       }
    }

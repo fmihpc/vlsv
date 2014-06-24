@@ -452,6 +452,17 @@ namespace vlsvplugin {
 	 debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
 	 return false;
       }
+      
+      if (domainOffsets == NULL) {
+	 debug2 << "VLSV\t\t ERROR: domainOffsets is NULL" << endl; return false;
+      }
+      if (ghostOffsets == NULL) {
+	 debug2 << "VLSV\t\t ERROR: ghostOffsets is NULL" << endl; return false;
+      }
+      if (variableOffsets == NULL) {
+	 debug2 << "VLSV\t\t ERROR: variableOffsets is NULL" << endl; return false;
+      }
+      
       const uint64_t N_totalBlocks = domainOffsets[domain+1]-domainOffsets[domain];
       const uint64_t N_ghosts      = ghostOffsets[domain+1]-ghostOffsets[domain];
       const uint64_t N_blocks      = N_totalBlocks - N_ghosts;
