@@ -30,6 +30,8 @@
       mesh_reader_visit_quad_multi.cpp
       mesh_reader_visit_ucd_multi.cpp
       mesh_reader_visit_ucd_generic_multi.cpp
+      mesh_metadata_visit_ucd_amr.cpp
+      mesh_reader_visit_ucd_amr.cpp
     </Files>
     <Files components="E">
       duplicate_node_elimination.cpp
@@ -46,6 +48,8 @@
       mesh_reader_visit_quad_multi.cpp
       mesh_reader_visit_ucd_multi.cpp
       mesh_reader_visit_ucd_generic_multi.cpp
+      mesh_metadata_visit_ucd_amr.cpp
+      mesh_reader_visit_ucd_amr.cpp
     </Files>
     <LIBS components="ESer">
     </LIBS>

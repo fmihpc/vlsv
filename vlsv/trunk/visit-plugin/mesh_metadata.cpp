@@ -47,6 +47,7 @@ namespace vlsvplugin {
       xUnits = "";
       yUnits = "";
       zUnits = "";
+      maxRefinementLevel = 0;
    }
    
    MeshMetadata::~MeshMetadata() { }
@@ -62,6 +63,8 @@ namespace vlsvplugin {
       yPeriodic = this->yPeriodic;
       zPeriodic = this->zPeriodic;
    }
+   
+   uint64_t MeshMetadata::getMaximumRefinementLevel() const {return maxRefinementLevel;}
    
    std::string MeshMetadata::getName() const {return name;}
 
@@ -153,7 +156,8 @@ namespace vlsvplugin {
       it = attribs.find("xperiodic"); if (it != attribs.end()) if (it->second == "yes") xPeriodic = true;
       it = attribs.find("yperiodic"); if (it != attribs.end()) if (it->second == "yes") yPeriodic = true;
       it = attribs.find("zperiodic"); if (it != attribs.end()) if (it->second == "yes") zPeriodic = true;
-      
+      it = attribs.find("max_refinement_level"); if (it != attribs.end()) maxRefinementLevel = atoi(it->second.c_str());
+
       return success;
    }
 }

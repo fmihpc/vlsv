@@ -70,11 +70,13 @@
 
 #include <mesh_metadata_visit_point.h>
 #include <mesh_metadata_visit_quad_multi.h>
+#include <mesh_metadata_visit_ucd_amr.h>
 #include <mesh_metadata_visit_ucd_multi.h>
 #include <mesh_metadata_visit_ucd_generic_multi.h>
 
 #include <mesh_reader_visit_point.h>
 #include <mesh_reader_visit_quad_multi.h>
+#include <mesh_reader_visit_ucd_amr.h>
 #include <mesh_reader_visit_ucd_multi.h>
 #include <mesh_reader_visit_ucd_generic_multi.h>
 
@@ -783,6 +785,26 @@ bool avtVlsvFileFormat::readMetadata() {
 	       debug4 << "VLSV\t\t Created quad multimesh reader" << endl;
 	    } else {
 	       debug2 << "VLSV\t\t Failed to insert quad multimesh metadata" << endl;
+	       map<string,vlsvplugin::VisitMeshMetadata*>::iterator tmp = meshMetadata.find(*it);
+	       delete tmp->second; tmp->second = NULL;
+	       meshMetadata.erase(tmp);
+	    }
+	 }
+      } else if (attribsOut["type"] == vlsv::mesh::STRING_UCD_AMR) {
+	 vlsvplugin::VisitUCDAMRMetadata* amrUCD = new vlsvplugin::VisitUCDAMRMetadata();
+	 if (amrUCD->read(vlsvReader,attribsOut) == false) {
+	    debug2 << "VLSV\t\t Failed to read amr mesh metadata" << endl;
+	    delete amrUCD; amrUCD = NULL;
+	 } else {
+	    // Insert metadata to map meshMetadata:
+	    pair<map<string,vlsvplugin::VisitMeshMetadata*>::iterator,bool> position =
+	      meshMetadata.insert(make_pair(*it,amrUCD));
+	    
+	    if (position.second == true) {
+	       meshReaders[*it] = new vlsvplugin::VisitUCDAMRReader();
+	       debug4 << "VLSV\t\t Created UCD AMR reader" << endl;
+	    } else {
+	       debug2 << "VLSV\t\t Failed to insert UCD AMR metadata" << endl;
 	       map<string,vlsvplugin::VisitMeshMetadata*>::iterator tmp = meshMetadata.find(*it);
 	       delete tmp->second; tmp->second = NULL;
 	       meshMetadata.erase(tmp);

@@ -73,6 +73,7 @@ namespace vlsv {
 	 POINT,
 	 QUAD,
 	 QUAD_MULTI,
+	 UCD_AMR,
 	 UCD_MULTI,
 	 UCD_GENERIC_MULTI
       };
@@ -81,6 +82,7 @@ namespace vlsv {
       const std::string STRING_POINT = "point";              /**< Point mesh.*/
       const std::string STRING_QUAD = "quad";
       const std::string STRING_QUAD_MULTI = "multimesh";     /**< Multi-domain mesh with uniform cell size.*/
+      const std::string STRING_UCD_AMR = "amr_ucd";          /**< Unstructured refined mesh.*/
       const std::string STRING_UCD_MULTI = "multi_ucd";      /**< Unstructured non-uniform curvilinear multi-domain mesh.*/
       const std::string STRING_UCD_GENERIC_MULTI = "multi_ucd_generic"; /**< Generic unstructured multi-domain mesh.*/
    }
