@@ -49,6 +49,7 @@ namespace vlsvplugin {
       virtual uint64_t getArraySize() const;
       virtual uint64_t getDataSize() const;
       virtual vlsv::datatype::type getDatatype() const;
+      virtual uint64_t getMaximumRefinementLevel() const;
       virtual void getMeshPeriodicity(bool& xPeriodic,bool& yPeriodic,bool& zPeriodic) const;
       virtual std::string getName() const;
       virtual uint64_t getNumberOfGhostNodes() const;
@@ -81,6 +82,10 @@ namespace vlsvplugin {
       vlsv::datatype::type datatype;
       std::vector<VariableMetadata> variableMetadata;
 
+      int32_t maxRefinementLevel; /**< Maximum refinement level in mesh, equals zero if
+				   * the mesh type does not support refinement, or if the 
+				   * mesh is not refined.*/
+      
       uint64_t N_ghostNodes;    /**< Total number of ghost nodes in the mesh, summed over all domains.*/
       uint64_t N_ghostZones;    /**< Total number of ghost zones in the mesh, summed over all domains.*/
       uint64_t N_localNodes;    /**< Total number of local nodes in the mesh, summer over all domains.*/
