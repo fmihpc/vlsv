@@ -51,6 +51,40 @@ const std::unordered_map<uint64_t,uint8_t>::iterator AmrMesh::begin() {
    return globalIDs.begin();
 }
 
+bool AmrMesh::checkBlock(const uint64_t& globalID) {
+   // Test if the block exists:
+   if (globalIDs.find(globalID) != globalIDs.end()) return true;
+
+   // Recursively test if the block is refined, i.e., all its children exist:
+   bool ok = true;
+   vector<uint64_t> children;
+   getChildren(globalID,children);
+   for (size_t c=0; c<children.size(); ++c) {
+      // Check that children are ok:
+      if (checkBlock(children[c]) == false) {
+	 ok = false;
+      }
+   }
+
+   return ok;
+}
+
+bool AmrMesh::checkMesh() {
+   bool ok = true;
+
+   for (std::unordered_map<uint64_t,uint8_t>::const_iterator it=begin(); it!=end(); ++it) {
+      // Recursively test that all siblings are ok. Note that vector siblings
+      // also contains the global ID of this block:
+      vector<uint64_t> siblings;
+      getSiblings(it->first,siblings);
+      for (size_t s=0; s<siblings.size(); ++s) {
+	 if (checkBlock(siblings[s]) == false) ok = false;
+      }
+   }
+
+   return ok;
+}
+
 /** Attempt to coarsen the given block. Coarsen will not succeed if it 
  * would create a block with more than one refinement level difference 
  * between it and its neighbors.

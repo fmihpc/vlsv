@@ -42,6 +42,12 @@ int main(int argn,char* args[]) {
       }
    }
    
+   if (mesh.checkMesh() == true) {
+      cout << "Mesh checks OK after refines" << endl;
+   } else {
+      cout << "Mesh IS NOT OK after refines" << endl;
+   }
+   
    if (mesh.write("amr_refined.vlsv") == false) {
       cerr << "failed to write mesh" << endl;
       return 1;
@@ -53,6 +59,12 @@ int main(int argn,char* args[]) {
       unordered_map<uint64_t,uint8_t>::iterator it = mesh.begin();
       for (int j=0; j<index; ++j) ++it;
       mesh.coarsen(it->first);
+   }
+   
+   if (mesh.checkMesh() == true) {
+      cout << "Mesh checks OK after coarsenings" << endl;
+   } else {
+      cout << "Mesh IS NOT OK after coarsenings" << endl;
    }
    
    if (mesh.write("amr_coarsen.vlsv") == false) {
