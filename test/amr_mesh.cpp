@@ -28,6 +28,8 @@
 
 using namespace std;
 
+namespace amr {
+
 AmrMesh::AmrMesh(const uint32_t& Nx0,const uint32_t& Ny0,const uint32_t& Nz0,const uint32_t& xCells,
 		 const uint32_t& yCells,const uint32_t& zCells,const uint8_t& maxRefLevel) {
    bbox[0] = Nx0;
@@ -41,23 +43,28 @@ AmrMesh::AmrMesh(const uint32_t& Nx0,const uint32_t& Ny0,const uint32_t& Nz0,con
    refLevelMaxAllowed = maxRefLevel;
    
    initialized = false;
+
+   callbackCoarsenBlock = NULL;
+   callbackCreateBlock = NULL;
+   callbackDeleteBlock = NULL;
+   callbackRefineBlock = NULL;
 }
 
 AmrMesh::~AmrMesh() { }
 
 /** Get a const iterator pointing to the first existing block in mesh.
  * @return Iterator pointing to the first existing block.*/
-const std::unordered_map<uint64_t,uint8_t>::iterator AmrMesh::begin() {
+std::unordered_map<GlobalID,LocalID>::iterator AmrMesh::begin() {
    return globalIDs.begin();
 }
 
-bool AmrMesh::checkBlock(const uint64_t& globalID) {
+bool AmrMesh::checkBlock(const GlobalID& globalID) {
    // Test if the block exists:
    if (globalIDs.find(globalID) != globalIDs.end()) return true;
 
    // Recursively test if the block is refined, i.e., all its children exist:
    bool ok = true;
-   vector<uint64_t> children;
+   vector<GlobalID> children;
    getChildren(globalID,children);
    for (size_t c=0; c<children.size(); ++c) {
       // Check that children are ok:
@@ -72,10 +79,10 @@ bool AmrMesh::checkBlock(const uint64_t& globalID) {
 bool AmrMesh::checkMesh() {
    bool ok = true;
 
-   for (std::unordered_map<uint64_t,uint8_t>::const_iterator it=begin(); it!=end(); ++it) {
+   for (std::unordered_map<GlobalID,LocalID>::const_iterator it=begin(); it!=end(); ++it) {
       // Recursively test that all siblings are ok. Note that vector siblings
       // also contains the global ID of this block:
-      vector<uint64_t> siblings;
+      vector<GlobalID> siblings;
       getSiblings(it->first,siblings);
       for (size_t s=0; s<siblings.size(); ++s) {
 	 if (checkBlock(siblings[s]) == false) ok = false;
@@ -90,40 +97,68 @@ bool AmrMesh::checkMesh() {
  * between it and its neighbors.
  * @param globalID Global ID of the block.
  * @return If true, block was coarsened.*/
-bool AmrMesh::coarsen(const uint64_t& globalID) {
+bool AmrMesh::coarsen(const GlobalID& globalID) {
    if (globalIDs.find(globalID) == globalIDs.end()) return false;
    
    uint32_t refLevel,i,j,k;
    getIndices(globalID,refLevel,i,j,k);
    if (refLevel == 0) return false;
 
-   vector<uint64_t> nbrs;
+   vector<GlobalID> nbrs;
    getSiblingNeighbors(globalID,nbrs);
 
    // Check if block can be coarsened:
    for (size_t n=0; n<nbrs.size(); ++n) {
-      vector<uint64_t> children;
+      vector<GlobalID> children;
       getChildren(nbrs[n],children);
       for (size_t c=0; c<children.size(); ++c) {
 	 if (globalIDs.find(children[c]) != globalIDs.end()) return false;
       }
    }
 
-   // Remove the block and its siblings:
-   vector<uint64_t> siblings;
+   // Calculate the global ID of the block and its siblings,
+   // and call the user-defined callback:
+   GlobalID siblings[8];
    getSiblings(globalID,siblings);
-   for (size_t s=0; s<siblings.size(); ++s) {
-      globalIDs.erase(siblings[s]);
+   for (size_t s=0; s<8; ++s) {
+      if (globalIDs.find(siblings[s]) == globalIDs.end()) {
+	 return false;
+      }
+   }
+
+   LocalID siblingIndices[8];
+   for (int s=0; s<8; ++s) {
+      unordered_map<GlobalID,LocalID>::const_iterator it = globalIDs.find(siblings[s]);
+      if (it == globalIDs.end()) {
+	 #warning FIXME Store invalid LocalID here
+	 continue;
+      } else {
+	 siblingIndices[s] = it->second;
+      }
+   }
+
+   LocalID newLocalID;
+   if (callbackCoarsenBlock != NULL) {
+      (*callbackCoarsenBlock)(siblings,siblingIndices,getParent(globalID),newLocalID);
    }
    
+   // Remove the block and its siblings:
+   for (size_t s=0; s<8; ++s) {
+      if (globalIDs.find(siblings[s]) == globalIDs.end()) {
+	 cerr << "ERROR coarsen trying to remove non-existing block " << siblings[s] << endl;
+	 exit(1);
+      }
+      globalIDs.erase(siblings[s]);
+   }
+
    // Insert parent:
-   globalIDs.insert(make_pair(getParent(globalID),refLevel-1));
+   globalIDs.insert(make_pair(getParent(globalID),newLocalID));
    return true;
 }
 
 /** Get a const iterator pointing past the last existing block.
  * @param Iterator pointing past the last existing block.*/
-const std::unordered_map<uint64_t,uint8_t>::iterator AmrMesh::end() {
+std::unordered_map<GlobalID,LocalID>::iterator AmrMesh::end() {
    return globalIDs.end();
 }
 
@@ -135,7 +170,7 @@ bool AmrMesh::finalize() {return true;}
  * or may not exists -- this function simply calculates the global IDs.
  * @param globalID Global ID of the block.
  * @param children Vector where global IDs of children are inserted.*/
-void AmrMesh::getChildren(const uint64_t& globalID,std::vector<uint64_t>& children) {
+void AmrMesh::getChildren(const GlobalID& globalID,std::vector<GlobalID>& children) {
    children.clear();
    
    uint32_t refLevel,i,j,k;
@@ -164,7 +199,7 @@ void AmrMesh::getChildren(const uint64_t& globalID,std::vector<uint64_t>& childr
  * @param j j-index of the block at given refinement level.
  * @param k k-index of the block at given refinement level.
  * @return Global ID of the block.*/
-uint64_t AmrMesh::getGlobalID(const uint32_t& refLevel,const uint32_t& i,const uint32_t& j,const uint32_t& k) {
+GlobalID AmrMesh::getGlobalID(const uint32_t& refLevel,const uint32_t& i,const uint32_t& j,const uint32_t& k) {
    const uint32_t multiplier = pow(2,refLevel);
    return offsets[refLevel] + k*bbox[1]*bbox[0]*multiplier*multiplier + j*bbox[0]*multiplier + i;
 }
@@ -175,15 +210,15 @@ uint64_t AmrMesh::getGlobalID(const uint32_t& refLevel,const uint32_t& i,const u
  * @param i Block's i-index is written here.
  * @param j Block's j-index is written here.
  * @param k Block's k-index is written here.*/
-void AmrMesh::getIndices(const uint64_t& globalID,uint32_t& refLevel,uint32_t& i,uint32_t& j,uint32_t& k) {
+void AmrMesh::getIndices(const GlobalID& globalID,uint32_t& refLevel,uint32_t& i,uint32_t& j,uint32_t& k) {
    refLevel   = upper_bound(offsets.begin(),offsets.end(),globalID)-offsets.begin()-1;
-   const uint64_t cellOffset = offsets[refLevel];
+   const GlobalID cellOffset = offsets[refLevel];
 
-   const uint64_t multiplier = pow(2,refLevel);
-   const uint64_t Nx = bbox[0] * multiplier;
-   const uint64_t Ny = bbox[1] * multiplier;
+   const GlobalID multiplier = pow(2,refLevel);
+   const GlobalID Nx = bbox[0] * multiplier;
+   const GlobalID Ny = bbox[1] * multiplier;
 
-   uint64_t index = globalID - cellOffset;
+   GlobalID index = globalID - cellOffset;
    k = index / (Ny*Nx);
    index -= k*Ny*Nx;
    j = index / Nx;
@@ -195,7 +230,7 @@ void AmrMesh::getIndices(const uint64_t& globalID,uint32_t& refLevel,uint32_t& i
  * not actually exist.
  * @param globalID Global ID of the block.
  * @param neighboIDs Vector where neighbors global IDs are written to.*/
-void AmrMesh::getNeighbors(const uint64_t& globalID,std::vector<uint64_t>& neighborIDs) {
+void AmrMesh::getNeighbors(const GlobalID& globalID,std::vector<GlobalID>& neighborIDs) {
    neighborIDs.clear();
 
    uint32_t i,j,k,refLevel;
@@ -221,7 +256,7 @@ void AmrMesh::getNeighbors(const uint64_t& globalID,std::vector<uint64_t>& neigh
  * i.e., at the base grid level, block's global ID is returned instead.
  * @param globalID Global ID of the block.
  * @return Global ID of block's parent.*/
-uint64_t AmrMesh::getParent(const uint64_t& globalID) {
+GlobalID AmrMesh::getParent(const GlobalID& globalID) {
    uint32_t refLevel,i,j,k;
    getIndices(globalID,refLevel,i,j,k);
 
@@ -239,7 +274,7 @@ uint64_t AmrMesh::getParent(const uint64_t& globalID) {
  * returned vector should contain 56 neighbor IDs.
  * @param globalID Global ID of the block.
  * @param nbrs Vector where the neighbor IDs are written to.*/
-void AmrMesh::getSiblingNeighbors(const uint64_t& globalID,std::vector<uint64_t>& nbrs) {
+void AmrMesh::getSiblingNeighbors(const GlobalID& globalID,std::vector<GlobalID>& nbrs) {
    nbrs.clear();
 
    uint32_t refLevel,i,j,k;
@@ -263,12 +298,30 @@ void AmrMesh::getSiblingNeighbors(const uint64_t& globalID,std::vector<uint64_t>
    }
 }
 
+void AmrMesh::getSiblings(const GlobalID& globalID,GlobalID siblings[8]) {
+   uint32_t refLevel,i,j,k;
+   getIndices(globalID,refLevel,i,j,k);
+   
+   i -= (i % 2);
+   j -= (j % 2);
+   k -= (k % 2);
+   
+   siblings[0] = getGlobalID(refLevel,i  ,j  ,k  );
+   siblings[1] = getGlobalID(refLevel,i+1,j  ,k  );
+   siblings[2] = getGlobalID(refLevel,i  ,j+1,k  );
+   siblings[3] = getGlobalID(refLevel,i+1,j+1,k  );
+   siblings[4] = getGlobalID(refLevel,i  ,j  ,k+1);
+   siblings[5] = getGlobalID(refLevel,i+1,j  ,k+1);
+   siblings[6] = getGlobalID(refLevel,i  ,j+1,k+1);
+   siblings[7] = getGlobalID(refLevel,i+1,j+1,k+1);
+}
+   
 /** Get global IDs of block's siblings at the same refinement level as the block. 
  * Note that some of the siblings may not exists, for example, 
  * if the sibling has been refined. Returned vector also contains the ID of this block.
  * @param globalID Global ID of the block.
  * @param siblings Vector where sibling's global IDs are written to.*/
-void AmrMesh::getSiblings(const uint64_t& globalID,std::vector<uint64_t>& siblings) {
+void AmrMesh::getSiblings(const GlobalID& globalID,std::vector<GlobalID>& siblings) {
    siblings.clear();
 
    uint32_t refLevel,i,j,k;
@@ -316,9 +369,18 @@ bool AmrMesh::initialize(const double& xmin,const double& xmax,const double& ymi
    for (uint32_t k=0; k<bbox[2]*factor; ++k) 
      for (uint32_t j=0; j<bbox[1]*factor; ++j)
        for (uint32_t i=0; i<bbox[0]*factor; ++i) {
-	  globalIDs.insert(make_pair(getGlobalID(refLevel,i,j,k),refLevel));
+	  
+	  if (1.0*rand()/RAND_MAX < 0.2) continue;
+	  
+	  #warning FIXME Insert invalid local id here
+	  GlobalID globalID = getGlobalID(refLevel,i,j,k);
+	  LocalID localID;
+	  if (callbackCreateBlock != NULL) {
+	     (*callbackCreateBlock)(globalID,localID);
+	  }
+	  globalIDs.insert(make_pair(globalID,localID));
        }
-   
+
    meshLimits[0] = xmin;
    meshLimits[1] = xmax;
    meshLimits[2] = ymin;
@@ -335,10 +397,10 @@ bool AmrMesh::initialize(const double& xmin,const double& xmax,const double& ymi
  * between neighboring blocks.
  * @param globalID Global ID of the block.
  * @return If true, block was refined.*/
-bool AmrMesh::refine(const uint64_t& globalID) {
+bool AmrMesh::refine(const GlobalID& globalID) {
    if (globalIDs.find(globalID) == globalIDs.end()) return false;
 
-   vector<uint64_t> nbrs;
+   vector<GlobalID> nbrs;
    getNeighbors(globalID,nbrs);
 
    uint32_t i,j,k,refLevel;
@@ -347,28 +409,45 @@ bool AmrMesh::refine(const uint64_t& globalID) {
       return false;
    }
 
+   // Store children global IDs to array:
+   GlobalID childrenGlobalIDs[8];
+   childrenGlobalIDs[0] = getGlobalID(refLevel+1,i  ,j  ,k  );
+   childrenGlobalIDs[1] = getGlobalID(refLevel+1,i+1,j  ,k  );
+   childrenGlobalIDs[2] = getGlobalID(refLevel+1,i  ,j+1,k  );
+   childrenGlobalIDs[3] = getGlobalID(refLevel+1,i+1,j+1,k  );
+   childrenGlobalIDs[4] = getGlobalID(refLevel+1,i  ,j  ,k+1);
+   childrenGlobalIDs[5] = getGlobalID(refLevel+1,i+1,j  ,k+1);
+   childrenGlobalIDs[6] = getGlobalID(refLevel+1,i  ,j+1,k+1);
+   childrenGlobalIDs[7] = getGlobalID(refLevel+1,i+1,j+1,k+1);
+
+   // Call refine callback:
+   LocalID childrenLocalIDs[8];
+   if (callbackRefineBlock != NULL) {
+      (*callbackRefineBlock)(globalID,globalIDs[globalID],childrenGlobalIDs,childrenLocalIDs);
+   }
+   
    i *= 2;
    j *= 2;
    k *= 2;
    globalIDs.erase(globalID);
-   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i  ,j  ,k  ),refLevel+1));
-   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i+1,j  ,k  ),refLevel+1));
-   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i  ,j+1,k  ),refLevel+1));
-   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i+1,j+1,k  ),refLevel+1));
-   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i  ,j  ,k+1),refLevel+1));
-   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i+1,j  ,k+1),refLevel+1));
-   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i  ,j+1,k+1),refLevel+1));
-   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i+1,j+1,k+1),refLevel+1));
+   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i  ,j  ,k  ),childrenLocalIDs[0]));
+   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i+1,j  ,k  ),childrenLocalIDs[1]));
+   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i  ,j+1,k  ),childrenLocalIDs[2]));
+   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i+1,j+1,k  ),childrenLocalIDs[3]));
+   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i  ,j  ,k+1),childrenLocalIDs[4]));
+   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i+1,j  ,k+1),childrenLocalIDs[5]));
+   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i  ,j+1,k+1),childrenLocalIDs[6]));
+   globalIDs.insert(make_pair(getGlobalID(refLevel+1,i+1,j+1,k+1),childrenLocalIDs[7]));
 
    // Enforce that neighbors have at maximum one refinement level difference:
    for (size_t n=0; n<nbrs.size(); ++n) {
       // Get parent of the neighbor:
-      const uint64_t parentID = getParent(nbrs[n]);
+      const GlobalID parentID = getParent(nbrs[n]);
       
       // If the parent exists, it is at two refinement levels higher than 
       // the block that was refined above. Refine parent of neighbor:
       if (parentID == nbrs[n]) continue;
-      unordered_map<uint64_t,uint8_t>::iterator parent = globalIDs.find(parentID);
+      unordered_map<GlobalID,LocalID>::iterator parent = globalIDs.find(parentID);
       if (parent != globalIDs.end()) {
 	 refine(parentID);
       }
@@ -407,8 +486,8 @@ bool AmrMesh::write(const std::string fileName) {
    attributes["max_refinement_level"] = ss.str();
    attributes["geometry"] = vlsv::geometry::STRING_CARTESIAN;
      {
-	vector<uint64_t> buffer;
-	for (unordered_map<uint64_t,uint8_t>::iterator it=globalIDs.begin(); it!=globalIDs.end(); ++it) {
+	vector<GlobalID> buffer;
+	for (unordered_map<GlobalID,LocalID>::iterator it=globalIDs.begin(); it!=globalIDs.end(); ++it) {
 	   buffer.push_back(it->first);
 	}
 	if (vlsv.writeArray("MESH",attributes,globalIDs.size(),1,&(buffer[0])) == false) success = false;
@@ -456,3 +535,6 @@ bool AmrMesh::write(const std::string fileName) {
    return success;
 }
 
+} // namespace amr
+   
+   
