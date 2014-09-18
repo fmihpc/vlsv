@@ -24,26 +24,31 @@ int main(int argn,char* args[]) {
    int zCells = 1;
    int maxRefLevel = 8;
 
-   AmrMesh mesh(Nx0,Ny0,Nz0,xCells,yCells,zCells,maxRefLevel);
+   amr::AmrMesh mesh(Nx0,Ny0,Nz0,xCells,yCells,zCells,maxRefLevel);
    if (mesh.initialize(0,Nx0,0,Ny0,0,Nz0,0) == false) {
       cerr << "mesh failed to init" << endl;
       return 1;
    }
 
    srand(time(NULL));
-   for (int i=0; i<100; ++i) {
+   const int N_refines = 100;
+   double t_ref_total = 0.0;
+   for (int i=0; i<N_refines; ++i) {
       const uint64_t index = mesh.size()*1.0*rand()/RAND_MAX;
       
-      unordered_map<uint64_t,uint8_t>::iterator it = mesh.begin();
+      unordered_map<amr::GlobalID,amr::LocalID>::iterator it = mesh.begin();
       for (int j=0; j<index; ++j) ++it;
+      
+      const double t_ref_start = MPI_Wtime();
       if (mesh.refine(it->first) == false) {
 	 cerr << "refine failed" << endl;
 	 return 1;
       }
+      t_ref_total += (MPI_Wtime() - t_ref_start);
    }
    
    if (mesh.checkMesh() == true) {
-      cout << "Mesh checks OK after refines" << endl;
+      cout << "Mesh checks OK after refines, time \t" << t_ref_total/N_refines << "\t per refine" << endl;
    } else {
       cout << "Mesh IS NOT OK after refines" << endl;
    }
@@ -53,16 +58,21 @@ int main(int argn,char* args[]) {
       return 1;
    }
 
-   for (int i=0; i<150; ++i) {
+   const int N_coarsens = 150;
+   double t_coa_total = 0.0;
+   for (int i=0; i<N_coarsens; ++i) {
       const uint64_t index = mesh.size()*1.0*rand()/RAND_MAX;
       
-      unordered_map<uint64_t,uint8_t>::iterator it = mesh.begin();
+      unordered_map<amr::GlobalID,amr::LocalID>::iterator it = mesh.begin();
       for (int j=0; j<index; ++j) ++it;
+      
+      const double t_coa_start = MPI_Wtime();
       mesh.coarsen(it->first);
+      t_coa_total += (MPI_Wtime() - t_coa_start);
    }
    
    if (mesh.checkMesh() == true) {
-      cout << "Mesh checks OK after coarsenings" << endl;
+      cout << "Mesh checks OK after coarsenings, time \t" << t_coa_total/N_coarsens << "\t per coarsen" << endl;
    } else {
       cout << "Mesh IS NOT OK after coarsenings" << endl;
    }
