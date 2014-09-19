@@ -30,6 +30,17 @@ using namespace std;
 
 namespace amr {
 
+   namespace limits {
+      enum meshlimits {
+	 XMIN,
+	 XMAX,
+	 YMIN,
+	 YMAX,
+	 ZMIN,
+	 ZMAX
+      };
+   }
+   
 AmrMesh::AmrMesh(const uint32_t& Nx0,const uint32_t& Ny0,const uint32_t& Nz0,const uint32_t& xCells,
 		 const uint32_t& yCells,const uint32_t& zCells,const uint8_t& maxRefLevel) {
    bbox[0] = Nx0;
@@ -50,7 +61,11 @@ AmrMesh::AmrMesh(const uint32_t& Nx0,const uint32_t& Ny0,const uint32_t& Nz0,con
    callbackRefineBlock = NULL;
 }
 
-AmrMesh::~AmrMesh() { }
+AmrMesh::~AmrMesh() { 
+   if (finalize() == false) {
+      cerr << "AmrMesh warning: finalize() returned false" << endl;
+   }
+}
 
 /** Get a const iterator pointing to the first existing block in mesh.
  * @return Iterator pointing to the first existing block.*/
@@ -130,7 +145,7 @@ bool AmrMesh::coarsen(const GlobalID& globalID) {
    for (int s=0; s<8; ++s) {
       unordered_map<GlobalID,LocalID>::const_iterator it = globalIDs.find(siblings[s]);
       if (it == globalIDs.end()) {
-	 #warning FIXME Store invalid LocalID here
+	 siblingIndices[s] = INVALID_LOCALID;
 	 continue;
       } else {
 	 siblingIndices[s] = it->second;
@@ -141,7 +156,7 @@ bool AmrMesh::coarsen(const GlobalID& globalID) {
    if (callbackCoarsenBlock != NULL) {
       (*callbackCoarsenBlock)(siblings,siblingIndices,getParent(globalID),newLocalID);
    }
-   
+
    // Remove the block and its siblings:
    for (size_t s=0; s<8; ++s) {
       if (globalIDs.find(siblings[s]) == globalIDs.end()) {
@@ -164,7 +179,77 @@ std::unordered_map<GlobalID,LocalID>::iterator AmrMesh::end() {
 
 /** Finalize the class. Deallocates all memory.
  * @return If true, class finalized correctly.*/
-bool AmrMesh::finalize() {return true;}
+bool AmrMesh::finalize() {
+   bool success = true;
+   if (callbackDeleteBlock != NULL) {
+      for (unordered_map<GlobalID,LocalID>::iterator it=globalIDs.begin(); it!=globalIDs.end(); ++it) {
+	 if ((*callbackDeleteBlock)(it->first,it->second) == false) success = false;
+      }
+   }
+   return success;
+}
+
+/** Get the global ID of an existing block that contains given coordinates.
+ */
+GlobalID AmrMesh::getBlock(const double& x,const double& y,const double& z) {
+   // Check that given coordinates are not outside the mesh:
+   if (x < meshLimits[limits::XMIN] || x > meshLimits[limits::XMAX]) return INVALID_GLOBALID;
+   if (y < meshLimits[limits::YMIN] || x > meshLimits[limits::YMAX]) return INVALID_GLOBALID;
+   if (z < meshLimits[limits::ZMIN] || x > meshLimits[limits::ZMAX]) return INVALID_GLOBALID;
+
+   for (int r=0; r<=refLevelMaxAllowed; ++r) {
+      // Calculate the number of blocks in each coordinate direction on this refinement level:
+      const uint32_t Nx = bbox[0]*(r+1);
+      const uint32_t Ny = bbox[1]*(r+1);
+      const uint32_t Nz = bbox[2]*(r+1);
+
+      // Calculate block size:
+      const double dx = (meshLimits[limits::XMAX]-meshLimits[limits::XMIN]) / Nx;
+      const double dy = (meshLimits[limits::YMAX]-meshLimits[limits::YMIN]) / Ny;
+      const double dz = (meshLimits[limits::ZMAX]-meshLimits[limits::ZMIN]) / Nz;
+
+      // Calculate the (i,j,k) indices of the block containing the given coordinates:
+      const uint32_t i = static_cast<uint32_t>((x-meshLimits[limits::XMIN]) / dx);
+      const uint32_t j = static_cast<uint32_t>((y-meshLimits[limits::YMIN]) / dy);
+      const uint32_t k = static_cast<uint32_t>((z-meshLimits[limits::ZMIN]) / dz);
+      
+      const GlobalID gID = getGlobalID(r,i,j,k);
+      if (globalIDs.find(gID) != globalIDs.end()) return gID;
+   }
+   return INVALID_GLOBALID;
+}
+
+bool AmrMesh::getBlockCoordinates(const GlobalID& globalID,double coords[3]) const {
+   // Exit if block does not exist:
+   unordered_map<GlobalID,LocalID>::const_iterator it = globalIDs.find(globalID);
+   if (it == globalIDs.end()) return false;
+
+   // Calculate block's refinement level and (i,j,k) indices:
+   uint32_t refLevel,i,j,k;
+   getIndices(globalID,refLevel,i,j,k);
+   
+   getBlockSize(globalID,coords);
+   coords[0] = meshLimits[limits::XMIN] + i*coords[0];
+   coords[1] = meshLimits[limits::YMIN] + j*coords[1];
+   coords[2] = meshLimits[limits::ZMIN] + k*coords[2];
+   return true;
+}
+   
+bool AmrMesh::getBlockSize(const GlobalID& globalID,double size[3]) const {
+   // Calculate block's refinement level and (i,j,k) indices:
+   uint32_t refLevel,i,j,k;
+   getIndices(globalID,refLevel,i,j,k);
+
+   // Calculate the number of blocks in each coordinate direction on this refinement level:
+   const uint32_t Nx = bbox[0]*(refLevel+1);
+   const uint32_t Ny = bbox[1]*(refLevel+1);
+   const uint32_t Nz = bbox[2]*(refLevel+1);
+
+   // Calculate the number of blocks in each coordinate direction on this refinement level:
+   size[0] = (meshLimits[limits::XMAX]-meshLimits[limits::XMIN]) / Nx;
+   size[1] = (meshLimits[limits::YMAX]-meshLimits[limits::YMIN]) / Ny;
+   size[2] = (meshLimits[limits::ZMAX]-meshLimits[limits::ZMIN]) / Nz;
+}
 
 /** Get global IDs of block's children. Note that the children may 
  * or may not exists -- this function simply calculates the global IDs.
@@ -210,7 +295,7 @@ GlobalID AmrMesh::getGlobalID(const uint32_t& refLevel,const uint32_t& i,const u
  * @param i Block's i-index is written here.
  * @param j Block's j-index is written here.
  * @param k Block's k-index is written here.*/
-void AmrMesh::getIndices(const GlobalID& globalID,uint32_t& refLevel,uint32_t& i,uint32_t& j,uint32_t& k) {
+void AmrMesh::getIndices(const GlobalID& globalID,uint32_t& refLevel,uint32_t& i,uint32_t& j,uint32_t& k) const {
    refLevel   = upper_bound(offsets.begin(),offsets.end(),globalID)-offsets.begin()-1;
    const GlobalID cellOffset = offsets[refLevel];
 
@@ -370,23 +455,22 @@ bool AmrMesh::initialize(const double& xmin,const double& xmax,const double& ymi
      for (uint32_t j=0; j<bbox[1]*factor; ++j)
        for (uint32_t i=0; i<bbox[0]*factor; ++i) {
 	  
-	  if (1.0*rand()/RAND_MAX < 0.2) continue;
+	  if (1.0*rand()/RAND_MAX < 0.4) continue;
 	  
-	  #warning FIXME Insert invalid local id here
 	  GlobalID globalID = getGlobalID(refLevel,i,j,k);
-	  LocalID localID;
+	  LocalID localID = INVALID_LOCALID;
 	  if (callbackCreateBlock != NULL) {
 	     (*callbackCreateBlock)(globalID,localID);
 	  }
 	  globalIDs.insert(make_pair(globalID,localID));
        }
 
-   meshLimits[0] = xmin;
-   meshLimits[1] = xmax;
-   meshLimits[2] = ymin;
-   meshLimits[3] = ymax;
-   meshLimits[4] = zmin;
-   meshLimits[5] = zmax;
+   meshLimits[limits::XMIN] = xmin;
+   meshLimits[limits::XMAX] = xmax;
+   meshLimits[limits::YMIN] = ymin;
+   meshLimits[limits::YMAX] = ymax;
+   meshLimits[limits::ZMIN] = zmin;
+   meshLimits[limits::ZMAX] = zmax;
    
    initialized = true;
    return initialized;
@@ -455,6 +539,18 @@ bool AmrMesh::refine(const GlobalID& globalID) {
 
    return true;
 }
+   
+bool AmrMesh::registerCallbacks(CallbackCoarsenBlock coarsenBlock,CallbackCreateBlock createBlock,
+				CallbackDeleteBlock deleteBlock,CallbackRefineBlock refineBlock) {
+   cout << "registerCallbacks called" << endl;
+   cout << "\t" << coarsenBlock << '\t' << createBlock << '\t' << deleteBlock << '\t' << refineBlock << endl;
+   
+   callbackCoarsenBlock = coarsenBlock;
+   callbackCreateBlock  = createBlock;
+   callbackDeleteBlock  = deleteBlock;
+   callbackRefineBlock  = refineBlock;
+   return true;
+}
 
 /** Get the number of blocks in the mesh.
  * @return Number of blocks in the mesh.*/
@@ -512,21 +608,21 @@ bool AmrMesh::write(const std::string fileName) {
    // Write node coordinates:
    vector<float> coords;
    coords.resize(bbox[0]*bbox[3]+1);
-   float dx = (meshLimits[1]-meshLimits[0])/(bbox[0]*bbox[3]);
+   float dx = (meshLimits[limits::XMAX]-meshLimits[limits::XMIN])/(bbox[0]*bbox[3]);
    for (uint32_t i=0; i<bbox[0]*bbox[3]+1; ++i) {
       coords[i] = meshLimits[0] + i*dx;
    }
    if (vlsv.writeArray("MESH_NODE_CRDS_X",attributes,coords.size(),1,&(coords[0])) == false) success = false;
    
    coords.resize(bbox[1]*bbox[4]+1);
-   dx = (meshLimits[3]-meshLimits[2])/(bbox[1]*bbox[4]);
+   dx = (meshLimits[limits::YMAX]-meshLimits[limits::YMIN])/(bbox[1]*bbox[4]);
    for (uint32_t i=0; i<bbox[1]*bbox[4]+1; ++i) {
       coords[i] = meshLimits[2] + i*dx;
    }
    if (vlsv.writeArray("MESH_NODE_CRDS_Y",attributes,coords.size(),1,&(coords[0])) == false) success = false;
    
    coords.resize(bbox[2]*bbox[5]+1);
-   dx = (meshLimits[5]-meshLimits[4])/(bbox[2]*bbox[5]);
+   dx = (meshLimits[limits::ZMAX]-meshLimits[limits::ZMIN])/(bbox[2]*bbox[5]);
    for (uint32_t i=0; i<bbox[2]*bbox[5]+1; ++i) {
       coords[i] = meshLimits[4] + i*dx;
    }
