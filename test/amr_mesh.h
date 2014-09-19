@@ -22,13 +22,21 @@
 #include <vector>
 #include <stdint.h>
 #include <unordered_map>
+#include <limits>
+
+#warning TODO Add 2D mode
+#warning TOTO Add periodic boundaries
 
 namespace amr {
+   
    typedef uint64_t GlobalID;
    typedef uint32_t LocalID;
 
+   const GlobalID INVALID_GLOBALID = std::numeric_limits<GlobalID>::max();
+   const LocalID INVALID_LOCALID = std::numeric_limits<LocalID>::max();
+
    typedef int (*CallbackCoarsenBlock)(const GlobalID siblingIDs[8],const LocalID siblingIndices[8],
-				       const GlobalID& globalID,LocalID& index);
+				       const GlobalID globalID,LocalID& index);
    typedef int (*CallbackCreateBlock)(const GlobalID& globalID,LocalID& index);
    typedef int (*CallbackDeleteBlock)(const GlobalID& globalID,const LocalID& index);
    typedef int (*CallbackRefineBlock)(const GlobalID& globalID,const LocalID& index,
@@ -44,27 +52,32 @@ namespace amr {
       bool initialize(const double& xmin,const double& xmax,const double& ymin,const double& ymax,
 		      const double& zmin,const double& zmax,const uint8_t refLevel=0);
       bool finalize();
+      bool registerCallbacks(CallbackCoarsenBlock coarsenBlock,CallbackCreateBlock createBlock,
+			     CallbackDeleteBlock deleteBlock,CallbackRefineBlock refineBlock);
 
       std::unordered_map<GlobalID,LocalID>::iterator begin();
       std::unordered_map<GlobalID,LocalID>::iterator end();
 
+      GlobalID getBlock(const double& x,const double& y,const double& z);
       void     getChildren(const GlobalID& globalID,std::vector<GlobalID>& children);
+      bool     getBlockCoordinates(const GlobalID& globalID,double coords[3]) const;
+      bool     getBlockSize(const GlobalID& globalID,double coords[3]) const;
       GlobalID getGlobalID(const uint32_t& refLevel,const uint32_t& i,const uint32_t& j,const uint32_t& k);
       void     getNeighbors(const GlobalID& globalID,std::vector<GlobalID>& neighborIDs);
-      void     getIndices(const GlobalID& globalID,uint32_t& refLevel,uint32_t& i,uint32_t& j,uint32_t& k);
+      void     getIndices(const GlobalID& globalID,uint32_t& refLevel,uint32_t& i,uint32_t& j,uint32_t& k) const;
       GlobalID getParent(const GlobalID& globalID);
       void     getSiblingNeighbors(const GlobalID& globalID,std::vector<GlobalID>& nbrs);
       void     getSiblings(const GlobalID& globalID,GlobalID siblings[8]);
       void     getSiblings(const GlobalID& globalID,std::vector<GlobalID>& siblings);
       size_t   size() const;
-      
+
       bool checkBlock(const GlobalID& globalID);
       bool checkMesh();
       bool coarsen(const GlobalID& globalID);
       bool refine(const GlobalID& globalID);
-      
+
       bool write(const std::string fileName);
-      
+
     private:
       AmrMesh();
       
