@@ -15,7 +15,7 @@ DIST=vlsv_v01_001.tar
 
 # Build targets
 
-default: lib vlsv2silo
+default: lib
 
 clean:
 	rm -rf *~ *.o *.a *.tar *.tar.gz vlsv2silo
