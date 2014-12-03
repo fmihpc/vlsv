@@ -27,15 +27,16 @@ namespace vlsv {
 
    namespace celltype {
       enum type {
-	 UNKNOWN,
-	 VERTEX,
-	 LINE,
-	 TRIANGLE,
-	 QUAD,
-	 TETRA,
-	 PYRAMID,
-	 WEDGE,
-	 HEXAHEDRON
+         UNKNOWN,
+         VERTEX,
+         LINE,
+         TRIANGLE,
+         QUAD,
+         TETRA,
+         PYRAMID,
+         WEDGE,
+         HEXAHEDRON,
+         VOXEL
       };
    }
    
@@ -44,10 +45,10 @@ namespace vlsv {
       const uint8_t ENDIANNESS_BIG    = 1;
       
       enum type {
-	 UNKNOWN,                                            /**< Unknown or unsupported datatype.*/
-	 INT,                                                /**< Signed integer datatype.*/
-	 UINT,                                               /**< Unsinged integer datatype.*/
-	 FLOAT                                               /**< Floating point datatype.*/
+         UNKNOWN,                                            /**< Unknown or unsupported datatype.*/
+         INT,                                                /**< Signed integer datatype.*/
+         UINT,                                               /**< Unsinged integer datatype.*/
+         FLOAT                                               /**< Floating point datatype.*/
       };
    }
    
@@ -132,7 +133,8 @@ namespace vlsv {
     * with byte size of 8 usually means that the values are doubles.
     * @return String representation of the datatype.*/
    template<typename T> std::string getStringDatatype();
-
+   
+   std::string getStringDatatype(const vlsv::datatype::type& dt);
    const std::string& getMeshGeometry(geometry::type geom);
    geometry::type getMeshGeometry(const std::string& s);
    datatype::type getVLSVDatatype(const std::string& s);

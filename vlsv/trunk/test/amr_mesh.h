@@ -58,10 +58,12 @@ namespace amr {
       std::unordered_map<GlobalID,LocalID>::iterator begin();
       std::unordered_map<GlobalID,LocalID>::iterator end();
 
-      GlobalID getBlock(const double& x,const double& y,const double& z);
-      void     getChildren(const GlobalID& globalID,std::vector<GlobalID>& children);
+      LocalID  get(const GlobalID& globalID) const;
       bool     getBlockCoordinates(const GlobalID& globalID,double coords[3]) const;
-      bool     getBlockSize(const GlobalID& globalID,double coords[3]) const;
+      bool     getBlockSize(const GlobalID& globalID,double size[3]) const;
+      bool     getCellSize(const GlobalID& globalID,double size[3]) const;
+      void     getChildren(const GlobalID& globalID,std::vector<GlobalID>& children);
+      GlobalID getGlobalID(const double& x,const double& y,const double& z);
       GlobalID getGlobalID(const uint32_t& refLevel,const uint32_t& i,const uint32_t& j,const uint32_t& k);
       void     getNeighbors(const GlobalID& globalID,std::vector<GlobalID>& neighborIDs);
       void     getIndices(const GlobalID& globalID,uint32_t& refLevel,uint32_t& i,uint32_t& j,uint32_t& k) const;
@@ -69,6 +71,7 @@ namespace amr {
       void     getSiblingNeighbors(const GlobalID& globalID,std::vector<GlobalID>& nbrs);
       void     getSiblings(const GlobalID& globalID,GlobalID siblings[8]);
       void     getSiblings(const GlobalID& globalID,std::vector<GlobalID>& siblings);
+      bool     set(const GlobalID& globalID,const LocalID& localID);
       size_t   size() const;
 
       bool checkBlock(const GlobalID& globalID);
@@ -106,5 +109,5 @@ namespace amr {
    };
 
 } // namespace amr
-   
+
 #endif

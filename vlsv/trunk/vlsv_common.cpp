@@ -76,6 +76,26 @@ namespace vlsv {
       return geometry::UNKNOWN;
    }
 
+   std::string getStringDatatype(const vlsv::datatype::type& dt) {
+      switch (dt) {
+       case datatype::UNKNOWN:
+         return "unknown";
+         break;
+       case datatype::INT:
+         return "int";
+         break;
+       case datatype::UINT:
+         return "uint";
+         break;
+       case datatype::FLOAT:
+         return "float";
+         break;
+       default:
+         return "unknown";
+         break;
+      }
+   }
+   
    datatype::type getVLSVDatatype(const std::string& s) {
       if (s == "int") return datatype::INT;
       else if (s == "uint") return datatype::UINT;
