@@ -284,7 +284,7 @@ void avtVlsvFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData* md) {
       md->SetCycle(timestep,dataTimestep);
       md->SetCycleIsAccurate(true,timestep);
    }
-   
+
    // Tell VisIt that metadata must be repopulated on every state change:
    md->SetMustRepopulateOnStateChange(true);
    
@@ -444,7 +444,7 @@ void avtVlsvFileFormat::ActivateTimestep(void) {
    #endif
    // END TEST
    */
-   
+
    // Create new VLSVReader and open given file:
    vlsvReader = new vlsv::Reader;
    if (vlsvReader->open(inputFile) == false) {
@@ -458,11 +458,11 @@ void avtVlsvFileFormat::ActivateTimestep(void) {
    // Re-read metadata if necessary:
    if (metadataRead == false) {
       if (readMetadata() == false) {
-	 debug2 << "VLSV\t ERROR: Failed to read metadata" << endl;
-	 vlsvReader->close();
-	 delete vlsvReader; vlsvReader = NULL;
-	 EXCEPTION1(InvalidDBTypeException,"VLSV Plugin could not open the file.");
-	 return;
+         debug2 << "VLSV\t ERROR: Failed to read metadata" << endl;
+         vlsvReader->close();
+         delete vlsvReader; vlsvReader = NULL;
+         EXCEPTION1(InvalidDBTypeException,"VLSV Plugin could not open the file.");
+         return;
       }
    }
 }
@@ -683,7 +683,8 @@ int avtVlsvFileFormat::GetCycle(void) {
       dataTimestepFound = false;
    }
    
-   debug4 << "VLSV\t file time step is: " << dataTimestep << endl;
+   if (dataTimestepFound == true) debug4 << "VLSV\t file time step is: " << dataTimestep << endl;
+   else debug4 << "VLSV\t file does not contain timestep" << endl;
    return dataTimestep;
 }
 
@@ -705,7 +706,8 @@ double avtVlsvFileFormat::GetTime(void) {
       dataTimeFound = false;
    }
    
-   debug4 << "VLSV\t file time is: " << dataTime << endl;
+   if (dataTimeFound == true) debug4 << "VLSV\t file time is: " << dataTime << endl;
+   else debug4 << "VLSV\t file does not contain time" << endl;
    return dataTime;
 }
 

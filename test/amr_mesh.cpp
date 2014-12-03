@@ -127,31 +127,31 @@ bool AmrMesh::coarsen(const GlobalID& globalID) {
       vector<GlobalID> children;
       getChildren(nbrs[n],children);
       for (size_t c=0; c<children.size(); ++c) {
-	 if (globalIDs.find(children[c]) != globalIDs.end()) return false;
+         if (globalIDs.find(children[c]) != globalIDs.end()) return false;
       }
    }
-
+   
    // Calculate the global ID of the block and its siblings,
    // and call the user-defined callback:
    GlobalID siblings[8];
    getSiblings(globalID,siblings);
    for (size_t s=0; s<8; ++s) {
       if (globalIDs.find(siblings[s]) == globalIDs.end()) {
-	 return false;
+         return false;
       }
    }
-
+   
    LocalID siblingIndices[8];
    for (int s=0; s<8; ++s) {
       unordered_map<GlobalID,LocalID>::const_iterator it = globalIDs.find(siblings[s]);
       if (it == globalIDs.end()) {
-	 siblingIndices[s] = INVALID_LOCALID;
-	 continue;
+         siblingIndices[s] = INVALID_LOCALID;
+         continue;
       } else {
-	 siblingIndices[s] = it->second;
+         siblingIndices[s] = it->second;
       }
    }
-
+   
    LocalID newLocalID;
    if (callbackCoarsenBlock != NULL) {
       (*callbackCoarsenBlock)(siblings,siblingIndices,getParent(globalID),newLocalID);
@@ -160,8 +160,8 @@ bool AmrMesh::coarsen(const GlobalID& globalID) {
    // Remove the block and its siblings:
    for (size_t s=0; s<8; ++s) {
       if (globalIDs.find(siblings[s]) == globalIDs.end()) {
-	 cerr << "ERROR coarsen trying to remove non-existing block " << siblings[s] << endl;
-	 exit(1);
+         cerr << "ERROR coarsen trying to remove non-existing block " << siblings[s] << endl;
+         exit(1);
       }
       globalIDs.erase(siblings[s]);
    }
@@ -189,9 +189,18 @@ bool AmrMesh::finalize() {
    return success;
 }
 
+LocalID AmrMesh::get(const GlobalID& globalID) const {
+   // If block does not exist, return invalid local ID:
+   unordered_map<GlobalID,LocalID>::const_iterator it = globalIDs.find(globalID);
+   if (it == globalIDs.end()) return INVALID_LOCALID;
+
+   // Return block's local ID:
+   return it->second;
+}
+
 /** Get the global ID of an existing block that contains given coordinates.
  */
-GlobalID AmrMesh::getBlock(const double& x,const double& y,const double& z) {
+GlobalID AmrMesh::getGlobalID(const double& x,const double& y,const double& z) {
    // Check that given coordinates are not outside the mesh:
    if (x < meshLimits[limits::XMIN] || x > meshLimits[limits::XMAX]) return INVALID_GLOBALID;
    if (y < meshLimits[limits::YMIN] || x > meshLimits[limits::YMAX]) return INVALID_GLOBALID;
@@ -372,18 +381,18 @@ void AmrMesh::getSiblingNeighbors(const GlobalID& globalID,std::vector<GlobalID>
    for (int k_off=-1; k_off<3; ++k_off) {
      for (int j_off=-1; j_off<3; ++j_off) {
        for (int i_off=-1; i_off<3; ++i_off) {
-	  int cntr=0;
-	  if (i_off == 0 || i_off == 1) ++cntr;
-	  if (j_off == 0 || j_off == 1) ++cntr;
-	  if (k_off == 0 || k_off == 1) ++cntr;
-	  if (cntr == 3) continue;
-	  nbrs.push_back(getGlobalID(refLevel,i+i_off,j+j_off,k+k_off));
+          int cntr=0;
+          if (i_off == 0 || i_off == 1) ++cntr;
+          if (j_off == 0 || j_off == 1) ++cntr;
+          if (k_off == 0 || k_off == 1) ++cntr;
+          if (cntr == 3) continue;
+          nbrs.push_back(getGlobalID(refLevel,i+i_off,j+j_off,k+k_off));
        }
      }
    }
 }
-
-void AmrMesh::getSiblings(const GlobalID& globalID,GlobalID siblings[8]) {
+   
+   void AmrMesh::getSiblings(const GlobalID& globalID,GlobalID siblings[8]) {
    uint32_t refLevel,i,j,k;
    getIndices(globalID,refLevel,i,j,k);
    
@@ -509,7 +518,7 @@ bool AmrMesh::refine(const GlobalID& globalID) {
    if (callbackRefineBlock != NULL) {
       (*callbackRefineBlock)(globalID,globalIDs[globalID],childrenGlobalIDs,childrenLocalIDs);
    }
-   
+
    i *= 2;
    j *= 2;
    k *= 2;
@@ -533,7 +542,7 @@ bool AmrMesh::refine(const GlobalID& globalID) {
       if (parentID == nbrs[n]) continue;
       unordered_map<GlobalID,LocalID>::iterator parent = globalIDs.find(parentID);
       if (parent != globalIDs.end()) {
-	 refine(parentID);
+         refine(parentID);
       }
    }
 
@@ -552,6 +561,16 @@ bool AmrMesh::registerCallbacks(CallbackCoarsenBlock coarsenBlock,CallbackCreate
    return true;
 }
 
+bool AmrMesh::set(const GlobalID& globalID,const LocalID& localID) {
+   // Exit if block does not exist:
+   unordered_map<GlobalID,LocalID>::iterator it=globalIDs.find(globalID);
+   if (it == globalIDs.end()) return false;
+
+   // Set new value for the block:
+   it->second = localID;
+   return true;
+}
+
 /** Get the number of blocks in the mesh.
  * @return Number of blocks in the mesh.*/
 size_t AmrMesh::size() const {
@@ -566,6 +585,7 @@ bool AmrMesh::write(const std::string fileName) {
    bool success = true;
 
    const string meshName = "amr_mesh";
+   const string filename = "cylinder.vlsv";
    
    vlsv::Writer vlsv;
    if (vlsv.open(fileName,MPI_COMM_WORLD,0) == false) {

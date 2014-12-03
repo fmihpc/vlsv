@@ -1,4 +1,15 @@
 *************************************
+***** CHANGES IN REVISION 00842 *****
+*************************************
+
+MINOR
+
+Added more VTK cell types to VLSV headers and to Visit generic
+unstructured mesh plugin.
+
+Changed some tab intendations to whitespace ones.
+
+*************************************
 ***** CHANGES IN REVISION 00401 *****
 *************************************
 
