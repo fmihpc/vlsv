@@ -43,21 +43,21 @@ namespace vlsvplugin {
       
       // Check that VLSVReader exists:
       if (vlsvReader == NULL) {
-	 debug2 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
-	 return false;
+         debug2 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
+         return false;
       }
       
       // Check that metadata is not NULL:
       if (md == NULL) {
-	 debug2 << "VLSV\t\t ERROR: MeshMetadata object is NULL" << endl;
-	 return false;
+         debug2 << "VLSV\t\t ERROR: MeshMetadata object is NULL" << endl;
+         return false;
       }
       
       // Check that given metadata is of correct type:
       const VisitPointMeshMetadata* const metadata = dynamic_cast<const VisitPointMeshMetadata*>(md);
       if (typeid(*md) != typeid(*metadata)) {
-	 debug2 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitPointMeshMedata" << endl;
-	 return false;
+         debug2 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitPointMeshMedata" << endl;
+         return false;
       }
 
       debug4 << "VLSV\t\t arraysize:  " << metadata->getArraySize() << endl;
@@ -71,14 +71,7 @@ namespace vlsvplugin {
       // Determine VTK datatype that corresponds to the one in VLSV file:
       vtkPoints* points = NULL;
       int vtkDatatype = VTK_FLOAT;
-      /*
-      int vtkDatatype = vlsvplugin::getVtkDatatype(metadata->getDatatype(),metadata->getDataSize());
-      if (vtkDatatype == VTK_DATATYPE_NOT_FOUND) {
-	 debug4 << "VLSV\t\t ERROR: Could not find VTK datatype for VLSV datatype '" << metadata->getDatatype();
-	 debug4 << "' datasize '" << metadata->getDataSize() << endl;
-	 return false;
-      }
-       */
+      
       // Get mesh geometry:
       const vlsv::geometry::type& geometry = metadata->getMeshGeometry();
       
@@ -86,54 +79,75 @@ namespace vlsvplugin {
       points = vtkPoints::New(vtkDatatype);
       points->SetNumberOfPoints(N_points);
       float* ptr = reinterpret_cast<float*>(points->GetVoidPointer(0));
-      //char* ptr = reinterpret_cast<char*>(points->GetVoidPointer(0));
       
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("name",metadata->getName()));
       if (vlsvReader->read("MESH",attribs,readOffset,N_points,ptr,false) == false) {
-      //if (vlsvReader->readArray("MESH",attribs,readOffset,N_points,ptr) == false) {
-	 debug2 << "VLSV\t\t ERROR: VLSVReader failed to read array" << endl;
-	 points->Delete();
-	 return false;
+         debug2 << "VLSV\t\t ERROR: VLSVReader failed to read array" << endl;
+         points->Delete();
+         return false;
       }
 
       // Transform to Cartesian coordinates if necessary:
       float x,y,z;
+      float crds[3];
+      const double* transform = metadata->getTransform();
+
       switch (geometry) {
        case vlsv::geometry::UNKNOWN:
-	  debug2 << "VLSV\t\t WARNING: Unknown coordinate system, assuming Cartesian" << endl;
-	 break;
+         debug2 << "VLSV\t\t WARNING: Unknown coordinate system, assuming Cartesian" << endl;
+         break;
        case vlsv::geometry::CARTESIAN:
-	 for (uint64_t p=0; p<N_points; ++p) {
-	    x = ptr[3*p+0];
-	    y = ptr[3*p+1];
-	    z = ptr[3*p+2];
-	    debug5 << "VLSV\t\t Point #" << p << "\t coords " << x << '\t' << y << '\t' << z << endl;
-	 }
-	 break;
+         for (uint64_t p=0; p<N_points; ++p) {
+            crds[0] = ptr[3*p+0];
+            crds[1] = ptr[3*p+1];
+            crds[2] = ptr[3*p+2];
+
+            x = ptr[3*p+0];
+            y = ptr[3*p+1];
+            z = ptr[3*p+2];
+
+            ptr[3*p+0] = transform[0]*crds[0] + transform[1]*crds[1] + transform[2 ]*crds[2] + transform[3 ];
+            ptr[3*p+1] = transform[4]*crds[0] + transform[5]*crds[1] + transform[6 ]*crds[2] + transform[7 ];
+            ptr[3*p+2] = transform[8]*crds[0] + transform[9]*crds[1] + transform[10]*crds[2] + transform[11];
+            debug5 << "VLSV\t\t Point #" << p << "\t coords " << x << '\t' << y << '\t' << z << endl;
+         }
+         break;
        case vlsv::geometry::CYLINDRICAL:
-	 for (uint64_t p=0; p<N_points; ++p) {
-	    x = ptr[3*p+0];
-	    y = ptr[3*p+1];
-	    ptr[3*p+0] = x * cos(y);
-	    ptr[3*p+1] = x * sin(y);
-	 }
-	 break;
+         for (uint64_t p=0; p<N_points; ++p) {
+            x = ptr[3*p+0];
+            y = ptr[3*p+1];
+            z = ptr[3*p+2];
+            
+            crds[0] = x * cos(y);
+            crds[1] = x * sin(y);
+            crds[2] = z;
+            
+            ptr[3*p+0] = transform[0]*crds[0] + transform[1]*crds[1] + transform[2 ]*crds[2] + transform[3 ];
+            ptr[3*p+1] = transform[4]*crds[0] + transform[5]*crds[1] + transform[6 ]*crds[2] + transform[7 ];
+            ptr[3*p+2] = transform[8]*crds[0] + transform[9]*crds[1] + transform[10]*crds[2] + transform[11];
+         }
+         break;
        case vlsv::geometry::SPHERICAL:
-	 for (uint64_t p=0; p<N_points; ++p) {
-	    x = ptr[3*p+0];
-	    y = ptr[3*p+1];
-	    z = ptr[3*p+2];
-	    ptr[3*p+0] = x * sin(y) * cos(z);
-	    ptr[3*p+1] = x * sin(y) * sin(z);
-	    ptr[3*p+2] = x * cos(y);
-	    
-	    debug5 << "VLSV\t\t Point #" << p << "\t coords " << x << '\t' << y << '\t' << z << endl;
-	 }
-	 break;
+         for (uint64_t p=0; p<N_points; ++p) {
+            x = ptr[3*p+0];
+            y = ptr[3*p+1];
+            z = ptr[3*p+2];
+            
+            crds[0] = x * sin(y) * cos(z);
+            crds[1] = x * sin(y) * sin(z);
+            crds[2] = x * cos(y);
+            
+            ptr[3*p+0] = transform[0]*crds[0] + transform[1]*crds[1] + transform[2 ]*crds[2] + transform[3 ];
+            ptr[3*p+1] = transform[4]*crds[0] + transform[5]*crds[1] + transform[6 ]*crds[2] + transform[7 ];
+            ptr[3*p+2] = transform[8]*crds[0] + transform[9]*crds[1] + transform[10]*crds[2] + transform[11];
+            
+            debug5 << "VLSV\t\t Point #" << p << "\t coords " << x << '\t' << y << '\t' << z << endl;
+         }
+         break;
        default:
-	 debug2 << "VLSV\t\t WARNING: Unknown coordinate system, assuming Cartesian" << endl;
-	 break;
+         debug2 << "VLSV\t\t WARNING: Unknown coordinate system, assuming Cartesian" << endl;
+         break;
       }
 
       // Create new unstructured grid that only contains single vertices (=points):
@@ -143,8 +157,8 @@ namespace vlsvplugin {
       ugrid->Allocate(N_points);
       
       for (uint64_t i=0; i<N_points; ++i) {
-	 vtkIdType onevertex = static_cast<vtkIdType>(i);
-	 ugrid->InsertNextCell(VTK_VERTEX,1,&onevertex);
+         vtkIdType onevertex = static_cast<vtkIdType>(i);
+         ugrid->InsertNextCell(VTK_VERTEX,1,&onevertex);
       }
 
       output = ugrid;

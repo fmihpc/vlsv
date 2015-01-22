@@ -48,6 +48,13 @@ namespace vlsvplugin {
       yUnits = "";
       zUnits = "";
       maxRefinementLevel = 0;
+
+      transformName = "";
+      for (int i=0; i<16; ++i) transform[i] = 0;
+      transform[0 ] = 1;
+      transform[5 ] = 1;
+      transform[10] = 1;
+      transform[15] = 1;
    }
    
    MeshMetadata::~MeshMetadata() { }
@@ -79,7 +86,9 @@ namespace vlsvplugin {
    uint64_t MeshMetadata::getNumberOfTotalNodes() const {return N_totalNodes;}
    
    uint64_t MeshMetadata::getNumberOfTotalZones() const {return N_totalZones;}
-   
+
+   const double* MeshMetadata::getTransform() const {return transform;}
+
    const std::vector<VariableMetadata>& MeshMetadata::getVariables() const {return variableMetadata;}
    
    uint64_t MeshMetadata::getVectorSize() const {return vectorSize;}
@@ -95,7 +104,12 @@ namespace vlsvplugin {
    std::string MeshMetadata::getYUnits() const {return yUnits;}   
 
    std::string MeshMetadata::getZUnits() const {return zUnits;}
-   
+
+   bool MeshMetadata::hasTransform() const {
+      if (transformName.size() > 0) return true;
+      return false;
+   }
+
    bool MeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       // Check that reader exists:
       if (vlsvReader == NULL) return false;
@@ -107,46 +121,47 @@ namespace vlsvplugin {
       // Get mesh name:
       it = attribs.find("name"); 
       if (it == attribs.end()) {
-	 debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'name'" << endl;
-	 success = false; 
+         debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'name'" << endl;
+         success = false; 
       } else {
-	 name = it->second;
+         name = it->second;
       }
       
       // Get arraysize, vectorsize, datasize, datatype:
       it = attribs.find("arraysize"); 
       if (it == attribs.end()) {
-	 debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'arraysize'" << endl;
-	 success = false;
+         debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'arraysize'" << endl;
+         success = false;
       } else {
-	 arraySize = atoi(it->second.c_str());
+         arraySize = atoi(it->second.c_str());
       }
       
       it = attribs.find("vectorsize");
       if (it == attribs.end()) {
-	 debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'vectorsize'" << endl;
-	 success = false;
+         debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'vectorsize'" << endl;
+         success = false;
       } else {
-	 vectorSize = atoi(it->second.c_str());
+         vectorSize = atoi(it->second.c_str());
       }
       
       it = attribs.find("datasize");
       if (it == attribs.end()) {
-	 debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'datasize'" << endl;
-	 success = false;
+         debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'datasize'" << endl;
+         success = false;
       } else {
-	 dataSize = atoi(it->second.c_str());
+         dataSize = atoi(it->second.c_str());
       }
       
       it = attribs.find("datatype");
       if (it == attribs.end()) {
-	 debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'datatype'" << endl;
-	 success = false;
+         debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'datatype'" << endl;
+         success = false;
       } else {
-	 datatype = vlsv::getVLSVDatatype(it->second);
+         datatype = vlsv::getVLSVDatatype(it->second);
       }
-      
+
       // Get optional mesh parameters:
+      transformName = "";
       it = attribs.find("xlabel"); if (it != attribs.end()) xLabel = it->second;
       it = attribs.find("ylabel"); if (it != attribs.end()) yLabel = it->second;
       it = attribs.find("zlabel"); if (it != attribs.end()) zLabel = it->second;
@@ -157,6 +172,40 @@ namespace vlsvplugin {
       it = attribs.find("yperiodic"); if (it != attribs.end()) if (it->second == "yes") yPeriodic = true;
       it = attribs.find("zperiodic"); if (it != attribs.end()) if (it->second == "yes") zPeriodic = true;
       it = attribs.find("max_refinement_level"); if (it != attribs.end()) maxRefinementLevel = atoi(it->second.c_str());
+      it = attribs.find("transform"); if (it != attribs.end()) transformName = it->second;
+
+      // Read the transform matrix, if defined:
+      if (hasTransform() == true) {
+         // Attempt to read transform matrix tag:
+         list<pair<string,string> > attribsIn;
+         map<string,string> attribsOut;
+
+         attribsIn.push_back(make_pair("name",transformName));
+         if (vlsvReader->getArrayAttributes("TRANSFORM",attribsIn,attribsOut) == false) {
+            debug3 << "VLSV\t\t ERROR: Failed to read array 'TRANSFORM' attributes for mesh '" << getName() << "' from VLSV file" << endl;
+            transformName = ""; return false;
+         }
+
+         // Check arraysize and vectorsize for correctness:
+         map<string,string>::const_iterator xml = attribsOut.find("arraysize");
+         if (atoi(xml->second.c_str()) != 16) {
+            debug3 << "VLSV\t\t ERROR: Transform matrix has wrong arraysize '" << atoi(xml->second.c_str()) << "', should be 16" << endl;
+            transformName = ""; return false;
+         }
+         
+         xml = attribsOut.find("vectorsize");
+         if (atoi(xml->second.c_str()) != 1) {
+            debug3 << "VLSV\t\t ERROR: Transform matrix has wrong vectorsize '" << atoi(xml->second.c_str()) << "', should be 1" << endl;
+            transformName = ""; return false;
+         }
+
+         // Read the matrix components:
+         double* ptr = transform;
+         if (vlsvReader->read("TRANSFORM",attribsIn,0,16,ptr,false) == false) {
+            debug3 << "VLSV\t\t ERROR: Failed to read the transform matrix for mesh '" << getName() << "'" << endl;
+            transformName = ""; return false;
+         }
+      }
 
       return success;
    }

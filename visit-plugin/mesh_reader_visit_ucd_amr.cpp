@@ -568,6 +568,8 @@ namespace vlsvplugin {
       const double dz_node = (crds_node_z[1] - crds_node_z[0])/multiplier;
       uint64_t i_node_base,j_node_base,k_node_base;
 
+      const double* transform = metadata->getTransform();
+
       switch (metadata->getMeshGeometry()) {
        case vlsv::geometry::CARTESIAN:
          // Cartesian geometry, no coordinate transformation:
@@ -578,10 +580,16 @@ namespace vlsvplugin {
             i_node_base = it->first.i / multiplier;
             j_node_base = it->first.j / multiplier;
             k_node_base = it->first.k / multiplier;
-            
-            pointer[3*position+0] = crds_node_x[i_node_base] + (it->first.i-i_node_base*multiplier)*dx_node;
-            pointer[3*position+1] = crds_node_y[j_node_base] + (it->first.j-j_node_base*multiplier)*dy_node;
-            pointer[3*position+2] = crds_node_z[k_node_base] + (it->first.k-k_node_base*multiplier)*dz_node;
+
+            // Node xyz coordinates
+            float crds[3];
+            crds[0] = crds_node_x[i_node_base] + (it->first.i-i_node_base*multiplier)*dx_node;
+            crds[1] = crds_node_y[j_node_base] + (it->first.j-j_node_base*multiplier)*dy_node;
+            crds[2] = crds_node_z[k_node_base] + (it->first.k-k_node_base*multiplier)*dz_node;
+
+            pointer[3*position+0] = transform[0]*crds[0] + transform[1]*crds[1] + transform[2 ]*crds[2] + transform[3 ];
+            pointer[3*position+1] = transform[4]*crds[0] + transform[5]*crds[1] + transform[6 ]*crds[2] + transform[7 ];
+            pointer[3*position+2] = transform[8]*crds[0] + transform[9]*crds[1] + transform[10]*crds[2] + transform[11];
          }
          break;
        case vlsv::geometry::CYLINDRICAL:
@@ -595,11 +603,16 @@ namespace vlsvplugin {
             const float R   = crds_node_x[i_node_base] + (it->first.i-i_node_base*multiplier)*dx_node;
             const float PHI = crds_node_y[j_node_base] + (it->first.j-j_node_base*multiplier)*dy_node;
             const float Z   = crds_node_z[k_node_base] + (it->first.k-k_node_base*multiplier)*dz_node;
+
+            float crds[3];
+            crds[0] = R*cos(PHI);
+            crds[1] = R*sin(PHI);
+            crds[2] = Z;
             
             const vtkIdType position = it->second;
-            pointer[3*position+0] = R*cos(PHI);
-            pointer[3*position+1] = R*sin(PHI);
-            pointer[3*position+2] = Z;
+            pointer[3*position+0] = transform[0]*crds[0] + transform[1]*crds[1] + transform[2 ]*crds[2] + transform[3 ];
+            pointer[3*position+1] = transform[4]*crds[0] + transform[5]*crds[1] + transform[6 ]*crds[2] + transform[7 ];
+            pointer[3*position+2] = transform[8]*crds[0] + transform[9]*crds[1] + transform[10]*crds[2] + transform[11];
          }
          break;
        case vlsv::geometry::SPHERICAL:
@@ -613,11 +626,16 @@ namespace vlsvplugin {
             const float R     = crds_node_x[i_node_base] + (it->first.i-i_node_base*multiplier)*dx_node;
             const float THETA = crds_node_y[j_node_base] + (it->first.j-j_node_base*multiplier)*dy_node;
             const float PHI   = crds_node_z[k_node_base] + (it->first.k-k_node_base*multiplier)*dz_node;
+
+            float crds[3];
+            crds[0] = R*sin(THETA)*cos(PHI);
+            crds[1] = R*sin(THETA)*sin(PHI);
+            crds[2] = R*cos(THETA);
             
             const vtkIdType position = it->second;
-            pointer[3*position+0] = R*sin(THETA)*cos(PHI);
-            pointer[3*position+1] = R*sin(THETA)*sin(PHI);
-            pointer[3*position+2] = R*cos(THETA);
+            pointer[3*position+0] = transform[0]*crds[0] + transform[1]*crds[1] + transform[2 ]*crds[2] + transform[3 ];
+            pointer[3*position+1] = transform[4]*crds[0] + transform[5]*crds[1] + transform[6 ]*crds[2] + transform[7 ];
+            pointer[3*position+2] = transform[8]*crds[0] + transform[9]*crds[1] + transform[10]*crds[2] + transform[11];
          }
          break;
        default:

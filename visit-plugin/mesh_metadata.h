@@ -64,6 +64,7 @@ namespace vlsvplugin {
       virtual uint64_t getNumberOfTotalNodes(int domain) const =0;
       virtual uint64_t getNumberOfTotalZones() const;
       virtual uint64_t getNumberOfTotalZones(int domain) const =0;
+      virtual const double* getTransform() const;
       virtual const std::vector<VariableMetadata>& getVariables() const;
       virtual uint64_t getVectorSize() const;
       virtual std::string getXLabel() const;
@@ -72,6 +73,7 @@ namespace vlsvplugin {
       virtual std::string getXUnits() const;
       virtual std::string getYUnits() const;
       virtual std::string getZUnits() const;
+      virtual bool hasTransform() const;
       
       virtual bool read(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
       
@@ -83,8 +85,8 @@ namespace vlsvplugin {
       std::vector<VariableMetadata> variableMetadata;
 
       int32_t maxRefinementLevel; /**< Maximum refinement level in mesh, equals zero if
-				   * the mesh type does not support refinement, or if the 
-				   * mesh is not refined.*/
+                                   * the mesh type does not support refinement, or if the 
+                                   * mesh is not refined.*/
       
       uint64_t N_ghostNodes;    /**< Total number of ghost nodes in the mesh, summed over all domains.*/
       uint64_t N_ghostZones;    /**< Total number of ghost zones in the mesh, summed over all domains.*/
@@ -103,6 +105,10 @@ namespace vlsvplugin {
       std::string xUnits;       /**< Unit for x-coordinate.*/
       std::string yUnits;       /**< Unit for y-coordinate.*/
       std::string zUnits;       /**< Unit for z-coordinate.*/
+
+      std::string transformName; /**< Name of the transformation matrix that needs to be applied 
+                                  * to the node coordinates. Zero length string indicates no matrix.*/
+      double transform[16];      /**< Components of the transform matrix, defaults to identity matrix.*/
    };
 }
 
