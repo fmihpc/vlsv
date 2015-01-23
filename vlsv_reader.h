@@ -86,7 +86,7 @@ namespace vlsv {
       datatype::type datatype;
       uint64_t dataSize;
       if (Reader::getArrayInfo(tagName,attribs,arraySize,vectorSize,datatype,dataSize) == false) {
-         std::cerr << "vlsv::Reader failed to get array info" << std::endl;
+         //std::cerr << "vlsv::Reader failed to get array info" << std::endl;
          return false;
       }
 
