@@ -168,6 +168,11 @@ namespace vlsv {
     * @return Total number of bytes written to output files by all processes.*/
    uint64_t Writer::getBytesWritten() const {return bytesWritten;}
 
+   /** Get the time (in seconds) spent in writing the data to the output file.
+    * Approximate data rate can be obtained by getBytesWritter() / getWrite().
+    * @return Time spent in file I/O in seconds.*/
+   double Writer::getWriteTime() const {return writeTime;}
+
    /** Open a VLSV file for parallel output. The file is opened on all processes 
     * in the given communicator. Additionally, master MPI process writes a 
     * header into the output file and caches a footer which will be written 
