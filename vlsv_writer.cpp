@@ -50,8 +50,8 @@ namespace vlsv {
       if (myStatus == false) mySuccess = 1;
       
       // Sum mySuccess values to master process and broadcast to all processes:
-      MPI_Reduce(&mySuccess,&globalSuccess,1,MPI_Type<int32_t>(),MPI_SUM,0,MPI_COMM_WORLD);
-      MPI_Bcast(&globalSuccess,1,MPI_Type<int32_t>(),0,MPI_COMM_WORLD);
+      MPI_Reduce(&mySuccess,&globalSuccess,1,MPI_Type<int32_t>(),MPI_SUM,0,comm);
+      MPI_Bcast(&globalSuccess,1,MPI_Type<int32_t>(),0,comm);
       
       // If globalSuccess equals zero all processes called this function with myStatus set to 'true':
       if (globalSuccess == 0) return true;
