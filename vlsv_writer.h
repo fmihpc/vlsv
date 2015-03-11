@@ -61,6 +61,7 @@ namespace vlsv {
       bool addMultiwriteUnit(char* array,const uint64_t& arrayElements);
       bool close();
       uint64_t getBytesWritten() const;
+      double getWriteTime() const;
       bool endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs);
       bool open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo=MPI_INFO_NULL);
       bool startMultiwrite(const std::string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize);
@@ -92,12 +93,12 @@ namespace vlsv {
       int* blockLengths;                      /**< Used in creation of an MPI_Struct in endMultiwrite.*/
       uint64_t* bytesPerProcess;              /**< Array with N_processes elements. Used to gather myBytes.*/
       uint64_t bytesWritten;                  /**< Total amount of bytes written to output file,
-					       * significant at master process only.*/
+                                               * significant at master process only.*/
       MPI_Comm comm;                          /**< MPI communicator used in I/O.*/
       uint64_t dataSize;                      /**< Byte size of each element in data vector, must have
-					       * the same value on all participating processes.*/
+                                               * the same value on all participating processes.*/
       std::string dataType;                   /**< String description of the datatype that is written to file,
-					       * obtained by calling arrayDataType() template function.*/
+                                               * obtained by calling arrayDataType() template function.*/
       MPI_Aint* displacements;                /**< Used in creation of an MPI_Struct in endMultiwrite.*/
       unsigned int endMultiwriteCounter;      /**< A counter used in endMultiwrite to synchronize threads.*/
       std::string fileName;                   /**< Name of the output file.*/
@@ -106,29 +107,31 @@ namespace vlsv {
       bool initialized;                       /**< If true, VLSV Writer initialization is complete, does not tell if it was successful.*/
       int masterRank;                         /**< Rank of master process in communicator comm.*/
       bool multiwriteFinalized;               /**< If true, multiwrite array writing mode has finalized correctly. 
-					       This variable is used to synchronize threads in endMultiwrite function..*/
+                                               * This variable is used to synchronize threads in endMultiwrite function..*/
       bool multiwriteInitialized;             /**< If true, multiwrite array writing mode has initialized correctly. 
-					       This variable is used to synchronize threads in startMultiwrite function.*/
+                                               * This variable is used to synchronize threads in startMultiwrite function.*/
       
       std::vector<unsigned int> multiwriteOffsets; /**< Offset for each thread using VLSVWriter, used to load 
-						    * data into an MPI struct in endMultiwrite.*/
+                                                    * data into an MPI struct in endMultiwrite.*/
       char* multiwriteOffsetPointer;          /**< Pointer to an array that is used to calculate offsets in an 
-					       * MPI struct created in endMultiwrite.*/
+                                               * MPI struct created in endMultiwrite.*/
       std::vector<std::list<Multi_IO_Unit> > multiwriteUnits; /**< Container for all multiwrite units for this process. 
-							       * Each thread using VLSVWriter has its own list. This 
-							       * allows vlsv::Writer::addMultiwriteUnit to be called without 
-							       * thread synchronizations.*/   
+                                                               * Each thread using VLSVWriter has its own list. This 
+                                                               * allows vlsv::Writer::addMultiwriteUnit to be called without 
+                                                               * thread synchronizations.*/   
       uint64_t myBytes;                       /**< Number of bytes this process is writing to the current array.*/
       int myrank;                             /**< Rank of this process in communicator comm.*/
       unsigned int N_multiwriteUnits;         /**< Total number of multiwrite units this process has. In multithreaded mode 
-					       * this is equal to the sum of multiwrite units over all threads.*/
+                                               * this is equal to the sum of multiwrite units over all threads.*/
       int N_processes;                        /**< Number of processes in communicator comm.*/
       MPI_Offset offset;                      /**< MPI offset into output file for this process.*/
       MPI_Offset* offsets;                    /**< Array with N_processes elements. Used to scatter file offsets.*/
       MPI_Datatype* types;                    /**< Used in creation of an MPI_Struct in endMultiwrite.*/
       uint64_t vectorSize;                    /**< Number of elements in each data vector per array element,
-					       * must have the same value on all participating processes.*/
+                                               * must have the same value on all participating processes.*/
       datatype::type vlsvType;                /**< Same as dataType but in an integer representation.*/
+      double writeTime;                       /**< Time it took on this process to write bytesWritten bytes to output file.
+                                               * The timer on master process includes the time to write the header and footer.*/
       muxml::MuXML* xmlWriter;                /**< Pointer to XML writer, used for writing a footer to the VLSV file.*/
    };
 
@@ -167,7 +170,7 @@ namespace vlsv {
     * @return If true, the array was successfully written to file.*/
    template<typename T> inline
    bool Writer::writeArray(const std::string& tagName,const std::map<std::string,std::string>& attribs,
-			   const uint64_t& arraySize,const uint64_t& vectorSize,const T* array) {
+                           const uint64_t& arraySize,const uint64_t& vectorSize,const T* array) {
       // Cast away const-ness of array pointer (required by MPI):
       T* arrayPtr = const_cast<T*>(array);
       return writeArray(tagName,attribs,getStringDatatype<T>(),arraySize,vectorSize,sizeof(T),reinterpret_cast<char*>(arrayPtr));
@@ -179,29 +182,29 @@ namespace vlsv {
       attributes["name"] = parameterName;
    
       if (myrank == masterRank)
-	return writeArray("PARAMETER",attributes,1,1,array);
+        return writeArray("PARAMETER",attributes,1,1,array);
       else
-	return writeArray("PARAMETER",attributes,0,0,array);
+        return writeArray("PARAMETER",attributes,0,0,array);
    }
 
    template<typename T> inline
    bool Writer::writeWithReduction(const std::string& arrayName,const std::map<std::string,std::string>& attribs,
-				   const uint64_t& arraySize,T* array,MPI_Op operation) {
+                                   const uint64_t& arraySize,T* array,MPI_Op operation) {
       // Master process allocates a receive buffer for reduction:
       T* recvBuffer = NULL;
       if (myrank == masterRank) recvBuffer = new T[arraySize];
 
       // Reduce result to master:
       if (MPI_Reduce(array,recvBuffer,arraySize,MPI_Type<T>(),operation,masterRank,comm) != MPI_SUCCESS) {
-	 delete [] recvBuffer; return false;
+         delete [] recvBuffer; return false;
       }
 
       // Write result to file. Only master process has a non-zero array length, 
       // all other processes write a zero-length array:
       if (myrank == masterRank) {
-	 writeArray(arrayName,attribs,1,arraySize,recvBuffer);
+         writeArray(arrayName,attribs,1,arraySize,recvBuffer);
       } else {
-	 writeArray(arrayName,attribs,0,0,recvBuffer);
+         writeArray(arrayName,attribs,0,0,recvBuffer);
       }
    
       delete [] recvBuffer; recvBuffer = NULL;
