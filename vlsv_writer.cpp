@@ -100,11 +100,19 @@ namespace vlsv {
    bool Writer::close() {
       // If a file was never opened, exit immediately:
       if (fileOpen == false) return false;
-      
+
       MPI_Offset viewOffset;
       MPI_Offset endOffset;
-      if (myrank == masterRank) {
-         // Write footer to the end of file
+
+      // Write the footer using collective MPI file operations. Only the master process 
+      // actually writes something. Using collective MPI here practically eliminated 
+      // all time spent here.
+      char* footerPtr = NULL;
+      if (myrank != masterRank) {
+         if (dryRunning == false) {
+            MPI_File_write_at_all(fileptr,offset,footerPtr,0,MPI_BYTE,MPI_STATUSES_IGNORE);
+         }
+      } else {
          if (dryRunning == false) {
             MPI_File_seek(fileptr,0,MPI_SEEK_END);
             MPI_File_get_position(fileptr,&viewOffset);
@@ -113,9 +121,13 @@ namespace vlsv {
 
          stringstream footerStream;
          xmlWriter->print(footerStream);
-
+         
+         footerPtr = &(footerStream.str()[0]);
          double t_start = MPI_Wtime();
-         if (dryRunning == false) MPI_File_write(fileptr,&(footerStream.str()[0]),footerStream.str().size(),MPI_BYTE,MPI_STATUS_IGNORE);
+         if (dryRunning == false) {
+            MPI_File_write_at_all(fileptr,endOffset,footerPtr,footerStream.str().size(),MPI_BYTE,MPI_STATUSES_IGNORE);
+         }
+
          writeTime += (MPI_Wtime() - t_start);
          bytesWritten += footerStream.str().size();
       }
@@ -150,7 +162,6 @@ namespace vlsv {
       MPI_Comm_free(&comm);
       return true;
    }
-
    
    void Writer::endDryRunning() {
       dryRunning = false;
