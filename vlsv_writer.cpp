@@ -121,26 +121,32 @@ namespace vlsv {
       // If a file was never opened, exit immediately:
       if (fileOpen == false) return false;
       
+      MPI_Offset viewOffset;
+      MPI_Offset endOffset;
+      if (myrank == masterRank) {
+         // Write footer to the end of file
+         MPI_File_seek(fileptr,0,MPI_SEEK_END);
+         MPI_File_get_position(fileptr,&viewOffset);
+         MPI_File_get_byte_offset(fileptr,viewOffset,&endOffset);
+
+         stringstream footerStream;
+         xmlWriter->print(footerStream);
+
+         double t_start = MPI_Wtime();
+         MPI_File_write(fileptr,&(footerStream.str()[0]),footerStream.str().size(),MPI_BYTE,MPI_STATUS_IGNORE);
+         writeTime += (MPI_Wtime() - t_start);
+         bytesWritten += footerStream.str().size();
+      }
+      
       // Close MPI file:
       MPI_Barrier(comm);
       MPI_File_close(&fileptr);
    
-      // Master process appends footer to the end of binary file:
+      // Master process writes footer offset to the start of file
       if (myrank == masterRank) {
          fstream footer;
-         footer.open(fileName.c_str(),fstream::out | fstream::app);
-         footer.seekp(0,std::ios_base::end);
+         size_t footerOffset = (size_t)endOffset;
 
-         // Get put position
-         uint64_t footerOffset = footer.tellp();
-
-         // Write footer:
-         const double t_start = MPI_Wtime();
-         xmlWriter->print(footer);
-         writeTime += (MPI_Wtime() - t_start);
-         footer.close();
-
-         // Write header position to the beginning of binary file:
          footer.open(fileName.c_str(),fstream::in | fstream::out | fstream::binary | fstream::ate);
          char* ptr = reinterpret_cast<char*>(&footerOffset);
          footer.seekp(sizeof(uint64_t));
