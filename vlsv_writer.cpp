@@ -119,15 +119,16 @@ namespace vlsv {
             MPI_File_get_byte_offset(fileptr,viewOffset,&endOffset);
          }
 
+         // Print the footer to a stringstream first and then grab a 
+         // pointer for writing it to the file:
          stringstream footerStream;
          xmlWriter->print(footerStream);
-         
          footerPtr = &(footerStream.str()[0]);
+
          double t_start = MPI_Wtime();
          if (dryRunning == false) {
             MPI_File_write_at_all(fileptr,endOffset,footerPtr,footerStream.str().size(),MPI_BYTE,MPI_STATUSES_IGNORE);
          }
-
          writeTime += (MPI_Wtime() - t_start);
          bytesWritten += footerStream.str().size();
       }
