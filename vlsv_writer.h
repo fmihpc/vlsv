@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2013,2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -62,9 +62,12 @@ namespace vlsv {
       bool close();
       uint64_t getBytesWritten() const;
       double getWriteTime() const;
+      void endDryRunning();
       bool endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs);
       bool open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo=MPI_INFO_NULL);
-      bool startMultiwrite(const std::string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize);
+      bool setSize(MPI_Offset newSize);
+      void startDryRun();
+      bool startMultiwrite(const std::string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize);      
       bool writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
 		      const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array);
    
@@ -100,6 +103,7 @@ namespace vlsv {
       std::string dataType;                   /**< String description of the datatype that is written to file,
                                                * obtained by calling arrayDataType() template function.*/
       MPI_Aint* displacements;                /**< Used in creation of an MPI_Struct in endMultiwrite.*/
+      bool dryRunning;                        /**< If true, then dry run mode is enabled and all file I/O is skipped.*/
       unsigned int endMultiwriteCounter;      /**< A counter used in endMultiwrite to synchronize threads.*/
       std::string fileName;                   /**< Name of the output file.*/
       bool fileOpen;                          /**< If true, a file has been successfully opened for writing.*/
