@@ -70,13 +70,13 @@ namespace vlsv {
    
    namespace mesh {
       enum type {
-	 UNKNOWN,
-	 POINT,
-	 QUAD,
-	 QUAD_MULTI,
-	 UCD_AMR,
-	 UCD_MULTI,
-	 UCD_GENERIC_MULTI
+         UNKNOWN,
+           POINT,
+           QUAD,
+           QUAD_MULTI,
+           UCD_AMR,
+           UCD_MULTI,
+           UCD_GENERIC_MULTI
       };
       
       const std::string STRING_UNKNOWN = "unknown";          /**< Unknown or unsupported mesh type.*/

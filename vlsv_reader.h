@@ -48,7 +48,7 @@ namespace vlsv {
 
       template<typename T>
       bool read(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-		const uint64_t& begin,const uint64_t& amount,T*& buffer,bool allocateMemory=true);
+                const uint64_t& begin,const uint64_t& amount,T*& buffer,bool allocateMemory=true);
       template<typename T>
       bool readParameter(const std::string& parameterName,T& value);
    
@@ -63,53 +63,53 @@ namespace vlsv {
    
       /** Struct used to store information on the currently open array.*/
       struct ArrayOpen {
-	 std::streamoff offset;
-	 std::string tagName;
-	 std::string arrayName;
-	 datatype::type dataType;
-	 uint64_t arraySize;
-	 uint64_t vectorSize;
-	 uint64_t dataSize;
+         std::streamoff offset;
+         std::string tagName;
+         std::string arrayName;
+         datatype::type dataType;
+         uint64_t arraySize;
+         uint64_t vectorSize;
+         uint64_t dataSize;
       } arrayOpen;
    };
 
    template<typename T> inline
    bool Reader::read(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-		     const uint64_t& begin,const uint64_t& amount,T*& outBuffer,bool allocateMemory) {
+                     const uint64_t& begin,const uint64_t& amount,T*& outBuffer,bool allocateMemory) {
       // Don't touch outBuffer if it has already been allocated:
       if (allocateMemory == true) outBuffer = NULL;
       if (amount == 0) return true;
-   
+
       // Get array info:
       uint64_t arraySize;
       uint64_t vectorSize;
       datatype::type datatype;
       uint64_t dataSize;
       if (Reader::getArrayInfo(tagName,attribs,arraySize,vectorSize,datatype,dataSize) == false) {
-	 std::cerr << "vlsv::Reader failed to get array info" << std::endl;
-	 return false;
+         std::cerr << "vlsv::Reader failed to get array info" << std::endl;
+         return false;
       }
 
       // Check that requested read is inside the array:
       if (begin > arraySize || (begin+amount) > arraySize) return false;
-   
+
       // Read data into temporary buffer:
       char* buffer = new char[amount*vectorSize*dataSize];
       if (Reader::readArray(tagName,attribs,begin,amount,buffer) == false) {
-	 delete [] buffer; buffer = NULL;
-	 return false;
+         delete [] buffer; buffer = NULL;
+         return false;
       }
-   
+
       // Copy data from temporary buffer to output:
       if (allocateMemory == true) outBuffer = new T[amount*vectorSize];
       char* ptr = buffer;
       for (uint64_t i=0; i<amount; ++i) {
-	 for (uint64_t j=0; j<vectorSize; ++j) {
-	    convertValue<T>(outBuffer[i*vectorSize+j],ptr,datatype,dataSize,false);	 
-	    ptr += dataSize;
-	 }
+         for (uint64_t j=0; j<vectorSize; ++j) {
+            convertValue<T>(outBuffer[i*vectorSize+j],ptr,datatype,dataSize,false);	 
+            ptr += dataSize;
+         }
       }
-   
+
       delete [] buffer; buffer = NULL;
       return true;
    }

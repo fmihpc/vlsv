@@ -391,7 +391,7 @@ namespace vlsv {
             MPI_Datatype outputType;
             MPI_Type_create_struct(N_multiwriteUnits,blockLengths,displacements,types,&outputType);
             MPI_Type_commit(&outputType);
-            
+
             // Write data to output file with a single collective call:
             const double t_start = MPI_Wtime();
             MPI_File_write_at_all(fileptr,offset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
@@ -439,23 +439,22 @@ namespace vlsv {
    bool Writer::writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
                            const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array) {
       // Check that everything is OK before continuing:
-      if (initialized == false) return false;
-      if (fileOpen == false) return false;
-   
       bool success = true;
+      if (initialized == false) success = false;
+      if (fileOpen == false) success = false;
+      if (checkSuccess(success,comm) == false) return false;
+      
       if (startMultiwrite(dataType,arraySize,vectorSize,dataSize) == false) {
          success = false; return success;
       }
-   
+
       char* arrayPtr = const_cast<char*>(array);
-      if (addMultiwriteUnit(arrayPtr,arraySize) == false) {
-         success = false; return success;
+      if (addMultiwriteUnit(arrayPtr,arraySize) == false) success = false;
+      if (checkSuccess(success,comm) == false) {
+         return false;
       }
-   
-      if (endMultiwrite(arrayName,attribs) == false) {
-         success = false; return success;
-      }
-   
+      
+      if (endMultiwrite(arrayName,attribs) == false) success = false;
       return success;
    }
 
