@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2013,2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -127,7 +127,7 @@ namespace vlsv {
       // Get array info containing parameter value:
       bool success = Reader::getArrayInfo("PARAMETER",attribs,arraySize,vectorSize,dataType,dataSize);
       if (success == false) {
-	 return success;
+         return success;
       }
    
       // Check that the array contains a single parameter value:

@@ -134,6 +134,25 @@ namespace vlsv {
       return true;
    }
 
+   /** Get the amount of bytes read from input file so far. On master process this 
+    * function returns the total number of bytes read by all processes. On other 
+    * processes the returned value is the number of bytes read by that process.
+    * This function must be called simultaneously by all processes in the communicator.
+    * @return Number of bytes read.*/
+   uint64_t ParallelReader::getBytesRead() {
+      uint64_t totalBytesRead;
+      MPI_Reduce(&bytesRead,&totalBytesRead,1,MPI_Type<uint64_t>(),MPI_SUM,masterRank,comm);
+      return totalBytesRead;
+   }
+   
+   /** Get the time spent by this process in file I/O. The approximate data rate is 
+    * getBytesRead() / getReadTime() when calculated on master process in the communicator 
+    * used to read the file.
+    * @return Time in seconds spent in file I/O.*/
+   double ParallelReader::getReadTime() const {
+      return readTime;
+   }
+
    /** Get unique XML attribute values for given tag name. This function 
     * must be called by all processes simultaneously.
     * @param tagName Name of the XML tag.
@@ -221,9 +240,10 @@ namespace vlsv {
             displacements[counter] = address;
             datatypes[counter] = it->mpiType;
          }
+         bytesRead += it->amount * arrayOpen.vectorSize*arrayOpen.dataSize;
          ++counter;
       }
-   
+
       // Create MPI datatype containing all reads:
       MPI_Datatype readType;
       MPI_Type_create_struct(N_reads,blockLengths,displacements,datatypes,&readType);
@@ -235,9 +255,11 @@ namespace vlsv {
       // Commit datatype and read everything in parallel:
       MPI_Type_commit(&readType);
       const uint64_t byteOffset = arrayOpen.offset + offset*arrayOpen.vectorSize*arrayOpen.dataSize;
+      const double t_start = MPI_Wtime();
       if (MPI_File_read_at_all(filePtr,byteOffset,MPI_BOTTOM,1,readType,MPI_STATUS_IGNORE) != MPI_SUCCESS) {
          success = false;
       }
+      readTime += (MPI_Wtime()-t_start);
       MPI_Type_free(&readType);
       MPI_Type_free(&multiReadVectorType);
       multireadStarted = false;
@@ -277,7 +299,7 @@ namespace vlsv {
       MPI_Comm_rank(comm,&myRank);
       MPI_Comm_size(comm,&processes);
       multireadStarted = false;
-      
+
       // Attempt to open the given input file using MPI:
       fileName = fname;
       int accessMode = MPI_MODE_RDONLY;
@@ -305,15 +327,16 @@ namespace vlsv {
       
       // Broadcast file endianness to all processes:
       MPI_Bcast(&endiannessFile,1,MPI_Type<unsigned char>(),masterRank,comm);
-   
+
+      bytesRead = 0;
       return success;
    }
-   
+
    bool ParallelReader::readArrayMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
 					const uint64_t& begin,const uint64_t& amount,char* buffer) {
       if (myRank != masterRank) {
-	 cerr << "(PARALLEL READER) readArrayMaster erroneously called on process #" << myRank << endl;
-	 exit(1);
+         cerr << "(PARALLEL READER) readArrayMaster erroneously called on process #" << myRank << endl;
+         exit(1);
       }
       // readArray reads offset from XML tree into master only
       return Reader::readArray(tagName,attribs,begin,amount,buffer);
