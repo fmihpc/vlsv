@@ -36,15 +36,15 @@ namespace vlsv {
    
       virtual bool close();
       virtual bool getArrayAttributes(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribsIn,
-				      std::map<std::string,std::string>& attribsOut) const;
+                                      std::map<std::string,std::string>& attribsOut) const;
       virtual bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-				uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize) const;
+                                uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize) const;
       virtual bool getFileName(std::string& openFile) const;
       virtual bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output) const;
       virtual bool loadArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
       virtual bool open(const std::string& fname);
       virtual bool readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-			     const uint64_t& begin,const uint64_t& amount,char* buffer);
+                             const uint64_t& begin,const uint64_t& amount,char* buffer);
 
       template<typename T>
       bool read(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
@@ -123,13 +123,13 @@ namespace vlsv {
       uint64_t vectorSize;
       datatype::type dataType;
       uint64_t dataSize;
-   
+      
       // Get array info containing parameter value:
       bool success = Reader::getArrayInfo("PARAMETER",attribs,arraySize,vectorSize,dataType,dataSize);
       if (success == false) {
          return success;
       }
-   
+      
       // Check that the array contains a single parameter value:
       if (arraySize != 1) return false;
       if (vectorSize != 1) return false;
