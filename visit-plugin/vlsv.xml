@@ -2,11 +2,11 @@
   <Plugin name="Vlsv" type="database" label="VLSV parallel file format" version="1.0" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" dbtype="STMD" haswriter="false" hasoptions="false" filePatternsStrict="false" opensWholeDirectory="false">
     <CXXFLAGS>
       -std=c++0x
-      -I/home/sandroos/Codes/vlsv
+      -I/home/sandroos/codes/vlsv
       -DNEW_VTK_API
     </CXXFLAGS>
     <LDFLAGS>
-      -L/home/sandroos/Codes/vlsv
+      -L/home/sandroos/codes/vlsv
     </LDFLAGS>
     <LIBS>
       -lvlsv

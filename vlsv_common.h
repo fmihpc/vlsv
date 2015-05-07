@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -70,13 +70,13 @@ namespace vlsv {
    
    namespace mesh {
       enum type {
-	 UNKNOWN,
-	 POINT,
-	 QUAD,
-	 QUAD_MULTI,
-	 UCD_AMR,
-	 UCD_MULTI,
-	 UCD_GENERIC_MULTI
+         UNKNOWN,
+           POINT,
+           QUAD,
+           QUAD_MULTI,
+           UCD_AMR,
+           UCD_MULTI,
+           UCD_GENERIC_MULTI
       };
       
       const std::string STRING_UNKNOWN = "unknown";          /**< Unknown or unsupported mesh type.*/
@@ -155,8 +155,8 @@ namespace vlsv {
       T tmp = 0;
       char* const ptrtmp = reinterpret_cast<char*>(&tmp);
       for (int i=sizeof(T)-1; i>=0; --i) {
-	 ptrtmp[index] = ptr[i];
-	 ++index;
+         ptrtmp[index] = ptr[i];
+         ++index;
       }
       return tmp;
    }
@@ -280,6 +280,7 @@ namespace vlsv {
    float convReal4(const char* const ptr,const bool& swapEndian=false);
    double convReal8(const char* const ptr,const bool& swapEndian=false);
 
+   std::string printDataRate(const uint64_t& bytes,const double& t);
 } // namespace vlsv
    
 #endif

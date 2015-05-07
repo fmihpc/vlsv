@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2013,2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -34,24 +34,31 @@ namespace vlsv {
    
       bool close();
       bool getArrayAttributes(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribsIn,
-			      std::map<std::string,std::string>& attribsOut) const;
+                              std::map<std::string,std::string>& attribsOut) const;
       bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-			uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize);
+                        uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize);
       bool getArrayInfoMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-			      uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& dataSize);
+                              uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& dataSize);
+      uint64_t getBytesRead();
+      double getReadTime() const;
       bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output) const;
       bool multiReadStart(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
       bool multiReadAddUnit(const uint64_t& amount,char* buffer);
       bool multiReadEnd(const uint64_t& offset);
       bool open(const std::string& fname,MPI_Comm comm,const int& masterRank,MPI_Info mpiInfo);
       bool readArrayMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-			   const uint64_t& begin,const uint64_t& amount,char* buffer);
+                           const uint64_t& begin,const uint64_t& amount,char* buffer);
       bool readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-		     const uint64_t& begin,const uint64_t& amount,char* buffer);
+                     const uint64_t& begin,const uint64_t& amount,char* buffer);
+
+      template<typename T>
+      bool read(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
+                const uint64_t& begin,const uint64_t& amount,T*& buffer,bool allocateMemory=true);
       template<typename T>
       bool readParameter(const std::string& parameterName,T& value);
-   
+
     private:
+      uint64_t bytesRead;             /**< Number of bytes read by this process.*/
       MPI_Comm comm;                  /**< MPI communicator used to read the file.*/
       MPI_File filePtr;               /**< MPI file pointer to input file.*/
       int masterRank;                 /**< MPI rank of master process.*/
@@ -59,7 +66,8 @@ namespace vlsv {
       int myRank;                     /**< MPI rank of this process in communicator comm.*/
       bool parallelFileOpen;          /**< If true, all processes have opened input file successfully.*/
       int processes;                  /**< Number of MPI processes in communicator comm.*/
-   
+      double readTime;                /**< Time spent in seconds to read bytesRead bytes by this process.*/
+
       bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
       
       MPI_Datatype multiReadVectorType;
@@ -67,15 +75,45 @@ namespace vlsv {
       std::list<Multi_IO_Unit> multiReadUnits;
    };
 
+   template<typename T>
+   bool ParallelReader::read(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
+                             const uint64_t& begin,const uint64_t& amount,T*& outBuffer,bool allocateMemory) {
+      // Get array info to all processes:
+      if (ParallelReader::getArrayInfo(tagName,attribs) == false) {
+         //std::cerr << "vlsv::Reader failed to get array info" << std::endl;
+         return false;
+      }
+
+      // Check that requested read is inside the array:
+      if (begin > arrayOpen.arraySize || (begin+amount) > arrayOpen.arraySize) return false;
+
+      char* buffer = new char[amount*arrayOpen.vectorSize*arrayOpen.dataSize];
+      if (ParallelReader::readArray(tagName,attribs,begin,amount,buffer) == false) {
+         delete [] buffer; buffer = NULL;
+         return false;
+      }
+
+      // Copy data from temporary buffer to output array:
+      if (allocateMemory == true) outBuffer = new T[amount*arrayOpen.vectorSize];
+      char* ptr = buffer;
+      for (uint64_t i=0; i<amount; ++i) {
+         for (uint64_t j=0; j<arrayOpen.vectorSize; ++j) {
+            convertValue<T>(outBuffer[i*arrayOpen.vectorSize+j],ptr,arrayOpen.dataType,arrayOpen.dataSize,false);
+            ptr += arrayOpen.dataSize;
+         }
+      }
+      delete [] buffer; buffer = NULL;
+      return true;
+   }
 
    template<typename T> inline
    bool ParallelReader::readParameter(const std::string& parameterName,T& value) {
       bool success = true;
       // Master process reads parameter value:
       if (myRank == masterRank) {
-	 if (Reader::readParameter(parameterName,value) == false) success = false;
+         if (Reader::readParameter(parameterName,value) == false) success = false;
       }
-   
+
       // Master process broadcasts parameter value and 
       // value of variable 'status' to all other processes:
       uint8_t masterSuccess = 0;

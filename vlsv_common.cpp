@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -18,6 +18,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <sstream>
 
 #include "vlsv_common.h"
 
@@ -103,4 +104,18 @@ namespace vlsv {
       else return datatype::UNKNOWN;
    }
 
+   /** Print the data rate corresponding to given number of bytes and time in human readable format.
+    * @param bytes Number of bytes written or read.
+    * @param t Time spent in reading or writing bytes in seconds.
+    * @return String representation of the data rate.*/
+   std::string printDataRate(const uint64_t& bytes,const double& t) {
+      stringstream s;
+      if (bytes/t > 1e12) s << bytes/t/1e12 << " TB/s";
+      else if (bytes/t > 1e9) s << bytes/t/1e9 << " GB/s";
+      else if (bytes/t > 1e6) s << bytes/t/1e6 << " MB/s";
+      else if (bytes/t > 1e3) s << bytes/t/1e3 << " kB/s";
+      else s << bytes/t << " B/s";
+      return s.str();
+   }
+   
 } // namespace vlsv

@@ -37,10 +37,10 @@ namespace vlsv {
    bool ParallelReader::close() {
       multireadStarted = false;
       if (parallelFileOpen == true) {
-	 MPI_File_close(&filePtr);
-	 parallelFileOpen = false;
+         MPI_File_close(&filePtr);
+         parallelFileOpen = false;
       }
-   
+
       if (myRank == masterRank) filein.close();
       return true;
    }
@@ -51,7 +51,7 @@ namespace vlsv {
    
       // Master process reads footer:
       if (myRank == masterRank) {
-	 success = Reader::getArrayAttributes(tagName,attribsIn,attribsOut);
+         success = Reader::getArrayAttributes(tagName,attribsIn,attribsOut);
       }
    
       // Check that master process read array attributes correctly:
@@ -70,18 +70,18 @@ namespace vlsv {
       char attribName[maxLength];
       char attribValue[maxLength];
       if (myRank == masterRank) {
-	 for (map<string,string>::const_iterator it=attribsOut.begin(); it!=attribsOut.end(); ++it) {
-	    strncpy(attribName,it->first.c_str(),maxLength-1);
-	    strncpy(attribValue,it->second.c_str(),maxLength-1);
-	    MPI_Bcast(attribName,maxLength,MPI_Type<char>(),masterRank,comm);
-	    MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
-	 }
+         for (map<string,string>::const_iterator it=attribsOut.begin(); it!=attribsOut.end(); ++it) {
+            strncpy(attribName,it->first.c_str(),maxLength-1);
+            strncpy(attribValue,it->second.c_str(),maxLength-1);
+            MPI_Bcast(attribName,maxLength,MPI_Type<char>(),masterRank,comm);
+            MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
+         }
       } else {
-	 for (size_t i=0; i<N_attribs; ++i) {
-	    MPI_Bcast(attribName,maxLength,MPI_Type<char>(),masterRank,comm);
-	    MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
-	    attribsOut[attribName] = attribValue;
-	 }
+         for (size_t i=0; i<N_attribs; ++i) {
+            MPI_Bcast(attribName,maxLength,MPI_Type<char>(),masterRank,comm);
+            MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
+            attribsOut[attribName] = attribValue;
+         }
       }
    
       return success;
@@ -90,25 +90,29 @@ namespace vlsv {
    bool ParallelReader::getArrayInfoMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
 					   uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& dataSize) {
       if (myRank != masterRank) {
-	 cerr << "(PARALLEL READER): getArrayInfoMaster called on process #" << myRank << endl;
-	 exit(1);
+         cerr << "(PARALLEL READER): getArrayInfoMaster called on process #" << myRank << endl;
+         exit(1);
       }
       return Reader::getArrayInfo(tagName,attribs,arraySize,vectorSize,dataType,dataSize);
    }
 
+   /** Read array metadata to all processes.
+    * @param tagName Name of the XML tag corresponding to the array.
+    * @param attribs A list where the array attribute,value pairs are copied.
+    * @return If true, array metadata was read successfully.*/
    bool ParallelReader::getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {
       bool success = true;
       if (myRank == masterRank) {
-	 success = Reader::loadArray(tagName,attribs);
+         success = Reader::loadArray(tagName,attribs);
       }
-   
+
       // Check that master read array info correctly:
       int globalSuccess = 0;
       if (success == true) globalSuccess = 1;
       MPI_Bcast(&globalSuccess,1,MPI_Type<int>(),masterRank,comm);
       if (globalSuccess == 0) success = false;
       if (success == false) return false;
-   
+
       // Master broadcasts array info to all processes:
       MPI_Bcast(&arrayOpen.offset,    1,MPI_Type<streamoff>(),masterRank,comm);
       MPI_Bcast(&arrayOpen.arraySize, 1,MPI_Type<uint64_t>(), masterRank,comm);
@@ -130,43 +134,70 @@ namespace vlsv {
       return true;
    }
 
-   bool ParallelReader::getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output) const {
-      bool success = true;
-      
-      if (myRank == masterRank) {
-	 success = Reader::getUniqueAttributeValues(tagName,attribName,output);
-      }
+   /** Get the amount of bytes read from input file so far. On master process this 
+    * function returns the total number of bytes read by all processes. On other 
+    * processes the returned value is the number of bytes read by that process.
+    * This function must be called simultaneously by all processes in the communicator.
+    * @return Number of bytes read.*/
+   uint64_t ParallelReader::getBytesRead() {
+      uint64_t totalBytesRead;
+      MPI_Reduce(&bytesRead,&totalBytesRead,1,MPI_Type<uint64_t>(),MPI_SUM,masterRank,comm);
+      return totalBytesRead;
+   }
    
+   /** Get the time spent by this process in file I/O. The approximate data rate is 
+    * getBytesRead() / getReadTime() when calculated on master process in the communicator 
+    * used to read the file.
+    * @return Time in seconds spent in file I/O.*/
+   double ParallelReader::getReadTime() const {
+      return readTime;
+   }
+
+   /** Get unique XML attribute values for given tag name. This function 
+    * must be called by all processes simultaneously.
+    * @param tagName Name of the XML tag.
+    * @param attribName Name of the attribute.
+    * @param output Unique attribute values are inserted here.
+    * @return If true, attribute values were read successfully.*/
+   bool ParallelReader::getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,
+                                                 std::set<std::string>& output) const {
+      bool success = true;
+
+      // First the master process reads unique attribute values:                                              
+      if (myRank == masterRank) {
+         success = Reader::getUniqueAttributeValues(tagName,attribName,output);
+      }
+
       // Check that master read array info correctly:
       uint8_t masterSuccess = 0;
       if (success == true) masterSuccess = 1;
       MPI_Bcast(&masterSuccess,1,MPI_Type<uint8_t>(),masterRank,comm);
       if (masterSuccess == 0) success = false;
       if (success == false) return false;
-   
+
       // Master broadcasts number of entries in set 'output':
       size_t N_entries = output.size();
       MPI_Bcast(&N_entries,1,MPI_Type<size_t>(),masterRank,comm);
-   
+
       // Master broadcasts values in set 'output' to all other processes
       // who insert the received values to set 'output':
       const unsigned int maxLength = 512;
       char attribValue[maxLength];
       if (myRank == masterRank) {
-	 for (set<string>::const_iterator it=output.begin(); it!=output.end(); ++it) {
-	    strncpy(attribValue,it->c_str(),maxLength-1);
-	    MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
-	 }
+         for (set<string>::const_iterator it=output.begin(); it!=output.end(); ++it) {
+            strncpy(attribValue,it->c_str(),maxLength-1);
+            MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
+         }
       } else {
-	 for (size_t i=0; i<N_entries; ++i) {
-	    MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
-	    output.insert(attribValue);
-	 }
+         for (size_t i=0; i<N_entries; ++i) {
+            MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
+            output.insert(attribValue);
+         }
       }
-   
+
       return success;
    }
- 
+
    /** Add a file read unit. Note that multiReadStart function must have been called 
     * to initialize multiread mode before calling this function.
     * @param amount Number of array elements to read.
@@ -198,20 +229,21 @@ namespace vlsv {
       MPI_Aint address;
       uint64_t counter = 0;
       for (list<Multi_IO_Unit>::const_iterator it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
-	 if (it->amount == 0) {
-	    // MPI works with empty reads but datatype cannot be MPI_DATATYPE_NULL:
-	    blockLengths[counter] = 0;
-	    displacements[counter] = 0;
-	    datatypes[counter] = MPI_Type<char>();
-	 } else {
-	    MPI_Get_address(it->array,&address);
-	    blockLengths[counter] = it->amount;
-	    displacements[counter] = address;
-	    datatypes[counter] = it->mpiType;
-	 }
-	 ++counter;
+         if (it->amount == 0) {
+            // MPI works with empty reads but datatype cannot be MPI_DATATYPE_NULL:
+            blockLengths[counter] = 0;
+            displacements[counter] = 0;
+            datatypes[counter] = MPI_Type<char>();
+         } else {
+            MPI_Get_address(it->array,&address);
+            blockLengths[counter] = it->amount;
+            displacements[counter] = address;
+            datatypes[counter] = it->mpiType;
+         }
+         bytesRead += it->amount * arrayOpen.vectorSize*arrayOpen.dataSize;
+         ++counter;
       }
-   
+
       // Create MPI datatype containing all reads:
       MPI_Datatype readType;
       MPI_Type_create_struct(N_reads,blockLengths,displacements,datatypes,&readType);
@@ -223,9 +255,11 @@ namespace vlsv {
       // Commit datatype and read everything in parallel:
       MPI_Type_commit(&readType);
       const uint64_t byteOffset = arrayOpen.offset + offset*arrayOpen.vectorSize*arrayOpen.dataSize;
+      const double t_start = MPI_Wtime();
       if (MPI_File_read_at_all(filePtr,byteOffset,MPI_BOTTOM,1,readType,MPI_STATUS_IGNORE) != MPI_SUCCESS) {
-	 success = false;
+         success = false;
       }
+      readTime += (MPI_Wtime()-t_start);
       MPI_Type_free(&readType);
       MPI_Type_free(&multiReadVectorType);
       multireadStarted = false;
@@ -265,7 +299,7 @@ namespace vlsv {
       MPI_Comm_rank(comm,&myRank);
       MPI_Comm_size(comm,&processes);
       multireadStarted = false;
-      
+
       // Attempt to open the given input file using MPI:
       fileName = fname;
       int accessMode = MPI_MODE_RDONLY;
@@ -277,7 +311,7 @@ namespace vlsv {
       // Only master process reads file footer and endianness. This is done using 
       // VLSVReader open() member function:
       if (myRank == masterRank) {
-	 if (Reader::open(fname) == false) success = false;
+         if (Reader::open(fname) == false) success = false;
       }
       
       if (success == false) cerr << "MASTER failed to open VLSV file" << endl;
@@ -293,15 +327,16 @@ namespace vlsv {
       
       // Broadcast file endianness to all processes:
       MPI_Bcast(&endiannessFile,1,MPI_Type<unsigned char>(),masterRank,comm);
-   
+
+      bytesRead = 0;
       return success;
    }
-   
+
    bool ParallelReader::readArrayMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
 					const uint64_t& begin,const uint64_t& amount,char* buffer) {
       if (myRank != masterRank) {
-	 cerr << "(PARALLEL READER) readArrayMaster erroneously called on process #" << myRank << endl;
-	 exit(1);
+         cerr << "(PARALLEL READER) readArrayMaster erroneously called on process #" << myRank << endl;
+         exit(1);
       }
       // readArray reads offset from XML tree into master only
       return Reader::readArray(tagName,attribs,begin,amount,buffer);
@@ -316,18 +351,18 @@ namespace vlsv {
     * @param buffer Buffer in which data is read from VLSV file.
     * @return If true, this process read its data successfully.*/
    bool ParallelReader::readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-				  const uint64_t& begin,const uint64_t& amount,char* buffer) {
+                                  const uint64_t& begin,const uint64_t& amount,char* buffer) {
       if (parallelFileOpen == false) return false;
       bool success = true;
-   
+
       // Fetch array info to all processes:
       if (getArrayInfo(tagName,attribs) == false) return false;
       const MPI_Offset start = arrayOpen.offset + begin*arrayOpen.vectorSize*arrayOpen.dataSize;
       const int readBytes    = amount*arrayOpen.vectorSize*arrayOpen.dataSize;
-   
+
       // Read data on all processes in parallel:
       if (MPI_File_read_at_all(filePtr,start,buffer,readBytes,MPI_Type<char>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) {
-	 success = false;
+         success = false;
       }
       return success;
    }

@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2013,2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -79,27 +79,27 @@ namespace vlsv {
       // Don't touch outBuffer if it has already been allocated:
       if (allocateMemory == true) outBuffer = NULL;
       if (amount == 0) return true;
-      
+
       // Get array info:
       uint64_t arraySize;
       uint64_t vectorSize;
       datatype::type datatype;
       uint64_t dataSize;
       if (Reader::getArrayInfo(tagName,attribs,arraySize,vectorSize,datatype,dataSize) == false) {
-         //std::cerr << "vlsv::Reader failed to get array info" << std::endl;
+         std::cerr << "vlsv::Reader failed to get array info" << std::endl;
          return false;
       }
 
       // Check that requested read is inside the array:
       if (begin > arraySize || (begin+amount) > arraySize) return false;
-      
+
       // Read data into temporary buffer:
       char* buffer = new char[amount*vectorSize*dataSize];
       if (Reader::readArray(tagName,attribs,begin,amount,buffer) == false) {
          delete [] buffer; buffer = NULL;
          return false;
       }
-      
+
       // Copy data from temporary buffer to output:
       if (allocateMemory == true) outBuffer = new T[amount*vectorSize];
       char* ptr = buffer;
@@ -109,7 +109,7 @@ namespace vlsv {
             ptr += dataSize;
          }
       }
-   
+
       delete [] buffer; buffer = NULL;
       return true;
    }
