@@ -120,9 +120,10 @@ namespace vlsv {
       if (success == true) masterSuccess = 1;
       MPI_Bcast(&value,1,MPI_Type<T>(),masterRank,comm);
       MPI_Bcast(&masterSuccess,1,MPI_Type<uint8_t>(),masterRank,comm);
-      if (masterSuccess > 0) success = true;
+      success = (masterSuccess > 0);
       return success;
    }
-
 }
-   
+#endif
+
+
