@@ -107,10 +107,10 @@ namespace vlsv {
       // Write the footer using collective MPI file operations. Only the master process 
       // actually writes something. Using collective MPI here practically eliminated 
       // all time spent here.
-      char* footerPtr = NULL;
       if (myrank != masterRank) {
          if (dryRunning == false) {
-            MPI_File_write_at_all(fileptr,offset,footerPtr,0,MPI_BYTE,MPI_STATUSES_IGNORE);
+            //Write zero length data
+            MPI_File_write_at_all(fileptr,0,NULL,0,MPI_BYTE,MPI_STATUSES_IGNORE);
          }
       } else {
          if (dryRunning == false) {
@@ -123,11 +123,11 @@ namespace vlsv {
          // pointer for writing it to the file:
          stringstream footerStream;
          xmlWriter->print(footerStream);
-         footerPtr = &(footerStream.str()[0]);
-
+         string footerString = footerStream.str();
+         
          double t_start = MPI_Wtime();
          if (dryRunning == false) {
-            MPI_File_write_at_all(fileptr,endOffset,footerPtr,footerStream.str().size(),MPI_BYTE,MPI_STATUSES_IGNORE);
+            MPI_File_write_at_all(fileptr, endOffset, footerString.data(), footerString.size(), MPI_BYTE, MPI_STATUSES_IGNORE);
          }
          writeTime += (MPI_Wtime() - t_start);
          bytesWritten += footerStream.str().size();
@@ -141,7 +141,7 @@ namespace vlsv {
       if (myrank == masterRank && dryRunning == false) {
          fstream footer;
          size_t footerOffset = (size_t)endOffset;
-
+         
          footer.open(fileName.c_str(),fstream::in | fstream::out | fstream::binary | fstream::ate);
          char* ptr = reinterpret_cast<char*>(&footerOffset);
          footer.seekp(sizeof(uint64_t));
