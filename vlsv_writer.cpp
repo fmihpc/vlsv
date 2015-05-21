@@ -127,10 +127,10 @@ namespace vlsv {
          
          double t_start = MPI_Wtime();
          if (dryRunning == false) {
-            MPI_File_write_at_all(fileptr, endOffset, footerString.data(), footerString.size(), MPI_BYTE, MPI_STATUSES_IGNORE);
+            MPI_File_write_at_all(fileptr, endOffset, footerString.c_str(), footerString.size()+1, MPI_BYTE, MPI_STATUSES_IGNORE);
          }
          writeTime += (MPI_Wtime() - t_start);
-         bytesWritten += footerStream.str().size();
+         bytesWritten += footerStream.str().size()+1;
       }
 
       // Close MPI file:
