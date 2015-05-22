@@ -127,7 +127,7 @@ namespace vlsv {
          
          double t_start = MPI_Wtime();
          if (dryRunning == false) {
-            MPI_File_write_at_all(fileptr, endOffset, footerString.c_str(), footerString.size()+1, MPI_BYTE, MPI_STATUSES_IGNORE);
+            MPI_File_write_at_all(fileptr, endOffset, (char*)footerString.c_str(), footerString.size()+1, MPI_BYTE, MPI_STATUSES_IGNORE);
          }
          writeTime += (MPI_Wtime() - t_start);
          bytesWritten += footerStream.str().size()+1;
@@ -396,12 +396,14 @@ namespace vlsv {
             const double t_start = MPI_Wtime();
             MPI_File_write_at_all(fileptr,offset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
             writeTime += (MPI_Wtime() - t_start);
+            MPI_Barrier(comm);
             MPI_Type_free(&outputType);
          } else {
             // Process has no data to write but needs to participate in the collective call to prevent deadlock:
             const double t_start = MPI_Wtime();
             MPI_File_write_at_all(fileptr,offset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
             writeTime += (MPI_Wtime() - t_start);
+            MPI_Barrier(comm);
          }
       }
 
