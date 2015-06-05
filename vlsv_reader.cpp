@@ -103,14 +103,14 @@ namespace vlsv {
     * @return If true, output variable contain meaningful values.*/
    bool Reader::getUniqueAttributeValues(const string& tagName,const string& attribName,set<string>& output) const {
       if (fileOpen == false) return false;
-      
+
       muxml::XMLNode* node = xmlReader.find("VLSV");
       for (multimap<string,muxml::XMLNode*>::const_iterator it=node->children.lower_bound(tagName); 
-	   it!=node->children.upper_bound(tagName); ++it) {
-	 map<string,string>::const_iterator tmp = it->second->attributes.find(attribName);
-	 if (tmp == it->second->attributes.end()) continue;
-	 output.insert(tmp->second);
-      }   
+           it!=node->children.upper_bound(tagName); ++it) {
+         map<string,string>::const_iterator tmp = it->second->attributes.find(attribName);
+         if (tmp == it->second->attributes.end()) continue;
+         output.insert(tmp->second);
+      }
       return true;
    }
 
