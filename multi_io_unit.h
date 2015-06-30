@@ -35,8 +35,8 @@ namespace vlsv {
       
       char* array;              /**< Pointer to data to be written.*/
       MPI_Datatype mpiType;     /**< MPI datatype of data that is written.*/
-      uint64_t amount;          /**< How many elements are to be written.*/
-      
+      uint64_t amount;          /**< How many elements of type mpiType are to be written.*/
+
     private:
       
       /** Private default constructor to prevent creation of empty multiwrite units.*/

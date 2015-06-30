@@ -110,6 +110,10 @@ namespace vlsv {
       MPI_File fileptr;                       /**< MPI file pointer to the output file.*/
       bool initialized;                       /**< If true, VLSV Writer initialization is complete, does not tell if it was successful.*/
       int masterRank;                         /**< Rank of master process in communicator comm.*/
+      size_t maxMultiwriteBytes;              /**< Maximum number of bytes written using a single collective call per process.
+                                               * If a process needs to write more bytes than this value, then the write is 
+                                               * split into multiple collective calls. This is done to prevent integer overflow 
+                                               * in MPI libraries.*/
       bool multiwriteFinalized;               /**< If true, multiwrite array writing mode has finalized correctly. 
                                                * This variable is used to synchronize threads in endMultiwrite function..*/
       bool multiwriteInitialized;             /**< If true, multiwrite array writing mode has initialized correctly. 
@@ -137,6 +141,9 @@ namespace vlsv {
       double writeTime;                       /**< Time it took on this process to write bytesWritten bytes to output file.
                                                * The timer on master process includes the time to write the header and footer.*/
       muxml::MuXML* xmlWriter;                /**< Pointer to XML writer, used for writing a footer to the VLSV file.*/
+
+      bool multiwriteFlush(const size_t& counter,const MPI_Offset& currentOffset,std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& end);
+      bool multiwriteFooter(const std::string& tagName,const std::map<std::string,std::string>& attribs);
    };
 
    template<typename T> inline
