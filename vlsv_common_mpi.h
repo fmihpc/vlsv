@@ -26,6 +26,7 @@ namespace vlsv {
    size_t getMaxBytesPerRead();
    size_t getMaxBytesPerWrite();
 
+   bool checkSuccess(const bool& myStatus,MPI_Comm comm);
    MPI_Datatype getMPIDatatype(datatype::type dt,uint64_t dataSize);
 }
 

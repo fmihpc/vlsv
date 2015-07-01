@@ -45,7 +45,7 @@ namespace vlsv {
       bool multiReadStart(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
       bool multiReadAddUnit(const uint64_t& amount,char* buffer);
       bool multiReadEnd(const uint64_t& offset);
-      bool open(const std::string& fname,MPI_Comm comm,const int& masterRank,MPI_Info mpiInfo);
+      bool open(const std::string& fname,MPI_Comm comm,const int& masterRank,MPI_Info mpiInfo=MPI_INFO_NULL);
       bool readArrayMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                            const uint64_t& begin,const uint64_t& amount,char* buffer);
       bool readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
@@ -68,11 +68,12 @@ namespace vlsv {
       int processes;                  /**< Number of MPI processes in communicator comm.*/
       double readTime;                /**< Time spent in seconds to read bytesRead bytes by this process.*/
 
-      bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
-      
-      MPI_Datatype multiReadVectorType;
-      MPI_Datatype multiReadArrayType;
+      //MPI_Datatype multiReadVectorType;
+      //MPI_Datatype multiReadArrayType;
       std::list<Multi_IO_Unit> multiReadUnits;
+
+      bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
+      bool multiReadFlush(const size_t& offset,std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop);
    };
 
    template<typename T>

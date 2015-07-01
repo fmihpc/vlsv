@@ -90,36 +90,36 @@ namespace vlsv {
    
    namespace ucdgenericmulti {
       namespace bbox {
-	 /**< Definition of elements in MESH_BBOX array.*/
-	 enum elements {
-	    X_BLOCKS,      /**< Number of blocks in x-direction in mesh bounding box.*/
-	    Y_BLOCKS,      /**< Number of blocks in y-direction in mesh bounding box.*/
-	    Z_BLOCKS,      /**< Number of blocks in z-direction in mesh bounding box.*/
-	    BLOCK_WIDTH_X, /**< Number of cells in block/patch in x-direction.*/
-	    BLOCK_WIDTH_Y, /**< Number of cells in block/patch in y-direction.*/
-	    BLOCK_WIDTH_Z, /**< Number of cells in block/patch in z-direction.*/
-	    SIZE           /**< Size of MESH_BBOX array.*/
-	 };
+         /**< Definition of elements in MESH_BBOX array.*/
+         enum elements {
+            X_BLOCKS,      /**< Number of blocks in x-direction in mesh bounding box.*/
+            Y_BLOCKS,      /**< Number of blocks in y-direction in mesh bounding box.*/
+            Z_BLOCKS,      /**< Number of blocks in z-direction in mesh bounding box.*/
+            BLOCK_WIDTH_X, /**< Number of cells in block/patch in x-direction.*/
+            BLOCK_WIDTH_Y, /**< Number of cells in block/patch in y-direction.*/
+            BLOCK_WIDTH_Z, /**< Number of cells in block/patch in z-direction.*/
+            SIZE           /**< Size of MESH_BBOX array.*/
+         };
       }
       
       namespace domainsizes {
-	 /**< Definition of elements in MESH_DOMAIN_SIZES array.*/
-	 enum elements {
-	    TOTAL_BLOCKS, /**< Total number of blocks/patches in domain.*/
-	    GHOST_BLOCKS, /**< Number of ghost blocks/patches in domain.*/
-	    TOTAL_NODES,  /**< Total number of nodes in domain.*/
-	    GHOST_NODES,  /**< Number of ghost nodes in domain.*/
-	    SIZE          /**< Size of MESH_DOMAIN_SIZES entry for each domain.*/
-	 };
+         /**< Definition of elements in MESH_DOMAIN_SIZES array.*/
+         enum elements {
+            TOTAL_BLOCKS, /**< Total number of blocks/patches in domain.*/
+            GHOST_BLOCKS, /**< Number of ghost blocks/patches in domain.*/
+            TOTAL_NODES,  /**< Total number of nodes in domain.*/
+            GHOST_NODES,  /**< Number of ghost nodes in domain.*/
+            SIZE          /**< Size of MESH_DOMAIN_SIZES entry for each domain.*/
+         };
       }
       
       namespace offsets {
-	 /** Definition of elements in MESH_OFFSETS array.*/
-	 enum elements {
-	    ZONE_ENTRIES, /**< Number of zone connectivity entries in domain.*/
-	    NODE_ENTRIES, /**< Number of nodes in domain.*/
-	    SIZE          /**< Size of MESH_OFFSETS entry for each domain.*/
-	 };
+         /** Definition of elements in MESH_OFFSETS array.*/
+         enum elements {
+            ZONE_ENTRIES, /**< Number of zone connectivity entries in domain.*/
+            NODE_ENTRIES, /**< Number of nodes in domain.*/
+            SIZE          /**< Size of MESH_OFFSETS entry for each domain.*/
+         };
       }
    }
    
@@ -173,84 +173,84 @@ namespace vlsv {
     * the value is copied to output variable 'value'.*/
    template<typename T> inline
      void convertValue(T& value,const char* const buffer,datatype::type dt,int dataSize,const bool& swapEndianness=false) {
-      char* valuePtr = NULL;
-      // Switch according the native datatype of the value in buffer:
-      switch (dt) {
-       case datatype::UNKNOWN:
-	 // Unknown datatype, just byte-copy buffer to 'value':
-	 valuePtr = reinterpret_cast<char*>(&value);
-	 for (int i=0; i<dataSize; ++i) valuePtr[i] = buffer[i];
-	 break;
-       case datatype::INT:
-	 // Signed integer, switch according to byte size:
-	 switch (dataSize) {
-	  case sizeof(int8_t):
-	    value = convertInteger<int8_t>(buffer,swapEndianness);
-	    break;
-	  case sizeof(int16_t):
-	    value = convertInteger<int16_t>(buffer,swapEndianness);
-	    break;
-	  case sizeof(int32_t):
-	    value = convertInteger<int32_t>(buffer,swapEndianness);
-	    break;
-	  case sizeof(int64_t):
-	    value = convertInteger<int64_t>(buffer,swapEndianness);
-	    break;
-	  default:
-	    std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl; 
-	    std::cerr << "\t Exiting at convertValue VLSV::INT." << std::endl;
-	    exit(1);
-	    break;
-	 }
-	 break;
-       case datatype::UINT:
-	 // Unsigned integer, switch according to byte size:
-	 switch (dataSize) {
-	  case sizeof(uint8_t):
-	    value = convertInteger<uint8_t>(buffer,swapEndianness);
-	    break;
-	  case sizeof(uint16_t):
-	    value = convertInteger<uint16_t>(buffer,swapEndianness);
-	    break;
-	  case sizeof(uint32_t):
-	    value = convertInteger<uint32_t>(buffer,swapEndianness);
-	    break;
-	  case sizeof(uint64_t):
-	    value = convertInteger<uint64_t>(buffer,swapEndianness);
-	    break;
-	  default:
-	    std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl; 
-	    std::cerr << "\t Exiting at convertValue VLSV::UINT." << std::endl;
-	    exit(1);
-	    break;
-	 }
-	 break;
-       case datatype::FLOAT:
-	 // Floating point, switch according to byte size:
-	 switch (dataSize) {
-	  case sizeof(float):
-	    value = convertFloat<float>(buffer);
-	    break;
-	  case sizeof(double):
-	    value = convertFloat<double>(buffer);
-	    break;
-	  case sizeof(long double):
-	    value = convertFloat<long double>(buffer);
-	    break;
-	  default:
-	    std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl;
-	    std::cerr << "\t Exiting at convertValue VLSV::FLOAT." << std::endl;
-	    exit(1);
-	    break;
-	 }
-	 break;
-       default:
-	 // Error:
-	 std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl;
-	 exit(1);
-	 break;
-      }
-   }
+        char* valuePtr = NULL;
+        // Switch according the native datatype of the value in buffer:
+        switch (dt) {
+         case datatype::UNKNOWN:
+           // Unknown datatype, just byte-copy buffer to 'value':
+           valuePtr = reinterpret_cast<char*>(&value);
+           for (int i=0; i<dataSize; ++i) valuePtr[i] = buffer[i];
+           break;
+         case datatype::INT:
+           // Signed integer, switch according to byte size:
+           switch (dataSize) {
+            case sizeof(int8_t):
+              value = convertInteger<int8_t>(buffer,swapEndianness);
+              break;
+            case sizeof(int16_t):
+              value = convertInteger<int16_t>(buffer,swapEndianness);
+              break;
+            case sizeof(int32_t):
+              value = convertInteger<int32_t>(buffer,swapEndianness);
+              break;
+            case sizeof(int64_t):
+              value = convertInteger<int64_t>(buffer,swapEndianness);
+              break;
+            default:
+              std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl; 
+              std::cerr << "\t Exiting at convertValue VLSV::INT." << std::endl;
+              exit(1);
+              break;
+           }
+           break;
+         case datatype::UINT:
+           // Unsigned integer, switch according to byte size:
+           switch (dataSize) {
+            case sizeof(uint8_t):
+              value = convertInteger<uint8_t>(buffer,swapEndianness);
+              break;
+            case sizeof(uint16_t):
+              value = convertInteger<uint16_t>(buffer,swapEndianness);
+              break;
+            case sizeof(uint32_t):
+              value = convertInteger<uint32_t>(buffer,swapEndianness);
+              break;
+            case sizeof(uint64_t):
+              value = convertInteger<uint64_t>(buffer,swapEndianness);
+              break;
+            default:
+              std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl; 
+              std::cerr << "\t Exiting at convertValue VLSV::UINT." << std::endl;
+              exit(1);
+              break;
+           }
+           break;
+         case datatype::FLOAT:
+           // Floating point, switch according to byte size:
+           switch (dataSize) {
+            case sizeof(float):
+              value = convertFloat<float>(buffer);
+              break;
+            case sizeof(double):
+              value = convertFloat<double>(buffer);
+              break;
+            case sizeof(long double):
+              value = convertFloat<long double>(buffer);
+              break;
+            default:
+              std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl;
+              std::cerr << "\t Exiting at convertValue VLSV::FLOAT." << std::endl;
+              exit(1);
+              break;
+           }
+           break;
+         default:
+           // Error:
+           std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl;
+           exit(1);
+           break;
+        }
+     }
    
    template<typename T> inline std::string getStringDatatype() {return "unknown";}
    template<> inline std::string getStringDatatype<bool>() {return "int";}

@@ -33,7 +33,9 @@ namespace vlsv {
     * library versions the 'count' parameter is simply an integer.
     * @return Maximum number of bytes read using a single MPI collective routine.*/
    size_t getMaxBytesPerRead() {
-      return numeric_limits<int>::max();
+      // For some obscure reason OpenMPI can only write 2147479552 bytes with a single 
+      // collective call. So I'm manually setting the max bytes to bit less than that.
+      return 2147460000;
       //return numeric_limits<MPI_Count>::max();
    }
    
@@ -42,11 +44,36 @@ namespace vlsv {
     * library versions the 'count' parameter is simply an integer.
     * @return Maximum number of bytes written using a single MPI collective routine.*/
    size_t getMaxBytesPerWrite() {
-      return 2000000000;
+      return 2147460000;
       return numeric_limits<int>::max();
       //return numeric_limits<MPI_Count>::max();
    }
 
+   /** Check that all processes in communicator comm called this function 
+    * with myStatus=true.
+    * @param myStatus The status flag of this process.
+    * @param comm MPI Communicator.
+    * @return If true, all processes called this function with myStatus=true.*/
+   bool checkSuccess(const bool& myStatus,MPI_Comm comm) {
+      // If myStatus is false, set mySuccess to value 1:
+      int32_t mySuccess = 0;
+      int32_t globalSuccess = 0;
+      if (myStatus == false) mySuccess = 1;
+
+      // Sum mySuccess values to master process and broadcast to all processes:
+      MPI_Reduce(&mySuccess,&globalSuccess,1,MPI_Type<int32_t>(),MPI_SUM,0,comm);
+      MPI_Bcast(&globalSuccess,1,MPI_Type<int32_t>(),0,comm);
+
+      // If globalSuccess equals zero all processes called this function with myStatus set to 'true':
+      if (globalSuccess == 0) return true;
+      return false;
+   }
+
+   /** Get the MPI primitive datatype corresponding to the given VLSV datatype.
+    * Note that the VLSV 'datatype' here is either INT, UINT, or FLOAT.
+    * @param dt VLSV datatype.
+    * @param dataSize Byte size of the VLSV datatype.
+    * @return MPI Datatype that corresponds to the given VLSV datatype.*/
    MPI_Datatype getMPIDatatype(datatype::type dt,uint64_t dataSize) {
       switch (dt) {
        case datatype::UNKNOWN:
