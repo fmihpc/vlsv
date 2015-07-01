@@ -1,6 +1,6 @@
 /* This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2013,2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -18,6 +18,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 #include "mpiconversion.h"
 #include "vlsv_common.h"
@@ -26,6 +27,25 @@
 using namespace std;
 
 namespace vlsv {
+
+   /** Get maximum number of bytes that can be read from a file using a single collective MPI routine.
+    * This should equal to numeric_limits<MPI_Count>::max() in MPI 3.0+, but in older 
+    * library versions the 'count' parameter is simply an integer.
+    * @return Maximum number of bytes read using a single MPI collective routine.*/
+   size_t getMaxBytesPerRead() {
+      return numeric_limits<int>::max();
+      //return numeric_limits<MPI_Count>::max();
+   }
+   
+   /** Get maximum number of bytes that can be written to a file using a single collective MPI routine.
+    * This should equal to numeric_limits<MPI_Count>::max() in MPI 3.0+, but in older 
+    * library versions the 'count' parameter is simply an integer.
+    * @return Maximum number of bytes written using a single MPI collective routine.*/
+   size_t getMaxBytesPerWrite() {
+      return 2000000000;
+      return numeric_limits<int>::max();
+      //return numeric_limits<MPI_Count>::max();
+   }
 
    MPI_Datatype getMPIDatatype(datatype::type dt,uint64_t dataSize) {
       switch (dt) {

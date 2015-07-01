@@ -63,8 +63,6 @@ namespace vlsv {
       types = NULL;
       xmlWriter = NULL;
       comm = MPI_COMM_NULL;
-      
-      maxMultiwriteBytes = numeric_limits<int>::max() / 400;
    }
 
    /** Destructor for Writer. Deallocates XML writer.*/
@@ -97,29 +95,32 @@ namespace vlsv {
       // Do not add zero-size arrays to multiWriteUnits:
       if (arrayElements == 0) return true;
 
+      // Get the byte size of the MPI primitive datatype (MPI_INT etc.) used here:
       int datatypeBytesize;
       MPI_Type_size(getMPIDatatype(vlsvType,dataSize),&datatypeBytesize);
-      size_t maxElementsPerWrite = maxMultiwriteBytes / (datatypeBytesize*vectorSize);
-      if (arrayElements > maxElementsPerWrite) {
-         //cerr << "WARNING: Multiwrite unit bytesize is " << datatypeBytesize*arrayElements*vectorSize << " bytes!, max elements " << maxElementsPerWrite << endl;
 
+      // Calculate the maximum number of array elements written using a single multi-write.
+      // Note: element = vector of size vectorSize, each vector element has byte size of datatypeBytesize.
+      size_t maxElementsPerWrite = getMaxBytesPerWrite() / (datatypeBytesize*vectorSize);
+      
+      // Split the multi-write if the array has more elements than what we can 
+      // write to output file using a single MPI collective:
+      if (arrayElements > maxElementsPerWrite) {
+         // Calculate how many collectives this process needs:
          size_t N_writes = arrayElements / maxElementsPerWrite;
          if (arrayElements % maxElementsPerWrite != 0) ++N_writes;
-         //cerr << "\t splitting to " << N_writes << " multi-writes" << endl;
 
-         size_t offset = 0;
+         // Add N_writes multi-write units:
          for (size_t i=0; i<N_writes; ++i) {
             size_t elements = maxElementsPerWrite;
             if ((i+1)*maxElementsPerWrite >= arrayElements) elements = arrayElements - i*maxElementsPerWrite;
-            //cerr << "\t" << i << "\t " << (size_t)array+i*maxElementsPerWrite << "\t offset " << offset << " elements " << elements << endl;
 
-            multiwriteUnits[0].push_back(Multi_IO_Unit(array+i*maxElementsPerWrite,getMPIDatatype(vlsvType,dataSize),elements*vectorSize));
+            const size_t byteOffset = maxElementsPerWrite*vectorSize*datatypeBytesize;
+            multiwriteUnits[0].push_back(Multi_IO_Unit(array+i*byteOffset,getMPIDatatype(vlsvType,dataSize),elements*vectorSize));
          }
       } else {
          multiwriteUnits[0].push_back(Multi_IO_Unit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
       }
-      
-      //cerr << "\t multiwriteUnits.size() = " << multiwriteUnits[0].size() << endl;
       return true;
    }
 
@@ -413,7 +414,11 @@ namespace vlsv {
       list<Multi_IO_Unit>::iterator first = multiwriteUnits[0].begin();
       list<Multi_IO_Unit>::iterator last  = multiwriteUnits[0].begin();
       for (list<Multi_IO_Unit>::iterator it=multiwriteUnits[0].begin(); it!=multiwriteUnits[0].end(); ++it) {
-         if (outputBytesize + (*it).amount*dataSize > maxMultiwriteBytes) {
+         if (outputBytesize + (*it).amount*dataSize > getMaxBytesPerWrite()) {
+            //stringstream ss;
+            //ss << "P#" << myrank << ' ' << outputBytesize+(*it).amount*dataSize << " exceeds " << getMaxBytesPerWrite() << " splitting" << endl;
+            //cerr << ss.str();
+            
             multiwriteList.push_back(make_pair(first,last));
             first = it; last = it;
 
@@ -463,7 +468,8 @@ namespace vlsv {
       return true;
    }
 
-   bool Writer::multiwriteFlush(const size_t& counter,const MPI_Offset& unitOffset,std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop) {
+   bool Writer::multiwriteFlush(const size_t& counter,const MPI_Offset& unitOffset,
+                                std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop) {
       bool success = true;
 
       // Count the total number of multiwrite units:
@@ -490,10 +496,16 @@ namespace vlsv {
 
       // Copy pointers etc. to MPI struct:
       size_t i=0;
-      for (list<Multi_IO_Unit>::const_iterator it=start; it!=stop; ++it) {
+      size_t amount = 0;
+      for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
          blockLengths[i]  = (*it).amount;
          displacements[i] = (*it).array - multiwriteOffsetPointer;
          types[i]         = (*it).mpiType;
+
+         int datatypeBytesize;
+         MPI_Type_size(it->mpiType,&datatypeBytesize);
+         amount += (*it).amount * datatypeBytesize;
+         
          ++i;
       }
 
@@ -501,9 +513,9 @@ namespace vlsv {
       if (dryRunning == false) {
          if (N_multiwriteUnits > 0) {
             //stringstream ss;
-            //ss << "P#" << myrank << " writing data to offset " << offset+unitOffset << " on call " << counter << endl;
+            //ss << "P#" << myrank << " writing data to offset " << offset+unitOffset << " on call " << counter << " bytes " << amount << endl;
             //cerr << ss.str();
-            
+
             // Create an MPI struct containing the multiwrite units:
             MPI_Datatype outputType;
             MPI_Type_create_struct(N_multiwriteUnits,blockLengths,displacements,types,&outputType);

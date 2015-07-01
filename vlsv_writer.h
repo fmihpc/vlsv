@@ -110,10 +110,6 @@ namespace vlsv {
       MPI_File fileptr;                       /**< MPI file pointer to the output file.*/
       bool initialized;                       /**< If true, VLSV Writer initialization is complete, does not tell if it was successful.*/
       int masterRank;                         /**< Rank of master process in communicator comm.*/
-      size_t maxMultiwriteBytes;              /**< Maximum number of bytes written using a single collective call per process.
-                                               * If a process needs to write more bytes than this value, then the write is 
-                                               * split into multiple collective calls. This is done to prevent integer overflow 
-                                               * in MPI libraries.*/
       bool multiwriteFinalized;               /**< If true, multiwrite array writing mode has finalized correctly. 
                                                * This variable is used to synchronize threads in endMultiwrite function..*/
       bool multiwriteInitialized;             /**< If true, multiwrite array writing mode has initialized correctly. 
