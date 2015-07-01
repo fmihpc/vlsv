@@ -188,9 +188,9 @@ int main(int argn,char* args[]) {
       if (totalBytes >= 1e9) {totalBytes /= 1e9; totalBytesUnits = "GB";}
       else if (totalBytes >= 1e6) {totalBytes /= 1e6; totalBytesUnits = "MB";}
 
-      cout << "Writing " << bytesPerProcess << ' ' << perProcessUnits << " per process, " << totalBytes << ' ' << totalBytesUnits << " in total" << endl;
+      cout << "Writing " << bytesPerProcess << ' ' << perProcessUnits << " per process using ";
+      cout << processes << " MPI processes, " << totalBytes << ' ' << totalBytesUnits << " in total" << endl;
    }
-
 
    // Write data to file
    double writeDataRate;
