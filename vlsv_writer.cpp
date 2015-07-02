@@ -207,6 +207,7 @@ namespace vlsv {
     * @param fname The name of the output file.
     * @param comm MPI communicator used in writing.
     * @param masterProcessID ID of the MPI master process.
+    * @param mpiInfo MPI info, passed on to MPI_File_open.
     * @return If true, a file was opened successfully.*/
    bool Writer::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo) {
       bool success = true;
@@ -297,7 +298,7 @@ namespace vlsv {
    }
 
    /** Resize the output file.
-    * @newSize New size.
+    * @param newSize New size.
     * @return If true, output file was successfully resized.*/
    bool Writer::setSize(MPI_Offset newSize) {
       int rvalue = MPI_File_set_size(fileptr,newSize);

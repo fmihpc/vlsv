@@ -37,6 +37,14 @@ namespace vlsv {
       close();
    }
 
+   /** Add a multi-read unit. Note that startMmultiread must have been called 
+    * to initialize multi-read mode before calling this function. The data is not 
+    * actually read until endMultiread is called.
+    * @param buffer Pointer to allocated memory location where data from file is placed.
+    * @param arrayElements Number of array elements to read.
+    * @return If true, multiread unit was added successfully.
+    * @see startMultiread.
+    * @see endMultiread.*/
    bool ParallelReader::addMultireadUnit(char* buffer,const uint64_t& arrayElements) {
       bool success = true;
       if (multireadStarted == false) return false;
@@ -80,6 +88,15 @@ namespace vlsv {
       return success;
    }
 
+   /** End multi-read mode and read data from file on all processes.
+    * Note that startMultiread and one or more addMultireadUnit calls must have 
+    * been made before calling this function.
+    * @param arrayOffset Offset into input array relative to array start on file. 
+    * Determines where this process starts to read its data. Offset is given in 
+    * units of array elements.
+    * @return If true, all processes read their data successfully.
+    * @see startMultiread.
+    * @see addMultireadUnit.*/
    bool ParallelReader::endMultiread(const uint64_t& arrayOffset) {
       bool success = true;
       if (multireadStarted == false) success = false;
@@ -310,107 +327,8 @@ namespace vlsv {
       return success;
    }
 
-   /** Add a file read unit. Note that multiReadStart function must have been called 
-    * to initialize multiread mode before calling this function.
-    * @param amount Number of array elements to read.
-    * @param buffer Pointer to memory location where data from file is placed.
-    * @return If true, multiread unit was added successfully.*/
-   /*bool ParallelReader::multiReadAddUnit(const uint64_t& amount,char* buffer) {
-      bool success = true;
-      if (multireadStarted == false) return false;
-      //multiReadUnits.push_back(Multi_IO_Unit(buffer,multiReadVectorType,amount));
-      multiReadUnits.push_back(Multi_IO_Unit(buffer,getMPIDatatype(arrayOpen.dataType,arrayOpen.dataSize),amount*arrayOpen.vectorSize));
-      return success;
-   }*/
-
-   /** End multiread mode and read all data from file.
-    * @param offset Offset into input array for this process, in units of array elements.
-    * @return If true, data was read successfully.*/
-   /*bool ParallelReader::multiReadEnd(const uint64_t& offset) {
-      bool success = true;
-      if (multireadStarted == false) {
-         cerr << "multiread not started!" << endl;
-         return false;
-      }
-
-      // Create an MPI datatype for reading all data at once:
-      const uint64_t N_reads = multiReadUnits.size();
-      int* blockLengths       = new int[N_reads];
-      MPI_Aint* displacements = new MPI_Aint[N_reads];
-      MPI_Datatype* datatypes = new MPI_Datatype[N_reads];
-
-      // Copy multiread units to arrays defined above so that 
-      // we can create an MPI struct that is used to read all data 
-      // with a single collective call:
-      MPI_Aint address;
-      uint64_t counter = 0;
-      for (list<Multi_IO_Unit>::const_iterator it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
-         if (it->amount == 0) {
-            // MPI works with empty reads but datatype cannot be MPI_DATATYPE_NULL:
-            blockLengths[counter] = 0;
-            displacements[counter] = 0;
-            datatypes[counter] = MPI_Type<char>();
-         } else {
-            MPI_Get_address(it->array,&address);
-            blockLengths[counter]  = it->amount;
-            displacements[counter] = address;
-            datatypes[counter]     = it->mpiType;
-         }
-         bytesRead += it->amount*arrayOpen.dataSize;
-         ++counter;
-      }
-
-      // Create MPI datatype containing all reads:
-      MPI_Datatype readType;
-      MPI_Type_create_struct(N_reads,blockLengths,displacements,datatypes,&readType);
-      //delete [] blockLengths;
-      //delete [] displacements;
-      //delete [] datatypes;
-      //multiReadUnits.clear();
-
-      //cerr << "P#" << myRank << " reading from position " << offset << " arrayOpen.offset " << arrayOpen.offset << endl;
-
-      // Commit datatype and read everything in parallel:
-      MPI_Type_commit(&readType);
-      //cerr << "committed" << endl;
-      const uint64_t byteOffset = arrayOpen.offset + offset*arrayOpen.vectorSize*arrayOpen.dataSize;
-      const double t_start = MPI_Wtime();
-
-      if (multiReadUnits.size() == 1) {
-         //MPI_Aint address;
-         //MPI_Get_address(multiReadUnits.begin()->array,&address);
-         //cerr << "Reading to " << (size_t)multiReadUnits.begin()->array << " amount " << multiReadUnits.begin()->amount << endl;
-         /*
-         MPI_File_read_at_all(filePtr,byteOffset,
-                              multiReadUnits.begin()->array,
-                              multiReadUnits.begin()->amount*arrayOpen.vectorSize,
-                              multiReadUnits.begin()->mpiType,MPI_STATUS_IGNORE);
-         *//*
-         MPI_Datatype newType;
-         MPI_Type_create_hindexed(N_reads,blockLengths,displacements,multiReadUnits.begin()->mpiType,&newType);
-         MPI_Type_commit(&newType);
-         MPI_File_read_at_all(filePtr,byteOffset,MPI_BOTTOM,1,newType,MPI_STATUS_IGNORE);
-         MPI_Type_free(&newType);
-      } else {
-         if (MPI_File_read_at_all(filePtr,byteOffset,MPI_BOTTOM,1,readType,MPI_STATUS_IGNORE) != MPI_SUCCESS) {
-            success = false;
-         }
-      }
-      readTime += (MPI_Wtime()-t_start);
-      //cerr << "\t read finished" << endl;
-
-      delete [] blockLengths;
-      delete [] displacements;
-      delete [] datatypes;
-      multiReadUnits.clear();
-
-      MPI_Type_free(&readType);
-      //MPI_Type_free(&multiReadVectorType);
-      multireadStarted = false;
-      return success;
-   }*/
-
-   bool ParallelReader::flushMultiread(const size_t& unit,const MPI_Offset& fileOffset,std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop) {
+   bool ParallelReader::flushMultiread(const size_t& unit,const MPI_Offset& fileOffset,
+                                       std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop) {
       bool success = true;
       
       // Count the number of multi-read units read:
@@ -468,27 +386,6 @@ namespace vlsv {
       delete [] datatypes;
       return success;
    }
-
-   /** Start multiread mode. In multiread mode processes add zero or more file I/O units 
-    * that define the data read from an array in VLSV file and where it is placed in memory.
-    * File I/O units are defined by calling multiReadAddUnit. Data is not actually read until 
-    * multiReadEnd is called. XML tag name and contents of list 'attribs' need to uniquely 
-    * define the array.
-    * @param tagName Array XML tag name in VLSV file.
-    * @param attribs Additional attributes limiting array search.
-    * @return If true, multiread mode was started successfully.
-    * @see multiReadAddUnit.
-    * @see multiReadEnd.*/
-   /*bool ParallelReader::multiReadStart(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {
-      if (parallelFileOpen == false) return false;
-      bool success = true;
-      multiReadUnits.clear();
-      if (getArrayInfo(tagName,attribs) == false) {
-         return false;
-      }
-      if (success == true) multireadStarted = true;
-      return success;
-   }*/
 
    /** Open a VLSV file for parallel reading.
     * @param fname Name of the VLSV file.
@@ -619,7 +516,17 @@ namespace vlsv {
 
       return checkSuccess(success,comm);
    }
-   
+
+   /** Start multi-read mode. In multi-read mode processes add zero or more file I/O units 
+    * that define the data that is read from an array in VLSV file, and where it is placed in memory.
+    * File I/O units are defined by calling addMultireadUnit. Data is not actually read until 
+    * endMultiread is called. XML tag name and contents of list 'attribs' need to uniquely 
+    * define the array.
+    * @param tagName Array XML tag name in VLSV file.
+    * @param attribs Additional attributes that uniquely define the array in file.
+    * @return If true, multi-read mode was started successfully.
+    * @see addMultireadUnit.
+    * @see endMultiread.*/
    bool ParallelReader::startMultiread(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {
       if (parallelFileOpen == false) return false;
       bool success = true;

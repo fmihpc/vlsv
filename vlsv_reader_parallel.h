@@ -42,9 +42,6 @@ namespace vlsv {
       uint64_t getBytesRead();
       double getReadTime() const;
       bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output) const;
-      //bool multiReadStart(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
-      //bool multiReadAddUnit(const uint64_t& amount,char* buffer);
-      //bool multiReadEnd(const uint64_t& offset);
       bool open(const std::string& fname,MPI_Comm comm,const int& masterRank,MPI_Info mpiInfo=MPI_INFO_NULL);
       bool readArrayMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                            const uint64_t& begin,const uint64_t& amount,char* buffer);
@@ -72,8 +69,6 @@ namespace vlsv {
       int processes;                  /**< Number of MPI processes in communicator comm.*/
       double readTime;                /**< Time spent in seconds to read bytesRead bytes by this process.*/
 
-      //MPI_Datatype multiReadVectorType;
-      //MPI_Datatype multiReadArrayType;
       std::list<Multi_IO_Unit> multiReadUnits;
 
       bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
@@ -85,7 +80,6 @@ namespace vlsv {
                              const uint64_t& begin,const uint64_t& amount,T*& outBuffer,bool allocateMemory) {
       // Get array info to all processes:
       if (ParallelReader::getArrayInfo(tagName,attribs) == false) {
-         //std::cerr << "vlsv::Reader failed to get array info" << std::endl;
          return false;
       }
 
