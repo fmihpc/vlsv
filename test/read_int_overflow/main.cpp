@@ -10,6 +10,70 @@
 using namespace std;
 using namespace vlsv;
 
+bool multiread(const int& myrank,const size_t& elements,double& dataRate) {
+   bool success = true;
+   
+   // Calculate offset from array start
+   const size_t offset = myrank*elements;
+   
+   size_t* array = new size_t[elements];
+   for (size_t i=0; i<elements; ++i) array[i] = numeric_limits<size_t>::max();
+   char* ptr = reinterpret_cast<char*>(array);
+   
+   MPI_Aint address;
+   MPI_Get_address(array,&address);
+   
+   // Read data from file
+   ParallelReader vlsvReader;
+   if (vlsvReader.open("test_file.vlsv",MPI_COMM_WORLD,0) == false) {
+      cerr << "failed to open input file!" << endl;
+      delete [] array; return false;
+   }
+
+   //const double t_start = MPI_Wtime();
+   list<pair<string,string> > attribs;
+   if (vlsvReader.startMultiread("ARRAY",attribs) == false) success = false;
+   if (vlsvReader.addMultireadUnit(ptr,elements) == false) success = false;
+   if (vlsvReader.endMultiread(offset) == false) success = false;
+   dataRate = vlsvReader.getBytesRead()/vlsvReader.getReadTime();
+   //const double t_end = MPI_Wtime();
+
+   //size_t bytesRead = vlsvReader.getBytesRead();
+   //double readTime  = vlsvReader.getReadTime();
+   //if (myrank == 0) {
+   //   cerr << "multi-read " << bytesRead/1.0e9 << " GB in " << readTime << " s compare to " << (t_end-t_start) << endl;
+   //}
+   
+   // Verify that the data is correct:
+   size_t errors = 0;
+   for (size_t i=0; i<elements; ++i) {
+      if (array[i] != i) {
+         if (errors == 0) {
+            stringstream ss;
+            ss << "P#" << myrank;// << " array contents invalid!" << endl;
+            ss << " element " << i << " should equal " << i << " but is has value " << array[i] << endl;
+            cerr << ss.str();
+         }
+         success = false;
+         ++errors;
+      }
+   }
+   if (errors > 0) {
+      cerr << "I found " << errors << " errors in total" << endl;
+   }
+   
+   if (vlsvReader.close() == false) success = false;
+   delete [] array; array = NULL;
+   
+   // Return the same value on all processes
+   int globalResult;
+   int result = 0;
+   if (success == false) result = 1;
+   MPI_Allreduce(&result,&globalResult,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
+   if (globalResult == 0) return true;
+   else return false;
+}
+
 bool read(const int& myrank,const size_t& elements,double& dataRate) {
    bool success = true;
 
@@ -20,10 +84,6 @@ bool read(const int& myrank,const size_t& elements,double& dataRate) {
    for (size_t i=0; i<elements; ++i) array[i] = numeric_limits<size_t>::max();
    char* ptr = reinterpret_cast<char*>(array);
 
-   MPI_Aint address;
-   MPI_Get_address(array,&address);
-   //cerr << "P#" << myrank << " array address is " << address << endl;
-
    // Read data from file
    ParallelReader vlsvReader;
    if (vlsvReader.open("test_file.vlsv",MPI_COMM_WORLD,0) == false) {
@@ -31,12 +91,20 @@ bool read(const int& myrank,const size_t& elements,double& dataRate) {
       delete [] array; return false;
    }
 
+   //const double t_start = MPI_Wtime();
    list<pair<string,string> > attribs;
    if (vlsvReader.readArray("ARRAY",attribs,offset,elements,ptr) == false) {
       cerr << "readArray failed!" << endl;
       success = false;
    }
    dataRate = vlsvReader.getBytesRead()/vlsvReader.getReadTime();
+   //const double t_end = MPI_Wtime();
+   
+   //size_t bytesRead = vlsvReader.getBytesRead();
+   //double readTime  = vlsvReader.getReadTime();
+   //if (myrank == 0) {
+   //   cerr << "read       " << bytesRead/1.0e9 << " GB in " << readTime << " s compare to " << (t_end-t_start) << endl;
+   //}
 
    // Verify that the data is correct:
    size_t errors = 0;
@@ -175,7 +243,6 @@ int main(int argn,char* args[]) {
    }
 
    size_t elements = atol(args[1]);
-   //cout << "elements is " << elements << endl;
 
    if (myrank == 0) {
       string perProcessUnits = "B";
@@ -199,10 +266,12 @@ int main(int argn,char* args[]) {
          string dataRateUnits = "B/s";
          if (writeDataRate > 1e9) {writeDataRate /= 1e9; dataRateUnits = "GB/s";}
          else if (writeDataRate > 1e6) {writeDataRate /= 1e6; dataRateUnits = "MB/s";}
-         cout << "Write test: SUCCESS \t\t approximate datarate " << writeDataRate << ' ' << dataRateUnits << endl;
+         cout << "Write test      : SUCCESS \t\t approximate datarate " << writeDataRate << ' ' << dataRateUnits << endl;
       }
    } else {
-      cout << "Write test: FAILED" << endl;
+      if (myrank == 0) {
+         cout << "Write test      : FAILED" << endl;
+      }
       rvalue = 1;
    }
    if (rvalue != 0) {
@@ -217,10 +286,26 @@ int main(int argn,char* args[]) {
          string dataRateUnits = "B/s";
          if (readDataRate > 1e9) {readDataRate /= 1e9; dataRateUnits = "GB/s";}
          else if (readDataRate > 1e6) {readDataRate /= 1e6; dataRateUnits = "MB/s";}
-         cout << "Read test : SUCCESS \t\t approximate datarate " << readDataRate << ' ' << dataRateUnits << endl;
+         cout << "Read test       : SUCCESS \t\t approximate datarate " << readDataRate << ' ' << dataRateUnits << endl;
       }
    } else {
-      cout << "Read test : FAILED" << endl;
+      if (myrank == 0) {
+         cout << "Read test       : FAILED" << endl;
+      }
+      rvalue = 1;
+   }
+
+   if (multiread(myrank,elements,readDataRate) == true) {
+      if (myrank == 0) {
+         string dataRateUnits = "B/s";
+         if (readDataRate > 1e9) {readDataRate /= 1e9; dataRateUnits = "GB/s";}
+         else if (readDataRate > 1e6) {readDataRate /= 1e6; dataRateUnits = "MB/s";}
+         cout << "Multi-read test : SUCCESS \t\t approximate datarate " << readDataRate << ' ' << dataRateUnits << endl;
+      }
+   } else {
+      if (myrank == 0) {
+         cout << "Multi-read test : FAILED" << endl;
+      }
       rvalue = 1;
    }
    

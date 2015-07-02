@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2013,2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -27,14 +27,118 @@ using namespace std;
 
 namespace vlsv {
 
+   /** Default constructor for class ParallelReader.*/
    ParallelReader::ParallelReader(): Reader() {
       multireadStarted = false;
    }
    
+   /** Destructor for class ParallelReader. It closes the input file (if still open).*/
    ParallelReader::~ParallelReader() {
       close();
    }
 
+   bool ParallelReader::addMultireadUnit(char* buffer,const uint64_t& arrayElements) {
+      bool success = true;
+      if (multireadStarted == false) return false;
+      
+      // Ignore zero size reads:
+      if (arrayElements == 0) return true;
+      
+      // Get the byte size of the MPI primitive datatype (MPI_INT etc.) used here:
+      int datatypeBytesize;
+      MPI_Type_size(getMPIDatatype(arrayOpen.dataType,arrayOpen.dataSize),&datatypeBytesize);
+
+      // Calculate the maximum number of array elements written using a single multi-write.
+      // Note: element = vector of size vectorSize, each vector element has byte size of datatypeBytesize.
+      const size_t maxElementsPerRead = getMaxBytesPerRead() / (datatypeBytesize*arrayOpen.vectorSize);
+
+      // Split the multi-read if the array has more elements than what we can 
+      // read from output file using a single MPI collective:
+      if (arrayElements > maxElementsPerRead) {
+         // Calculate how many collectives this process needs:
+         size_t N_reads = arrayElements / maxElementsPerRead;
+         if (arrayElements % maxElementsPerRead != 0) ++N_reads;
+
+         // Add N_reads multi-read units:
+         for (size_t i=0; i<N_reads; ++i) {
+            size_t elements = maxElementsPerRead;
+            if ((i+1)*maxElementsPerRead >= arrayElements) elements = arrayElements - i*maxElementsPerRead;
+
+            const size_t byteOffset = maxElementsPerRead*arrayOpen.vectorSize*datatypeBytesize;
+            multiReadUnits.push_back(
+                Multi_IO_Unit(buffer+i*byteOffset,
+                              getMPIDatatype(arrayOpen.dataType,arrayOpen.dataSize),
+                              elements*arrayOpen.vectorSize));
+         }
+      } else {
+         multiReadUnits.push_back(
+             Multi_IO_Unit(buffer,
+                           getMPIDatatype(arrayOpen.dataType,arrayOpen.dataSize),
+                           arrayElements*arrayOpen.vectorSize));
+      }
+      
+      return success;
+   }
+
+   bool ParallelReader::endMultiread(const uint64_t& arrayOffset) {
+      bool success = true;
+      if (multireadStarted == false) success = false;
+      if (checkSuccess(success,comm) == false) return false;
+
+      // Calculate how many collective MPI calls are needed to 
+      // read all the data from input file:
+      size_t inputBytesize    = 0;
+      size_t myCollectiveCalls = 0;
+      if (multiReadUnits.size() > 0) myCollectiveCalls = 1;
+
+      vector<pair<list<Multi_IO_Unit>::iterator,list<Multi_IO_Unit>::iterator> > multireadList;
+      list<Multi_IO_Unit>::iterator first = multiReadUnits.begin();
+      list<Multi_IO_Unit>::iterator last  = multiReadUnits.begin();
+      for (list<Multi_IO_Unit>::iterator it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
+         if (inputBytesize + it->amount*arrayOpen.dataSize > getMaxBytesPerRead()) {
+            multireadList.push_back(make_pair(first,last));
+            first = it; last = it;
+
+            inputBytesize = 0;
+            ++myCollectiveCalls;
+         }
+         inputBytesize += it->amount*arrayOpen.dataSize;
+         ++last;
+      }
+      multireadList.push_back(make_pair(first,last));
+      
+      // Reduce the maximum number of needed collective reads to all processes:
+      size_t N_collectiveCalls;
+      MPI_Allreduce(&myCollectiveCalls,&N_collectiveCalls,1,MPI_Type<size_t>(),MPI_MAX,comm);
+
+      // If more collective calls are made than what this process needs, 
+      // insert dummy reads to the end of multireadList:
+      if (N_collectiveCalls > multireadList.size()) {
+         const size_t N_dummyCalls = N_collectiveCalls-multireadList.size();
+         for (size_t i=0; i<N_dummyCalls; ++i) {
+            multireadList.push_back(make_pair(multiReadUnits.end(),multiReadUnits.end()));
+         }
+      }
+
+      MPI_Offset unitOffset = 0;
+      unitOffset  = arrayOpen.offset;                                    // Offset of array start relative to file start
+      unitOffset += arrayOffset*arrayOpen.vectorSize*arrayOpen.dataSize; // Byte offset relative to array start where 
+                                                                         // this process starts to read data from.
+
+      for (size_t i=0; i<multireadList.size(); ++i) {
+         if (flushMultiread(i,unitOffset,multireadList[i].first,multireadList[i].second) == false) success = false;
+         for (std::list<Multi_IO_Unit>::iterator it=multireadList[i].first; it!=multireadList[i].second; ++it) {
+            unitOffset += it->amount*arrayOpen.dataSize;
+         }
+      }
+
+      multireadStarted = false;
+      return checkSuccess(success,comm);
+   }
+
+   /** Close the input file.
+    * @return If true, the input file was closed successfully.
+    * @see vlsv::ParallelReader::open().*/
    bool ParallelReader::close() {
       multireadStarted = false;
       if (parallelFileOpen == true) {
@@ -46,6 +150,13 @@ namespace vlsv {
       return true;
    }
 
+   /** Get the XML attributes for the given array on all processes. The file 
+    * footer is read by master process only, who then broadcasts the contents 
+    * to all processes. This function returns the same value on all processes.
+    * @param tagName Name of the array's XML tag.
+    * @param attribsIn XML tag attributes that uniquely define the array.
+    * @param attribsOut XML tag attributes read from the input file.
+    * @return If true, array attributes were read successfully.*/
    bool ParallelReader::getArrayAttributes(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribsIn,
                                            std::map<std::string,std::string>& attribsOut) const {
       bool success = true;
@@ -54,13 +165,13 @@ namespace vlsv {
       if (myRank == masterRank) {
          success = Reader::getArrayAttributes(tagName,attribsIn,attribsOut);
       }
-   
+
       // Check that master process read array attributes correctly:
       int globalSuccess = 0;
       if (success == true) globalSuccess = 1;
       MPI_Bcast(&globalSuccess,1,MPI_Type<int>(),masterRank,comm);
       if (globalSuccess == 0) return false;
-   
+
       // Master process distributes contents of map attribsOut to all processes:
       // Broadcast number of entries in attribsOut:
       size_t N_attribs = 0;
@@ -204,18 +315,18 @@ namespace vlsv {
     * @param amount Number of array elements to read.
     * @param buffer Pointer to memory location where data from file is placed.
     * @return If true, multiread unit was added successfully.*/
-   bool ParallelReader::multiReadAddUnit(const uint64_t& amount,char* buffer) {
+   /*bool ParallelReader::multiReadAddUnit(const uint64_t& amount,char* buffer) {
       bool success = true;
       if (multireadStarted == false) return false;
       //multiReadUnits.push_back(Multi_IO_Unit(buffer,multiReadVectorType,amount));
       multiReadUnits.push_back(Multi_IO_Unit(buffer,getMPIDatatype(arrayOpen.dataType,arrayOpen.dataSize),amount*arrayOpen.vectorSize));
       return success;
-   }
+   }*/
 
    /** End multiread mode and read all data from file.
     * @param offset Offset into input array for this process, in units of array elements.
     * @return If true, data was read successfully.*/
-   bool ParallelReader::multiReadEnd(const uint64_t& offset) {
+   /*bool ParallelReader::multiReadEnd(const uint64_t& offset) {
       bool success = true;
       if (multireadStarted == false) {
          cerr << "multiread not started!" << endl;
@@ -244,12 +355,8 @@ namespace vlsv {
             blockLengths[counter]  = it->amount;
             displacements[counter] = address;
             datatypes[counter]     = it->mpiType;
-            
-            //stringstream ss;
-            //ss << "P#" << myRank << " unit " << counter << " amount " << it->amount << " address " << address << endl;
-            //cerr << ss.str();
          }
-         bytesRead += it->amount * arrayOpen.vectorSize*arrayOpen.dataSize;
+         bytesRead += it->amount*arrayOpen.dataSize;
          ++counter;
       }
 
@@ -278,7 +385,7 @@ namespace vlsv {
                               multiReadUnits.begin()->array,
                               multiReadUnits.begin()->amount*arrayOpen.vectorSize,
                               multiReadUnits.begin()->mpiType,MPI_STATUS_IGNORE);
-         */
+         *//*
          MPI_Datatype newType;
          MPI_Type_create_hindexed(N_reads,blockLengths,displacements,multiReadUnits.begin()->mpiType,&newType);
          MPI_Type_commit(&newType);
@@ -301,9 +408,9 @@ namespace vlsv {
       //MPI_Type_free(&multiReadVectorType);
       multireadStarted = false;
       return success;
-   }
+   }*/
 
-   bool ParallelReader::multiReadFlush(const size_t& offset,std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop) {
+   bool ParallelReader::flushMultiread(const size_t& unit,const MPI_Offset& fileOffset,std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop) {
       bool success = true;
       
       // Count the number of multi-read units read:
@@ -311,37 +418,49 @@ namespace vlsv {
       for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
          ++N_multiReadUnits;
       }
-      
+
       // Create an MPI datatype for reading all units with a single collective call:
       int* blockLengths       = new int[N_multiReadUnits];
       MPI_Aint* displacements = new MPI_Aint[N_multiReadUnits];
       MPI_Datatype* datatypes = new MPI_Datatype[N_multiReadUnits];
 
+      char* multireadOffsetPointer = NULL;
+      if (N_multiReadUnits > 0) multireadOffsetPointer = start->array;
+      
+      // Copy pointers etc. to MPI struct:
       size_t i=0;
+      size_t amount = 0;
       for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
-         MPI_Aint address;
-         MPI_Get_address((*it).array,&address);
-         blockLengths[i]  = (*it).amount;
-         displacements[i] = address;
-         datatypes[i]     = (*it).mpiType;
+         blockLengths[i]  = it->amount;
+         displacements[i] = it->array - multireadOffsetPointer;
+         datatypes[i]     = it->mpiType;
+
+         int datatypeBytesize;
+         MPI_Type_size(it->mpiType,&datatypeBytesize);
+         amount += it->amount * datatypeBytesize;
+
          ++i;
       }
 
-      // Read data and measure approximate IO bandwidth:
-      const double t_start = MPI_Wtime();
+      // Read data from file:
       if (N_multiReadUnits > 0) {
-         MPI_Datatype readType;
-         MPI_Type_create_struct(N_multiReadUnits,blockLengths,displacements,datatypes,&readType);
-         MPI_File_read_at_all(filePtr,offset,MPI_BOTTOM,1,readType,MPI_STATUS_IGNORE);
-         MPI_Type_free(&readType);
-      } else {
-         MPI_File_read_at_all(filePtr,offset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
-      }
-      readTime += (MPI_Wtime()-t_start);
+         // Create an MPI struct containing the multiread units:
+         MPI_Datatype inputType;
+         MPI_Type_create_struct(N_multiReadUnits,blockLengths,displacements,datatypes,&inputType);
+         MPI_Type_commit(&inputType);
 
-      // Count the number of bytes read:
-      for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
-         bytesRead += it->amount * arrayOpen.vectorSize*arrayOpen.dataSize;
+         // Read data from output file with a single collective call:
+         const double t_start = MPI_Wtime();
+         MPI_File_read_at_all(filePtr,fileOffset,multireadOffsetPointer,1,inputType,MPI_STATUS_IGNORE);
+         readTime += (MPI_Wtime() - t_start);
+         MPI_Type_free(&inputType);
+         
+         bytesRead += amount;
+      } else {
+         // Process has no data to read but needs to participate in the collective call to prevent deadlock:
+         const double t_start = MPI_Wtime();
+         MPI_File_read_at_all(filePtr,fileOffset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
+         readTime += (MPI_Wtime() - t_start);
       }
 
       delete [] blockLengths;
@@ -360,24 +479,16 @@ namespace vlsv {
     * @return If true, multiread mode was started successfully.
     * @see multiReadAddUnit.
     * @see multiReadEnd.*/
-   bool ParallelReader::multiReadStart(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {
-      //cerr << "P#" << myRank << " in multiReadStart" << endl;
-
+   /*bool ParallelReader::multiReadStart(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {
       if (parallelFileOpen == false) return false;
       bool success = true;
       multiReadUnits.clear();
       if (getArrayInfo(tagName,attribs) == false) {
-         //cerr << "P#" << myRank << " failed to get array info" << endl;
          return false;
       }
-      //cerr << "got array info" << endl;
-      //if (MPI_Type_contiguous(arrayOpen.vectorSize*arrayOpen.dataSize,MPI_Type<char>(),&multiReadVectorType) != MPI_SUCCESS) success = false;
-      //MPI_Type_commit(&multiReadVectorType);
       if (success == true) multireadStarted = true;
-      
-      //cerr << "exiting multiread start" << endl;
       return success;
-   }
+   }*/
 
    /** Open a VLSV file for parallel reading.
     * @param fname Name of the VLSV file.
@@ -507,6 +618,17 @@ namespace vlsv {
       bytesRead += amount*arrayOpen.vectorSize*arrayOpen.dataSize;
 
       return checkSuccess(success,comm);
+   }
+   
+   bool ParallelReader::startMultiread(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {
+      if (parallelFileOpen == false) return false;
+      bool success = true;
+      multiReadUnits.clear();
+      if (getArrayInfo(tagName,attribs) == false) {
+         return false;
+      }
+      if (success == true) multireadStarted = true;
+      return success;
    }
 
 } // namespace vlsv

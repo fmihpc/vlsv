@@ -408,7 +408,6 @@ namespace vlsv {
 
       if (N_collectiveCalls > multiwriteList.size()) {
          const size_t N_dummyCalls = N_collectiveCalls-multiwriteList.size();
-         //cerr << "P#" << myrank << " inserting " << N_dummyCalls << " dummy calls" << endl;
          for (size_t i=0; i<N_dummyCalls; ++i) {
             multiwriteList.push_back(make_pair(multiwriteUnits[0].end(),multiwriteUnits[0].end()));
          }

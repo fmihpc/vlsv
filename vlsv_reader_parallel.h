@@ -42,14 +42,18 @@ namespace vlsv {
       uint64_t getBytesRead();
       double getReadTime() const;
       bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output) const;
-      bool multiReadStart(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
-      bool multiReadAddUnit(const uint64_t& amount,char* buffer);
-      bool multiReadEnd(const uint64_t& offset);
+      //bool multiReadStart(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
+      //bool multiReadAddUnit(const uint64_t& amount,char* buffer);
+      //bool multiReadEnd(const uint64_t& offset);
       bool open(const std::string& fname,MPI_Comm comm,const int& masterRank,MPI_Info mpiInfo=MPI_INFO_NULL);
       bool readArrayMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                            const uint64_t& begin,const uint64_t& amount,char* buffer);
       bool readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                      const uint64_t& begin,const uint64_t& amount,char* buffer);
+
+      bool addMultireadUnit(char* buffer,const uint64_t& amount);
+      bool endMultiread(const uint64_t& arrayOffset);
+      bool startMultiread(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
 
       template<typename T>
       bool read(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
@@ -73,7 +77,7 @@ namespace vlsv {
       std::list<Multi_IO_Unit> multiReadUnits;
 
       bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
-      bool multiReadFlush(const size_t& offset,std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop);
+      bool flushMultiread(const size_t& unit,const MPI_Offset& currentOffset,std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop);
    };
 
    template<typename T>
