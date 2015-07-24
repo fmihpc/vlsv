@@ -137,6 +137,9 @@ namespace vlsv {
       double writeTime;                       /**< Time it took on this process to write bytesWritten bytes to output file.
                                                * The timer on master process includes the time to write the header and footer.*/
       muxml::MuXML* xmlWriter;                /**< Pointer to XML writer, used for writing a footer to the VLSV file.*/
+
+      bool multiwriteFlush(const size_t& counter,const MPI_Offset& currentOffset,std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& end);
+      bool multiwriteFooter(const std::string& tagName,const std::map<std::string,std::string>& attribs);
    };
 
    template<typename T> inline

@@ -1,3 +1,13 @@
+****************************
+***** VERSION 1.100.10 *****
+****************************
+
+vlsv::Writer and vlsv::ParallelReader were modified to work with very
+large arrays (size roughly exceeding 2^31-1 bytes).
+
+This version number refers to a Github commit. The revision numbers 
+below refer to earlier Subversion commits.
+
 *************************************
 ***** CHANGES IN REVISION 00842 *****
 *************************************
@@ -16,7 +26,7 @@ Changed some tab intendations to whitespace ones.
 MINOR
 
 Changed namespace VLSV to vlsv to be in line with coding style used
-elsewhere. Also changed couple classnames.
+elsewhere. Also changed couple class names.
 
 Mesh types, datatypes, and coordinate systems are now inside nested
 namespaces. This prevented some name clashes.

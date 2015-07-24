@@ -27,24 +27,7 @@
 using namespace std;
 
 namespace vlsv {
-   /** Check that all processes have the same success status.
-    * @param myStatus If true, this process has successfully executed all code.
-    * @return If true, all processes called checkSuccess with myStatus set to 'true'.*/
-   bool checkSuccess(const bool& myStatus,MPI_Comm comm) {
-      // If myStatus is false, set mySuccess to value 1:
-      int32_t mySuccess = 0;
-      int32_t globalSuccess = 0;
-      if (myStatus == false) mySuccess = 1;
-      
-      // Sum mySuccess values to master process and broadcast to all processes:
-      MPI_Reduce(&mySuccess,&globalSuccess,1,MPI_Type<int32_t>(),MPI_SUM,0,comm);
-      MPI_Bcast(&globalSuccess,1,MPI_Type<int32_t>(),0,comm);
-      
-      // If globalSuccess equals zero all processes called this function with myStatus set to 'true':
-      if (globalSuccess == 0) return true;
-      return false;
-   }
-       
+
    /** Constructor for Writer.*/
    Writer::Writer() {
       blockLengths = NULL;
@@ -77,6 +60,14 @@ namespace vlsv {
       delete xmlWriter; xmlWriter = NULL;
    }
 
+   /** Add a multi-write unit. Function startMultiwrite must have been called 
+    * by all processes prior to calling addMultiwriteUnit. The process must 
+    * call endMultiwrite after it has added all multi-write units.
+    * @param array Pointer to the start of data.
+    * @param arrayElements Number of array elements in this multi-write unit.
+    * @return If true, the multi-write unit was added successfully.
+    * @see startMultiwrite
+    * @see endMultiwrite.*/
    bool Writer::addMultiwriteUnit(char* array,const uint64_t& arrayElements) {
       // Check that startMultiwrite has initialized correctly:
       // addMultiwriteUnit does not call any collective MPI functions so 
@@ -87,7 +78,32 @@ namespace vlsv {
       // Do not add zero-size arrays to multiWriteUnits:
       if (arrayElements == 0) return true;
 
-      multiwriteUnits[0].push_back(Multi_IO_Unit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
+      // Get the byte size of the MPI primitive datatype (MPI_INT etc.) used here:
+      int datatypeBytesize;
+      MPI_Type_size(getMPIDatatype(vlsvType,dataSize),&datatypeBytesize);
+
+      // Calculate the maximum number of array elements written using a single multi-write.
+      // Note: element = vector of size vectorSize, each vector element has byte size of datatypeBytesize.
+      size_t maxElementsPerWrite = getMaxBytesPerWrite() / (datatypeBytesize*vectorSize);
+      
+      // Split the multi-write if the array has more elements than what we can 
+      // write to output file using a single MPI collective:
+      if (arrayElements > maxElementsPerWrite) {
+         // Calculate how many collectives this process needs:
+         size_t N_writes = arrayElements / maxElementsPerWrite;
+         if (arrayElements % maxElementsPerWrite != 0) ++N_writes;
+
+         // Add N_writes multi-write units:
+         for (size_t i=0; i<N_writes; ++i) {
+            size_t elements = maxElementsPerWrite;
+            if ((i+1)*maxElementsPerWrite >= arrayElements) elements = arrayElements - i*maxElementsPerWrite;
+
+            const size_t byteOffset = maxElementsPerWrite*vectorSize*datatypeBytesize;
+            multiwriteUnits[0].push_back(Multi_IO_Unit(array+i*byteOffset,getMPIDatatype(vlsvType,dataSize),elements*vectorSize));
+         }
+      } else {
+         multiwriteUnits[0].push_back(Multi_IO_Unit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
+      }
       return true;
    }
 
@@ -191,6 +207,7 @@ namespace vlsv {
     * @param fname The name of the output file.
     * @param comm MPI communicator used in writing.
     * @param masterProcessID ID of the MPI master process.
+    * @param mpiInfo MPI info, passed on to MPI_File_open.
     * @return If true, a file was opened successfully.*/
    bool Writer::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo) {
       bool success = true;
@@ -281,7 +298,7 @@ namespace vlsv {
    }
 
    /** Resize the output file.
-    * @newSize New size.
+    * @param newSize New size.
     * @return If true, output file was successfully resized.*/
    bool Writer::setSize(MPI_Offset newSize) {
       int rvalue = MPI_File_set_size(fileptr,newSize);
@@ -295,6 +312,20 @@ namespace vlsv {
       dryRunning = true;
    }
 
+   /** Start file output in multi-write mode. In multi-write mode the array write 
+    * is split into multiple chunks. Typically this is done when the data in memory 
+    * is not stored in a contiguous array. The multi-write mode can also be used as 
+    * a workaround to issues related to integer overflows, i.e., if one wants to write 
+    * more than 2^32-1 bytes of data per process. The multi-write chunks are added 
+    * by calling addMultiwriteUnit functions. The data 
+    * is not written to the file until endMultiwrite is called.
+    * @param datatype String representation of the datatype, either 'int', 'uint', or 'float'.
+    * @param arraySize Total number of array elements this process will write.
+    * @param vectorSize Size of the data vector stored in array element, each process must use the same vectorSize.
+    * @param dataSize Byte size of the primitive datatype, each process must use the same dataSize.
+    * @return If true, multi-write mode initialized successfully.
+    * @see addMultiwriteUnit
+    * @see endMultiwrite.*/
    bool Writer::startMultiwrite(const string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize) {
       // Check that all processes have made it this far without error(s):
       bool success = true;
@@ -319,7 +350,7 @@ namespace vlsv {
       multiwriteFinalized = false;
       N_multiwriteUnits = 0;
       endMultiwriteCounter = 0;
-   
+
       // Gather the number of bytes written by every process to MPI master process:
       myBytes = arraySize * vectorSize * dataSize;
       MPI_Gather(&myBytes,1,MPI_Type<uint64_t>(),bytesPerProcess,1,MPI_Type<uint64_t>(),masterRank,comm);
@@ -346,47 +377,97 @@ namespace vlsv {
       bool success = true;
       if (initialized == false) success = false;
       if (multiwriteInitialized == false) success = false;
-      if (checkSuccess(success,comm) == false) return false;
+      if (checkSuccess(success,comm) == false) {
+         multiwriteInitialized = false;
+         return false;
+      }
+      
+      // Calculate how many collective MPI calls are needed to 
+      // write all the data to output file:
+      size_t outputBytesize    = 0;
+      size_t myCollectiveCalls = 0;
+      if (multiwriteUnits[0].size() > 0) myCollectiveCalls = 1;
 
-      // Allocate memory for an MPI_Struct that is used to 
-      // write all multiwrite units with a single collective call.
+      vector<pair<list<Multi_IO_Unit>::iterator,list<Multi_IO_Unit>::iterator> > multiwriteList;
+      list<Multi_IO_Unit>::iterator first = multiwriteUnits[0].begin();
+      list<Multi_IO_Unit>::iterator last  = multiwriteUnits[0].begin();
+      for (list<Multi_IO_Unit>::iterator it=multiwriteUnits[0].begin(); it!=multiwriteUnits[0].end(); ++it) {
+         if (outputBytesize + (*it).amount*dataSize > getMaxBytesPerWrite()) {
+            multiwriteList.push_back(make_pair(first,last));
+            first = it; last = it;
+
+            outputBytesize = 0;
+            ++myCollectiveCalls;
+         }
+         outputBytesize += (*it).amount*dataSize;
+         ++last;
+      }
+      multiwriteList.push_back(make_pair(first,last));
+
+      size_t N_collectiveCalls;
+      MPI_Allreduce(&myCollectiveCalls,&N_collectiveCalls,1,MPI_Type<size_t>(),MPI_MAX,comm);
+
+      if (N_collectiveCalls > multiwriteList.size()) {
+         const size_t N_dummyCalls = N_collectiveCalls-multiwriteList.size();
+         for (size_t i=0; i<N_dummyCalls; ++i) {
+            multiwriteList.push_back(make_pair(multiwriteUnits[0].end(),multiwriteUnits[0].end()));
+         }
+      }
+
+      MPI_Offset unitOffset = 0;
+      for (size_t i=0; i<multiwriteList.size(); ++i) {
+         if (multiwriteFlush(i,unitOffset,multiwriteList[i].first,multiwriteList[i].second) == false) success = false;
+         for (std::list<Multi_IO_Unit>::iterator it=multiwriteList[i].first; it!=multiwriteList[i].second; ++it) {
+            unitOffset += it->amount*dataSize;
+         }
+      }
+
+      if (multiwriteFooter(tagName,attribs) == false) success = false;
+      multiwriteInitialized = false;
+      if (checkSuccess(success,comm) == false) return false;
+      return true;
+   }
+
+   /** Flush multi-write units to output file. This function does the actual file I/O.
+    * @param counter Number of multi-write unit we are writing.
+    * @param unitOffset Output file offset relative to the starting position for this process.
+    * @param start Iterator pointing to the first written multi-write unit.
+    * @param stop Iterator pointing past the last written multi-write unit.
+    * @return If true, this process succeeded in writing out the data.*/
+   bool Writer::multiwriteFlush(const size_t& counter,const MPI_Offset& unitOffset,
+                                std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop) {
+      bool success = true;
 
       // Count the total number of multiwrite units:
       N_multiwriteUnits = 0;
-      for (size_t i=0; i<multiwriteUnits.size(); ++i) {
-         N_multiwriteUnits += multiwriteUnits[i].size();
+      for (list<Multi_IO_Unit>::const_iterator it=start; it!=stop; ++it) {
+         ++N_multiwriteUnits;
       }
 
-      // Calculate offset for each thread:
-      multiwriteOffsets[0] = 0;
-      for (size_t i=1; i<multiwriteUnits.size(); ++i) {
-         multiwriteOffsets[i] = multiwriteOffsets[i-1] + multiwriteUnits[i].size();
-      }
-
-      // Allocate memory for an MPI struct:
+      // Allocate memory for an MPI_Struct that is used to 
+      // write all multiwrite units with a single collective call:
       blockLengths  = new int[N_multiwriteUnits];
       displacements = new MPI_Aint[N_multiwriteUnits];
       types         = new MPI_Datatype[N_multiwriteUnits];
-   
+
       // Calculate a global offset pointer for MPI struct, i.e. an 
       // offset which is used to calculate the displacements:
       multiwriteOffsetPointer = NULL;
-      for (size_t i=0; i<multiwriteUnits.size(); ++i) {
-         if (multiwriteUnits[i].size() == 0) continue;
-         multiwriteOffsetPointer = multiwriteUnits[i].begin()->array;
-      }
-   
-      // Every thread copies its multiwrite units into a global MPI struct:
-      // DEPRECATED
-      if (multiwriteUnits[0].size() > 0) {
-         unsigned int offset = multiwriteOffsets[0];
-         unsigned int i = 0;
-         for (list<Multi_IO_Unit>::const_iterator it=multiwriteUnits[0].begin(); it!=multiwriteUnits[0].end(); ++it) {
-            blockLengths[offset+i]  = (*it).amount;
-            displacements[offset+i] = (*it).array - multiwriteOffsetPointer;
-            types[offset+i]         = (*it).mpiType;
-            ++i;
-         }
+      if (multiwriteUnits[0].size() > 0) multiwriteOffsetPointer = start->array;
+
+      // Copy pointers etc. to MPI struct:
+      size_t i=0;
+      size_t amount = 0;
+      for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
+         blockLengths[i]  = (*it).amount;
+         displacements[i] = (*it).array - multiwriteOffsetPointer;
+         types[i]         = (*it).mpiType;
+
+         int datatypeBytesize;
+         MPI_Type_size(it->mpiType,&datatypeBytesize);
+         amount += (*it).amount * datatypeBytesize;
+         
+         ++i;
       }
 
       // Write data to file:
@@ -399,13 +480,13 @@ namespace vlsv {
 
             // Write data to output file with a single collective call:
             const double t_start = MPI_Wtime();
-            MPI_File_write_at_all(fileptr,offset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
+            MPI_File_write_at_all(fileptr,offset+unitOffset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
             writeTime += (MPI_Wtime() - t_start);
             MPI_Type_free(&outputType);
          } else {
             // Process has no data to write but needs to participate in the collective call to prevent deadlock:
             const double t_start = MPI_Wtime();
-            MPI_File_write_at_all(fileptr,offset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
+            MPI_File_write_at_all(fileptr,offset+unitOffset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
             writeTime += (MPI_Wtime() - t_start);
          }
       }
@@ -415,29 +496,37 @@ namespace vlsv {
       delete [] displacements; displacements = NULL;
       delete [] types; types = NULL;
 
-      // MPI master process writes footer tag:
-      if (myrank == masterRank) {
-         // Count total number of bytes written to file:
-         uint64_t totalBytes = 0;
-         for (int i=0; i<N_processes; ++i) totalBytes += bytesPerProcess[i];
-         
-         muxml::XMLNode* root = xmlWriter->getRoot();
-         muxml::XMLNode* xmlnode = xmlWriter->find("VLSV",root);
-         muxml::XMLNode* node = xmlWriter->addNode(xmlnode,tagName,offset);
-         for (map<string,string>::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
-            xmlWriter->addAttribute(node,it->first,it->second);
-         }
-         xmlWriter->addAttribute(node,"vectorsize",vectorSize);
-         xmlWriter->addAttribute(node,"arraysize",totalBytes/dataSize/vectorSize);
-         xmlWriter->addAttribute(node,"datatype",dataType);
-         xmlWriter->addAttribute(node,"datasize",dataSize);
-         
-         // Update global file offset:
-         offset += totalBytes;
-         bytesWritten += totalBytes;
-      }
+      return success;
+   }
 
-      multiwriteInitialized = false;
+   /** Insert an entry to the XML footer that is kept in memory. This 
+    * function only has an effect on the master process.
+    * @param tagName Name of the array that was written to output file.
+    * @param attribs Attributes that are given to the new footer entry.
+    * @return If true, footer entry was inserted successfully.*/
+   bool Writer::multiwriteFooter(const std::string& tagName,const std::map<std::string,std::string>& attribs) {
+      bool success = true;
+      if (myrank != masterRank) return true;
+
+      // Count total number of bytes written to file:
+      uint64_t totalBytes = 0;
+      for (int i=0; i<N_processes; ++i) totalBytes += bytesPerProcess[i];
+
+      muxml::XMLNode* root = xmlWriter->getRoot();
+      muxml::XMLNode* xmlnode = xmlWriter->find("VLSV",root);
+      muxml::XMLNode* node = xmlWriter->addNode(xmlnode,tagName,offset);
+      for (map<string,string>::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
+         xmlWriter->addAttribute(node,it->first,it->second);
+      }
+      xmlWriter->addAttribute(node,"vectorsize",vectorSize);
+      xmlWriter->addAttribute(node,"arraysize",totalBytes/dataSize/vectorSize);
+      xmlWriter->addAttribute(node,"datatype",dataType);
+      xmlWriter->addAttribute(node,"datasize",dataSize);
+
+      // Update global file offset:
+      offset += totalBytes;
+      bytesWritten += totalBytes;
+
       return success;
    }
 
@@ -448,7 +537,7 @@ namespace vlsv {
       if (initialized == false) success = false;
       if (fileOpen == false) success = false;
       if (checkSuccess(success,comm) == false) return false;
-      
+
       if (startMultiwrite(dataType,arraySize,vectorSize,dataSize) == false) {
          success = false; return success;
       }
@@ -458,7 +547,7 @@ namespace vlsv {
       if (checkSuccess(success,comm) == false) {
          return false;
       }
-      
+
       if (endMultiwrite(arrayName,attribs) == false) success = false;
       return success;
    }

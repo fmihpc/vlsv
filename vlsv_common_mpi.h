@@ -19,9 +19,14 @@
 #ifndef VLSV_COMMON_MPI_H
 #define VLSV_COMMON_MPI_H
 
+#include <mpi.h>
 #include "vlsv_common.h"
 
 namespace vlsv {
+   size_t getMaxBytesPerRead();
+   size_t getMaxBytesPerWrite();
+
+   bool checkSuccess(const bool& myStatus,MPI_Comm comm);
    MPI_Datatype getMPIDatatype(datatype::type dt,uint64_t dataSize);
 }
 

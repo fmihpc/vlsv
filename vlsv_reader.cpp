@@ -67,7 +67,7 @@ namespace vlsv {
     * @return If true, an array was found that matched given search criteria and output variables 
     * contain meaningful values.*/
    bool Reader::getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-			     uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& dataSize) const {
+                             uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& dataSize) const {
       if (fileOpen == false) return false;
       muxml::XMLNode* node = xmlReader.find(tagName,attribs);
       if (node == NULL) return false;
@@ -80,17 +80,17 @@ namespace vlsv {
       else if (node->attributes["datatype"] == "uint") dataType = datatype::UINT;
       else if (node->attributes["datatype"] == "float") dataType = datatype::FLOAT;
       else {
-	 cerr << "vlsv::Reader ERROR: Unknown datatype '" << node->attributes["datatype"] << "' in tag!" << endl;
-	 return false;
+         cerr << "vlsv::Reader ERROR: Unknown datatype '" << node->attributes["datatype"] << "' in tag!" << endl;
+         return false;
       }
       return true;
    }
 
    bool Reader::getFileName(std::string& openFile) const {
       if (fileOpen == false) {
-	 openFile = "";
+         openFile = "";
       } else {
-	 openFile = fileName;
+         openFile = fileName;
       }
       return fileOpen;
    }
@@ -132,8 +132,8 @@ namespace vlsv {
       else if (node->attributes["datatype"] == "uint") arrayOpen.dataType = datatype::UINT;
       else if (node->attributes["datatype"] == "float") arrayOpen.dataType = datatype::FLOAT;
       else {
-	 cerr << "vlsv::Reader ERROR: Unknown datatype in tag!" << endl;
-	 return false;
+         cerr << "vlsv::Reader ERROR: Unknown datatype in tag!" << endl;
+         return false;
       }   
       //if (arrayOpen.arraySize == 0) return false;
       if (arrayOpen.vectorSize == 0) return false;
@@ -151,9 +151,9 @@ namespace vlsv {
       if (fileOpen == true) {
          #ifndef NDEBUG
             cerr << "vlsv::Reader ERROR: File '" << fname << "' should be opened, but file '";
-	    cerr << fileName << "' is currently open." << endl;
+            cerr << fileName << "' is currently open." << endl;
          #endif
-	 return false;
+         return false;
       }
    
       // If given filename includes path, chdir into that path:
@@ -161,26 +161,26 @@ namespace vlsv {
       string pathName;
       char cwd[1024];
       if (getcwd(cwd,sizeof(cwd)) != NULL) {
-	 const size_t position = fname.find_last_of("/");
-	 if (position == string::npos) {
-	    pathName = "";
-	    fnameWithoutPath = fname;
-	 } else {
-	    pathName = fname.substr(0,position);
-	    fnameWithoutPath = fname.substr(position+1);
-	 }
+         const size_t position = fname.find_last_of("/");
+         if (position == string::npos) {
+            pathName = "";
+            fnameWithoutPath = fname;
+         } else {
+            pathName = fname.substr(0,position);
+            fnameWithoutPath = fname.substr(position+1);
+         }
       }   
       // FIXME: Check that chdir succeeds
       int result = chdir(pathName.c_str());
       filein.open(fnameWithoutPath.c_str(), fstream::in);
       result = chdir(cwd);
-   
+      
       if (filein.good() == true) {
-	 fileName = fnameWithoutPath;
-	 fileOpen = true;
+         fileName = fnameWithoutPath;
+         fileOpen = true;
       } else {
-	 filein.close();
-	 success = false;
+         filein.close();
+         success = false;
       }
       if (success == false) {
          #ifndef NDEBUG
@@ -220,23 +220,23 @@ namespace vlsv {
    bool Reader::readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
 			  const uint64_t& begin,const uint64_t& amount,char* buffer) {
       if (fileOpen == false) {
-	 cerr << "vlsv::Reader ERROR: readArray called but a file is not open!" << endl;
-	 return false;
+         cerr << "vlsv::Reader ERROR: readArray called but a file is not open!" << endl;
+         return false;
       }
    
       // If zero-length read was requested, exit immediately:
       if (amount == 0) return true;
-   
+      
       // Find tag corresponding to given array:
       muxml::XMLNode* node = xmlReader.find(tagName,attribs);
       if (node == NULL) {
-	 cerr << "vlsv::Reader ERROR: Failed to find tag='" << tagName << "' attribs:" << endl;
-	 for (list<pair<string,string> >::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
-	    cerr << '\t' << it->first << " = '" << it->second << "'" << endl;
-	 }
-	 return false;
+         cerr << "vlsv::Reader ERROR: Failed to find tag='" << tagName << "' attribs:" << endl;
+         for (list<pair<string,string> >::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
+            cerr << '\t' << it->first << " = '" << it->second << "'" << endl;
+         }
+         return false;
       }
-
+      
       // Copy array information from tag:
       arrayOpen.offset = atol(node->value.c_str());
       arrayOpen.tagName = tagName;
@@ -247,19 +247,19 @@ namespace vlsv {
       else if (node->attributes["datatype"] == "uint") arrayOpen.dataType = datatype::UINT;
       else if (node->attributes["datatype"] == "float") arrayOpen.dataType = datatype::FLOAT;
       else {
-	 cerr << "vlsv::Reader ERROR: Unknown datatype in tag!" << endl;
-	 return false;
+         cerr << "vlsv::Reader ERROR: Unknown datatype in tag!" << endl;
+         return false;
       }
    
       if (arrayOpen.arraySize == 0) return false;
       if (arrayOpen.vectorSize == 0) return false;
       if (arrayOpen.dataSize == 0) return false;
-   
+      
       // Sanity check on values:
       if (begin + amount > arrayOpen.arraySize) {
-	 cerr << "vlsv::Reader ERROR: Requested read exceeds array size. begin: " << begin;
-	 cerr << " amount: " << amount << " size: " << arrayOpen.arraySize << endl;
-	 return false;
+         cerr << "vlsv::Reader ERROR: Requested read exceeds array size. begin: " << begin;
+         cerr << " amount: " << amount << " size: " << arrayOpen.arraySize << endl;
+         return false;
       }
 
       // Read data from file:
@@ -271,16 +271,16 @@ namespace vlsv {
       
       // Check that we were able to read the requested amount of data:
       if (filein.gcount() != readBytes) {
-	 cerr << "vlsv::Reader ERROR: Failed to read requested amount of bytes!" << endl;      
-	 cerr << "tag name='" << tagName << "'" << endl;
-	 cerr << "attributes:" << endl;
-	 for (map<string,string>::const_iterator it=node->attributes.begin(); it!=node->attributes.end(); ++it) {
-	    cerr << '\t' << it->first << " = " << it->second << endl;
-	 }
-	 cerr << "array offset string '" << node->value.c_str() << "'" << endl;
-	 cerr << "start=" << start << " readBytes=" << readBytes << endl;
-	 cerr << "offset=" << arrayOpen.offset << " vectorsize=" << arrayOpen.vectorSize << " dataSize=" << arrayOpen.dataSize << endl;
-	 return false;
+         cerr << "vlsv::Reader ERROR: Failed to read requested amount of bytes!" << endl;      
+         cerr << "tag name='" << tagName << "'" << endl;
+         cerr << "attributes:" << endl;
+         for (map<string,string>::const_iterator it=node->attributes.begin(); it!=node->attributes.end(); ++it) {
+            cerr << '\t' << it->first << " = " << it->second << endl;
+         }
+         cerr << "array offset string '" << node->value.c_str() << "'" << endl;
+         cerr << "start=" << start << " readBytes=" << readBytes << endl;
+         cerr << "offset=" << arrayOpen.offset << " vectorsize=" << arrayOpen.vectorSize << " dataSize=" << arrayOpen.dataSize << endl;
+         return false;
       }
       return true;
    }
