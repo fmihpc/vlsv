@@ -201,7 +201,7 @@ namespace vlsv {
     * @param swapEndianness If true, endianness of integer datatypes is swapped before
     * the value is copied to output variable 'value'.*/
    template<typename T> inline
-   void convertValue(T& value,const char* const buffer,datatype::type dt,int dataSize,const bool& swapEndianness=false) {
+   void convertValue(T& value,const char* const buffer,datatype::type dt,int dataSize,const bool& swapEndianness) {
       char* valuePtr = NULL;
       // Switch according the native datatype of the value in buffer:
       switch (dt) {

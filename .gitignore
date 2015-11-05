@@ -1,0 +1,13 @@
+doc
+doxydoc
+doxyrun
+nbproject
+test
+visit-plugin/CmakeFiles
+visit-plugin/CMake*
+visit-plugin/cmake*
+visit-plugin/Makefile
+*~
+*.png
+*.html
+*.o

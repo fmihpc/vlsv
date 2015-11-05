@@ -38,7 +38,7 @@ namespace vlsv {
       virtual bool getArrayAttributes(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribsIn,
                                       std::map<std::string,std::string>& attribsOut) const;
       virtual bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-                                uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize) const;
+                                uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize);
       virtual bool getFileName(std::string& openFile) const;
       virtual bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output) const;
       virtual bool loadArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
