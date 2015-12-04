@@ -169,12 +169,15 @@ namespace vlsv {
             pathName = fname.substr(0,position);
             fnameWithoutPath = fname.substr(position+1);
          }
-      }   
-      // FIXME: Check that chdir succeeds
-      int result = chdir(pathName.c_str());
+      }
+
+      // Chdir to path containing input file and attempt to open the file, 
+      // then chdir back to current working directory. 
+      // Chdir returns zero value if it succeeds
+      if (chdir(pathName.c_str()) != 0) success = false;
       filein.open(fnameWithoutPath.c_str(), fstream::in);
-      result = chdir(cwd);
-      
+      if (chdir(cwd) != 0) success = false;
+
       if (filein.good() == true) {
          fileName = fnameWithoutPath;
          fileOpen = true;
