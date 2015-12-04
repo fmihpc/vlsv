@@ -67,7 +67,7 @@ namespace vlsv {
     * @return If true, an array was found that matched given search criteria and output variables 
     * contain meaningful values.*/
    bool Reader::getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-                             uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& dataSize) const {
+                             uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& dataSize) {
       if (fileOpen == false) return false;
       muxml::XMLNode* node = xmlReader.find(tagName,attribs);
       if (node == NULL) return false;
