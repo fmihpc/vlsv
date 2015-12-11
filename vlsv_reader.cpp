@@ -19,8 +19,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <string.h>
-#include <unistd.h>
 
+#include "portable_file_io.h"
 #include "vlsv_reader.h"
 
 using namespace std;
@@ -160,7 +160,7 @@ namespace vlsv {
       string fnameWithoutPath;
       string pathName;
       char cwd[1024];
-      if (getcwd(cwd,sizeof(cwd)) != NULL) {
+      if (fileio::getcwd(cwd,sizeof(cwd)) != NULL) {
          const size_t position = fname.find_last_of("/");
          if (position == string::npos) {
             pathName = "";
@@ -174,9 +174,9 @@ namespace vlsv {
       // Chdir to path containing input file and attempt to open the file, 
       // then chdir back to current working directory. 
       // Chdir returns zero value if it succeeds
-      if (chdir(pathName.c_str()) != 0) success = false;
+      if (fileio::chdir(pathName.c_str()) != 0) success = false;
       filein.open(fnameWithoutPath.c_str(), fstream::in);
-      if (chdir(cwd) != 0) success = false;
+      if (fileio::chdir(cwd) != 0) success = false;
 
       if (filein.good() == true) {
          fileName = fnameWithoutPath;

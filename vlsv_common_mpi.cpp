@@ -26,6 +26,8 @@
 
 using namespace std;
 
+static const size_t MAX_MPI_FILE_IO_BYTES = 2147460000;
+
 namespace vlsv {
 
    /** Get maximum number of bytes that can be read from a file using a single collective MPI routine.
@@ -35,8 +37,7 @@ namespace vlsv {
    size_t getMaxBytesPerRead() {
       // For some obscure reason OpenMPI can only write 2147479552 bytes with a single 
       // collective call. So I'm manually setting the max bytes to bit less than that.
-      return 2147460000;
-      //return numeric_limits<MPI_Count>::max();
+      return MAX_MPI_FILE_IO_BYTES;
    }
    
    /** Get maximum number of bytes that can be written to a file using a single collective MPI routine.
@@ -44,9 +45,7 @@ namespace vlsv {
     * library versions the 'count' parameter is simply an integer.
     * @return Maximum number of bytes written using a single MPI collective routine.*/
    size_t getMaxBytesPerWrite() {
-      return 2147460000;
-      return numeric_limits<int>::max();
-      //return numeric_limits<MPI_Count>::max();
+      return MAX_MPI_FILE_IO_BYTES;
    }
 
    /** Check that all processes in communicator comm called this function 
@@ -119,7 +118,7 @@ namespace vlsv {
             cerr << "(VLSV) ERROR: VLSV::getMPIDatatype called with datatype::UINT datatype and unsupported datasize of " << dataSize << "!" << endl;
             return MPI_DATATYPE_NULL;
             break;
-         }
+         }         
        case datatype::FLOAT:
          switch (dataSize) {
           case (sizeof(float)):
@@ -128,9 +127,11 @@ namespace vlsv {
           case (sizeof(double)):
             return MPI_Type<double>();
             break;
+          #ifndef WINDOWS
           case (sizeof(long double)):
             return MPI_Type<long double>();
             break;
+	      #endif
           default:
             cerr << "(VLSV) ERROR: VLSV::getMPIDatatype called with datatype:FLOAT datatype and unsupported datasize of " << dataSize << "!" << endl;
             return MPI_DATATYPE_NULL;
