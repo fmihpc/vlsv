@@ -200,10 +200,13 @@ namespace vlsv {
       char attribValue[maxLength];
       if (myRank == masterRank) {
          for (map<string,string>::const_iterator it=attribsOut.begin(); it!=attribsOut.end(); ++it) {
-            //strncpy(attribName,it->first.c_str(),maxLength-1);
-            //strncpy(attribValue,it->second.c_str(),maxLength-1);
-			strncpy_s(attribName ,maxLength,it->first.c_str() ,it->first.size() );
-			strncpy_s(attribValue,maxLength,it->second.c_str(),it->second.size());
+            #ifdef WINDOWS
+               strncpy_s(attribName ,maxLength,it->first.c_str() ,it->first.size() );
+               strncpy_s(attribValue,maxLength,it->second.c_str(),it->second.size());
+            #else
+               strncpy(attribName,it->first.c_str(),maxLength-1);
+               strncpy(attribValue,it->second.c_str(),maxLength-1);
+            #endif
             MPI_Bcast(attribName,maxLength,MPI_Type<char>(),masterRank,comm);
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
@@ -316,8 +319,11 @@ namespace vlsv {
       char attribValue[maxLength];
       if (myRank == masterRank) {
          for (set<string>::const_iterator it=output.begin(); it!=output.end(); ++it) {
-            //strncpy(attribValue,it->c_str(),maxLength-1);
-			strncpy_s(attribValue,maxLength,it->c_str(),it->size());
+            #ifdef WINDOWS
+               strncpy_s(attribValue,maxLength,it->c_str(),it->size());
+            #else
+               strncpy(attribValue,it->c_str(),maxLength-1);
+            #endif
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
       } else {
