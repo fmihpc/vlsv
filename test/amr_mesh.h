@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2014 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -15,6 +15,8 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+#pragma once
 
 #ifndef AMR_MESH_H
 #define AMR_MESH_H

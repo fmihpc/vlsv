@@ -68,11 +68,11 @@ namespace vlsv {
          if (arrayElements % maxElementsPerRead != 0) ++N_reads;
 
          // Add N_reads multi-read units:
-         for (size_t i=0; i<N_reads; ++i) {
-            size_t elements = maxElementsPerRead;
+         for (auto i=0; i<N_reads; ++i) {
+            auto elements = maxElementsPerRead;
             if ((i+1)*maxElementsPerRead >= arrayElements) elements = arrayElements - i*maxElementsPerRead;
 
-            const size_t byteOffset = maxElementsPerRead*arrayOpen.vectorSize*datatypeBytesize;
+            const auto byteOffset = maxElementsPerRead*arrayOpen.vectorSize*datatypeBytesize;
             multiReadUnits.push_back(
                 Multi_IO_Unit(buffer+i*byteOffset,
                               getMPIDatatype(arrayOpen.dataType,arrayOpen.dataSize),
@@ -109,9 +109,9 @@ namespace vlsv {
       if (multiReadUnits.size() > 0) myCollectiveCalls = 1;
 
       vector<pair<list<Multi_IO_Unit>::iterator,list<Multi_IO_Unit>::iterator> > multireadList;
-      list<Multi_IO_Unit>::iterator first = multiReadUnits.begin();
-      list<Multi_IO_Unit>::iterator last  = multiReadUnits.begin();
-      for (list<Multi_IO_Unit>::iterator it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
+      auto first = multiReadUnits.begin();
+      auto last  = multiReadUnits.begin();
+      for (auto it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
          if (inputBytesize + it->amount*arrayOpen.dataSize > getMaxBytesPerRead()) {
             multireadList.push_back(make_pair(first,last));
             first = it; last = it;
@@ -131,8 +131,8 @@ namespace vlsv {
       // If more collective calls are made than what this process needs, 
       // insert dummy reads to the end of multireadList:
       if (N_collectiveCalls > multireadList.size()) {
-         const size_t N_dummyCalls = N_collectiveCalls-multireadList.size();
-         for (size_t i=0; i<N_dummyCalls; ++i) {
+         const auto N_dummyCalls = N_collectiveCalls-multireadList.size();
+         for (auto i=0; i<N_dummyCalls; ++i) {
             multireadList.push_back(make_pair(multiReadUnits.end(),multiReadUnits.end()));
          }
       }
@@ -142,9 +142,9 @@ namespace vlsv {
       unitOffset += arrayOffset*arrayOpen.vectorSize*arrayOpen.dataSize; // Byte offset relative to array start where 
                                                                          // this process starts to read data from.
 
-      for (size_t i=0; i<multireadList.size(); ++i) {
+      for (auto i=0; i<multireadList.size(); ++i) {
          if (flushMultiread(i,unitOffset,multireadList[i].first,multireadList[i].second) == false) success = false;
-         for (std::list<Multi_IO_Unit>::iterator it=multireadList[i].first; it!=multireadList[i].second; ++it) {
+         for (auto it=multireadList[i].first; it!=multireadList[i].second; ++it) {
             unitOffset += it->amount*arrayOpen.dataSize;
          }
       }
@@ -199,7 +199,7 @@ namespace vlsv {
       char attribName[maxLength];
       char attribValue[maxLength];
       if (myRank == masterRank) {
-         for (map<string,string>::const_iterator it=attribsOut.begin(); it!=attribsOut.end(); ++it) {
+         for (auto it=attribsOut.begin(); it!=attribsOut.end(); ++it) {
             #ifdef WINDOWS
                strncpy_s(attribName ,maxLength,it->first.c_str() ,it->first.size() );
                strncpy_s(attribValue,maxLength,it->second.c_str(),it->second.size());
@@ -211,7 +211,7 @@ namespace vlsv {
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
       } else {
-         for (size_t i=0; i<N_attribs; ++i) {
+         for (auto i=0; i<N_attribs; ++i) {
             MPI_Bcast(attribName,maxLength,MPI_Type<char>(),masterRank,comm);
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
             attribsOut[attribName] = attribValue;
@@ -315,10 +315,10 @@ namespace vlsv {
 
       // Master broadcasts values in set 'output' to all other processes
       // who insert the received values to set 'output':
-      const unsigned int maxLength = 512;
+      const uint32_t maxLength = 512;
       char attribValue[maxLength];
       if (myRank == masterRank) {
-         for (set<string>::const_iterator it=output.begin(); it!=output.end(); ++it) {
+         for (auto it=output.begin(); it!=output.end(); ++it) {
             #ifdef WINDOWS
                strncpy_s(attribValue,maxLength,it->c_str(),it->size());
             #else
@@ -327,7 +327,7 @@ namespace vlsv {
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
       } else {
-         for (size_t i=0; i<N_entries; ++i) {
+         for (auto i=0; i<N_entries; ++i) {
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
             output.insert(attribValue);
          }
@@ -342,9 +342,7 @@ namespace vlsv {
       
       // Count the number of multi-read units read:
       size_t N_multiReadUnits = 0;
-      for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
-         ++N_multiReadUnits;
-      }
+      for (auto it=start; it!=stop; ++it) ++N_multiReadUnits;
 
       // Create an MPI datatype for reading all units with a single collective call:
       int* blockLengths       = new int[N_multiReadUnits];
@@ -357,7 +355,7 @@ namespace vlsv {
       // Copy pointers etc. to MPI struct:
       size_t i=0;
       size_t amount = 0;
-      for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
+      for (auto it=start; it!=stop; ++it) {
          blockLengths[i]  = it->amount;
          displacements[i] = it->array - multireadOffsetPointer;
          datatypes[i]     = it->mpiType;
@@ -377,7 +375,7 @@ namespace vlsv {
          MPI_Type_commit(&inputType);
 
          // Read data from output file with a single collective call:
-         const double t_start = MPI_Wtime();
+         const auto t_start = MPI_Wtime();
          MPI_File_read_at_all(filePtr,fileOffset,multireadOffsetPointer,1,inputType,MPI_STATUS_IGNORE);
          readTime += (MPI_Wtime() - t_start);
          MPI_Type_free(&inputType);
@@ -385,7 +383,7 @@ namespace vlsv {
          bytesRead += amount;
       } else {
          // Process has no data to read but needs to participate in the collective call to prevent deadlock:
-         const double t_start = MPI_Wtime();
+         const auto t_start = MPI_Wtime();
          MPI_File_read_at_all(filePtr,fileOffset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
          readTime += (MPI_Wtime() - t_start);
       }
@@ -431,7 +429,7 @@ namespace vlsv {
       if (success == true) globalSuccess = 1;
       unsigned char* results = new unsigned char[processes];
       MPI_Allgather(&globalSuccess,1,MPI_Type<unsigned char>(),results,1,MPI_Type<unsigned char>(),comm);
-      for (int i=0; i<processes; ++i) if (results[i] == 0) success = false;
+      for (auto i=0; i<processes; ++i) if (results[i] == 0) success = false;
       delete [] results; results = NULL;
       if (success == false) return success;
       
@@ -467,12 +465,12 @@ namespace vlsv {
       // Fetch array info to all processes:
       if (getArrayInfo(tagName,attribs) == false) return false;
       const MPI_Offset start = arrayOpen.offset + begin*arrayOpen.vectorSize*arrayOpen.dataSize;
-      const size_t readBytes = amount*arrayOpen.vectorSize*arrayOpen.dataSize;
+      const uint64_t readBytes = amount*arrayOpen.vectorSize*arrayOpen.dataSize;
 
       // If readBytes is larger than getMaxBytesPerRead() this process needs 
       // more than one collective call to read in all the data.
-      const size_t maxBytes = getMaxBytesPerRead();
-      size_t myExtraCollectiveReads = readBytes / maxBytes;
+      const auto maxBytes = getMaxBytesPerRead();
+      uint64_t myExtraCollectiveReads = readBytes / maxBytes;
 
       // There's always at least one read:
       ++myExtraCollectiveReads;
@@ -483,9 +481,9 @@ namespace vlsv {
       MPI_Allreduce(&myExtraCollectiveReads,&globalExtraCollectiveReads,1,MPI_Type<size_t>(),MPI_MAX,comm);
 
       // Read data:
-      const double t_start = MPI_Wtime();
+      const auto t_start = MPI_Wtime();
       size_t offset = 0;
-      for (size_t counter=0; counter<globalExtraCollectiveReads; ++counter) {
+      for (auto counter=0; counter<globalExtraCollectiveReads; ++counter) {
          char*  pos;
          size_t readSize;
 

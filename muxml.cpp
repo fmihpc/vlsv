@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011, 2012 Finnish Meteorological Institute
+ *  Copyright 2011, 2012, 2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -18,6 +18,8 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <algorithm>
+
 #include "muxml.h"
 
 using namespace std;
@@ -31,10 +33,7 @@ XMLNode::XMLNode(XMLNode* parent): parent(parent) { }
 /** Destructor for XMLNode. Recursively calls delete for all children.*/
 XMLNode::~XMLNode() {
    // Delete all children:
-   for (map<string,XMLNode*>::iterator it=children.begin(); it!=children.end(); ++it) {
-      delete it->second;
-      it->second = NULL;
-   }
+   for_each(children.begin(), children.end(), [](auto it){delete it.second; it.second=NULL;} );
 }
 
 /** Constructor for MuXML. Creates the root node MuXML::root.*/
@@ -66,7 +65,7 @@ XMLNode* MuXML::find(const std::string& nodeName,const XMLNode* node) const {
 
    // Recursive depth-first find. First check if child's name matches the searched name. If it does, return 
    // pointer to child. Otherwise search through child's children to see if it has the searched node.
-   for (multimap<string,XMLNode*>::const_iterator it=node->children.begin(); it!=node->children.end(); ++it) {
+   for (auto it = node->children.begin(); it != node->children.end(); ++it) {
       if (it->first == nodeName) return it->second;
       XMLNode* tmp = find(nodeName,it->second);
       if (tmp != NULL) return tmp;
@@ -86,8 +85,7 @@ XMLNode* MuXML::find(const std::string& nodeName,const std::list<std::pair<std::
    if (node == NULL) node = root;
 
    // Search each children
-   list<pair<string,string> >::const_iterator jt;
-   for (multimap<string,XMLNode*>::const_iterator it=node->children.begin(); it!=node->children.end(); ++it) {
+   for (auto it=node->children.begin(); it!=node->children.end(); ++it) {
       bool matchFound = true;
       
       if (it->first != nodeName) {
@@ -95,8 +93,8 @@ XMLNode* MuXML::find(const std::string& nodeName,const std::list<std::pair<std::
       }
       // Tag name matches, check that attributes match:
       if (matchFound == true) {
-	     for (jt = attribs.begin(); jt!=attribs.end(); ++jt) {
-            map<string,string>::const_iterator tmp = it->second->attributes.find((*jt).first);
+	     for (auto jt = attribs.begin(); jt!=attribs.end(); ++jt) {
+            const auto tmp = it->second->attributes.find((*jt).first);
             if (tmp == it->second->attributes.end()) {matchFound = false; break;} // attribute name was not found
             if (tmp->second != (*jt).second) {matchFound = false; break;} // attribute value did not match
 	     }
@@ -122,7 +120,7 @@ string MuXML::getAttributeValue(const XMLNode* node,const std::string& attribNam
       errorString = ss.str();
       return string("");
    }
-   map<string,string>::const_iterator it=node->attributes.find(attribName);
+   const auto it=node->attributes.find(attribName);
    if (it == node->attributes.end()) return "";
    return it->second;
 }
@@ -171,16 +169,16 @@ void MuXML::print(std::ostream& out,const int& level,const XMLNode* node) const 
    if (node == NULL) {
       node = root;
    }
-   for (map<string,XMLNode*>::const_iterator it=node->children.begin(); it!=node->children.end(); ++it) {
+   for (auto it=node->children.begin(); it!=node->children.end(); ++it) {
       // Indent
-      for (int i=0; i<level; ++i) out << ' ';
+      for (auto i=0; i<level; ++i) out << ' ';
       
       // Write child's name and its attributes:
       out << '<' << it->first;
-      for (map<string,string>::const_iterator jt=it->second->attributes.begin(); jt!=it->second->attributes.end(); ++jt) {
+      for (auto jt=it->second->attributes.begin(); jt!=it->second->attributes.end(); ++jt) {
          out << ' ' << jt->first << "=\"" << jt->second << "\"";
       }
-      
+
       // Write child's value:
       out << ">" << it->second->value;
       
@@ -314,13 +312,13 @@ bool MuXML::read(std::istream& in,XMLNode* parent,const int& level,const char& c
 
                // Copy attribute value to buffer:
                index = 0;
-	           while (c != '"' && in.good() == true) {
-		          buffer[index] = c;
-		          ++index;
-		          in >> c;
-	           }
+	            while (c != '"' && in.good() == true) {
+		            buffer[index] = c;
+		            ++index;
+		            in >> c;
+	            }
                buffer[index] = '\0';
-	           string attribValue = buffer;
+	            string attribValue = buffer;
 
                // Check that input stream did not end prematurely:
                if (in.good() == false) {
@@ -331,11 +329,11 @@ bool MuXML::read(std::istream& in,XMLNode* parent,const int& level,const char& c
                   return false;
                }
 
-	           in >> c; // Forward from '"' character that ends attribute's value
+	            in >> c; // Forward from '"' character that ends attribute's value
 
                // Check that input stream did not end prematurely, at least end tag 
                // should still be left in stream:
-	           if (in.good() == false) {
+	            if (in.good() == false) {
                   stringstream ss;
                   ss << "ERROR: input stream not good in " << __FILE__ << ":" << __LINE__;
                   errorString = ss.str();

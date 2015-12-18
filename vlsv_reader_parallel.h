@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #ifndef VLSV_READER_PARALLEL_H
 #define VLSV_READER_PARALLEL_H
 
@@ -95,8 +97,8 @@ namespace vlsv {
       // Copy data from temporary buffer to output array:
       if (allocateMemory == true) outBuffer = new T[amount*arrayOpen.vectorSize];
       char* ptr = buffer;
-      for (uint64_t i=0; i<amount; ++i) {
-         for (uint64_t j=0; j<arrayOpen.vectorSize; ++j) {
+      for (auto i=0; i<amount; ++i) {
+         for (auto j=0; j<arrayOpen.vectorSize; ++j) {
             convertValue<T>(outBuffer[i*arrayOpen.vectorSize+j],ptr,arrayOpen.dataType,arrayOpen.dataSize,false);
             ptr += arrayOpen.dataSize;
          }
@@ -124,5 +126,3 @@ namespace vlsv {
    }
 }
 #endif
-
-

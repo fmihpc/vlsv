@@ -31,8 +31,11 @@
  * @author Arto Sandroos
  * */
 
+#pragma once
+
 #ifndef MPI_CONVERSION_H
 #define MPI_CONVERSION_H
+
 #include <mpi.h>
 #include <cstdlib>
 #include <iostream>

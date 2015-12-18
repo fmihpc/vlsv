@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #ifndef MULTI_IO_UNIT_H
 #define MULTI_IO_UNIT_H
 

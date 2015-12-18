@@ -88,8 +88,8 @@ namespace vlsv {
       offsets.resize(maxRefinementLevel+1);
       
       offsets[0] = 0;
-      for (size_t i=1; i<maxRefinementLevel+1; ++i) {
-	 offsets[i] = offsets[i-1] + N_cells0 * pow(8,i-1);
+      for (auto i=1; i<maxRefinementLevel+1; ++i) {
+         offsets[i] = offsets[i-1] + N_cells0 * pow(8,i-1);
       }
       
       return true;

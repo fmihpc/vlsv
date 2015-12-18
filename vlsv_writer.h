@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #ifndef VLSV_WRITER_H
 #define VLSV_WRITER_H
 
@@ -113,16 +115,10 @@ namespace vlsv {
       bool multiwriteFinalized;               /**< If true, multiwrite array writing mode has finalized correctly. 
                                                * This variable is used to synchronize threads in endMultiwrite function..*/
       bool multiwriteInitialized;             /**< If true, multiwrite array writing mode has initialized correctly. 
-                                               * This variable is used to synchronize threads in startMultiwrite function.*/
-      
-      std::vector<unsigned int> multiwriteOffsets; /**< Offset for each thread using VLSVWriter, used to load 
-                                                    * data into an MPI struct in endMultiwrite.*/
+                                               * This variable is used to synchronize threads in startMultiwrite function.*/      
       char* multiwriteOffsetPointer;          /**< Pointer to an array that is used to calculate offsets in an 
                                                * MPI struct created in endMultiwrite.*/
-      std::vector<std::list<Multi_IO_Unit> > multiwriteUnits; /**< Container for all multiwrite units for this process. 
-                                                               * Each thread using VLSVWriter has its own list. This 
-                                                               * allows vlsv::Writer::addMultiwriteUnit to be called without 
-                                                               * thread synchronizations.*/   
+      std::list<Multi_IO_Unit> multiwriteUnits; /**< Container for all multiwrite units for this process.*/
       uint64_t myBytes;                       /**< Number of bytes this process is writing to the current array.*/
       int myrank;                             /**< Rank of this process in communicator comm.*/
       unsigned int N_multiwriteUnits;         /**< Total number of multiwrite units this process has. In multithreaded mode 

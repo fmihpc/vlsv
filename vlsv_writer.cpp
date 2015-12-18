@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 
 #include "mpiconversion.h"
 #include "vlsv_common_mpi.h"
@@ -94,15 +95,15 @@ namespace vlsv {
          if (arrayElements % maxElementsPerWrite != 0) ++N_writes;
 
          // Add N_writes multi-write units:
-         for (size_t i=0; i<N_writes; ++i) {
-            size_t elements = maxElementsPerWrite;
+         for (auto i=0; i<N_writes; ++i) {
+            auto elements = maxElementsPerWrite;
             if ((i+1)*maxElementsPerWrite >= arrayElements) elements = arrayElements - i*maxElementsPerWrite;
 
             const size_t byteOffset = maxElementsPerWrite*vectorSize*datatypeBytesize;
-            multiwriteUnits[0].push_back(Multi_IO_Unit(array+i*byteOffset,getMPIDatatype(vlsvType,dataSize),elements*vectorSize));
+            multiwriteUnits.push_back(Multi_IO_Unit(array+i*byteOffset,getMPIDatatype(vlsvType,dataSize),elements*vectorSize));
          }
       } else {
-         multiwriteUnits[0].push_back(Multi_IO_Unit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
+         multiwriteUnits.push_back(Multi_IO_Unit(array,getMPIDatatype(vlsvType,dataSize),arrayElements*vectorSize));
       }
       return true;
    }
@@ -226,10 +227,6 @@ namespace vlsv {
       bytesWritten = 0;
       writeTime = 0;
 
-      // Allocate per-thread storage:
-      multiwriteOffsets.resize(1);
-      multiwriteUnits.resize(1);
-
       // All processes in communicator comm open the same file. If a file with the 
       // given name already exists it is deleted. Note: We found out that MPI_File_open 
       // failed quite often in meteo, at least when writing many small files. It was 
@@ -269,7 +266,7 @@ namespace vlsv {
          uint64_t endianness = 0;
          unsigned char* ptr = reinterpret_cast<unsigned char*>(&endianness);
          ptr[0] = detectEndianness();
-         const double t_start = MPI_Wtime();
+         const auto t_start = MPI_Wtime();
          if (dryRunning == false) {
             if (MPI_File_write_at(fileptr,0,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) success = false;
             if (MPI_File_write_at(fileptr,8,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) success = false;
@@ -301,7 +298,7 @@ namespace vlsv {
     * @param newSize New size.
     * @return If true, output file was successfully resized.*/
    bool Writer::setSize(MPI_Offset newSize) {
-      int rvalue = MPI_File_set_size(fileptr,newSize);
+      const auto rvalue = MPI_File_set_size(fileptr,newSize);
       if (rvalue == MPI_SUCCESS) return true;
       return false;
    }
@@ -334,11 +331,7 @@ namespace vlsv {
       if (checkSuccess(success,comm) == false) return false;
 
       // Clear per-thread storage:
-        {
-           vector<list<Multi_IO_Unit> > dummy(1);
-           multiwriteUnits.swap(dummy);
-        }
-      multiwriteOffsets[0] = numeric_limits<unsigned int>::max();
+      multiwriteUnits.clear();
 
       // Array datatype and byte size of each vector element are determined 
       // from the template parameter, other values are copied from parameters:
@@ -386,12 +379,12 @@ namespace vlsv {
       // write all the data to output file:
       size_t outputBytesize    = 0;
       size_t myCollectiveCalls = 0;
-      if (multiwriteUnits[0].size() > 0) myCollectiveCalls = 1;
+      if (multiwriteUnits.size() > 0) myCollectiveCalls = 1;
 
       vector<pair<list<Multi_IO_Unit>::iterator,list<Multi_IO_Unit>::iterator> > multiwriteList;
-      list<Multi_IO_Unit>::iterator first = multiwriteUnits[0].begin();
-      list<Multi_IO_Unit>::iterator last  = multiwriteUnits[0].begin();
-      for (list<Multi_IO_Unit>::iterator it=multiwriteUnits[0].begin(); it!=multiwriteUnits[0].end(); ++it) {
+      auto first = multiwriteUnits.begin();
+      auto last = multiwriteUnits.begin();
+      for (auto it= multiwriteUnits.begin(); it!= multiwriteUnits.end(); ++it) {
          if (outputBytesize + (*it).amount*dataSize > getMaxBytesPerWrite()) {
             multiwriteList.push_back(make_pair(first,last));
             first = it; last = it;
@@ -409,17 +402,18 @@ namespace vlsv {
 
       if (N_collectiveCalls > multiwriteList.size()) {
          const size_t N_dummyCalls = N_collectiveCalls-multiwriteList.size();
-         for (size_t i=0; i<N_dummyCalls; ++i) {
-            multiwriteList.push_back(make_pair(multiwriteUnits[0].end(),multiwriteUnits[0].end()));
+         for (auto i=0; i<N_dummyCalls; ++i) {
+            multiwriteList.push_back(make_pair(multiwriteUnits.end(), multiwriteUnits.end()));
          }
       }
 
       MPI_Offset unitOffset = 0;
-      for (size_t i=0; i<multiwriteList.size(); ++i) {
+      for (auto i=0; i<multiwriteList.size(); ++i) {
          if (multiwriteFlush(i,unitOffset,multiwriteList[i].first,multiwriteList[i].second) == false) success = false;
-         for (std::list<Multi_IO_Unit>::iterator it=multiwriteList[i].first; it!=multiwriteList[i].second; ++it) {
+         /*for (auto it=multiwriteList[i].first; it!=multiwriteList[i].second; ++it) {
             unitOffset += it->amount*dataSize;
-         }
+         }*/
+         for_each(multiwriteList[i].first, multiwriteList[i].second, [&](auto it) {unitOffset += it.amount*dataSize; });
       }
 
       if (multiwriteFooter(tagName,attribs) == false) success = false;
@@ -440,9 +434,10 @@ namespace vlsv {
 
       // Count the total number of multiwrite units:
       N_multiwriteUnits = 0;
-      for (list<Multi_IO_Unit>::const_iterator it=start; it!=stop; ++it) {
-         ++N_multiwriteUnits;
-      }
+      //for (list<Multi_IO_Unit>::const_iterator it=start; it!=stop; ++it) {
+      //   ++N_multiwriteUnits;
+      //}
+      for_each(start, stop, [&](auto it) {++N_multiwriteUnits;} );
 
       // Allocate memory for an MPI_Struct that is used to 
       // write all multiwrite units with a single collective call:
@@ -453,12 +448,12 @@ namespace vlsv {
       // Calculate a global offset pointer for MPI struct, i.e. an 
       // offset which is used to calculate the displacements:
       multiwriteOffsetPointer = NULL;
-      if (multiwriteUnits[0].size() > 0) multiwriteOffsetPointer = start->array;
+      if (multiwriteUnits.size() > 0) multiwriteOffsetPointer = start->array;
 
       // Copy pointers etc. to MPI struct:
       size_t i=0;
       size_t amount = 0;
-      for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
+      for (auto it=start; it!=stop; ++it) {
          blockLengths[i]  = (*it).amount;
          displacements[i] = (*it).array - multiwriteOffsetPointer;
          types[i]         = (*it).mpiType;
@@ -479,13 +474,13 @@ namespace vlsv {
             MPI_Type_commit(&outputType);
 
             // Write data to output file with a single collective call:
-            const double t_start = MPI_Wtime();
+            const auto t_start = MPI_Wtime();
             MPI_File_write_at_all(fileptr,offset+unitOffset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
             writeTime += (MPI_Wtime() - t_start);
             MPI_Type_free(&outputType);
          } else {
             // Process has no data to write but needs to participate in the collective call to prevent deadlock:
-            const double t_start = MPI_Wtime();
+            const auto t_start = MPI_Wtime();
             MPI_File_write_at_all(fileptr,offset+unitOffset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
             writeTime += (MPI_Wtime() - t_start);
          }
@@ -510,12 +505,12 @@ namespace vlsv {
 
       // Count total number of bytes written to file:
       uint64_t totalBytes = 0;
-      for (int i=0; i<N_processes; ++i) totalBytes += bytesPerProcess[i];
+      for (auto i=0; i<N_processes; ++i) totalBytes += bytesPerProcess[i];
 
       muxml::XMLNode* root = xmlWriter->getRoot();
       muxml::XMLNode* xmlnode = xmlWriter->find("VLSV",root);
       muxml::XMLNode* node = xmlWriter->addNode(xmlnode,tagName,offset);
-      for (map<string,string>::const_iterator it=attribs.begin(); it!=attribs.end(); ++it) {
+      for (auto it=attribs.begin(); it!=attribs.end(); ++it) {
          xmlWriter->addAttribute(node,it->first,it->second);
       }
       xmlWriter->addAttribute(node,"vectorsize",vectorSize);

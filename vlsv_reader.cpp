@@ -150,9 +150,8 @@ namespace vlsv {
       }
 
       muxml::XMLNode* node = xmlReader.find("VLSV");
-      for (multimap<string,muxml::XMLNode*>::const_iterator it=node->children.lower_bound(tagName); 
-           it!=node->children.upper_bound(tagName); ++it) {
-         map<string,string>::const_iterator tmp = it->second->attributes.find(attribName);
+      for (auto it = node->children.lower_bound(tagName); it != node->children.upper_bound(tagName); ++it) {
+         auto tmp = it->second->attributes.find(attribName);
          if (tmp == it->second->attributes.end()) continue;
          output.insert(tmp->second);
       }
@@ -319,7 +318,7 @@ namespace vlsv {
       if (amount == 0) return true;
       
       // Find tag corresponding to given array:
-      muxml::XMLNode* node = xmlReader.find(tagName,attribs);
+      auto node = xmlReader.find(tagName,attribs);
       if (node == NULL) {
          stringstream ss;
          ss << "ERROR: Failed to find tag='" << tagName << "' attribs:" << endl;
@@ -401,7 +400,7 @@ namespace vlsv {
 
          ss << "tag name='" << tagName << "'" << endl; 
          ss << "attributes:" << endl;
-         for (map<string,string>::const_iterator it=node->attributes.begin(); it!=node->attributes.end(); ++it) {
+         for (auto it=node->attributes.begin(); it!=node->attributes.end(); ++it) {
             ss << '\t' << it->first << " = " << it->second << endl;
          }
          ss << "array offset string '" << node->value.c_str() << "'" << endl;
