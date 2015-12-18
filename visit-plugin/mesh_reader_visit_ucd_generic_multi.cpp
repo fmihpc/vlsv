@@ -301,7 +301,7 @@ namespace vlsvplugin {
    
    bool VisitUCDGenericMultiMeshReader::readNodeVariable(vlsv::Reader* vlsvReader,VisitUCDGenericMultiMeshMetadata*  metadata,
                                                          const VariableMetadata& vmd,int domain,void*& output) {
-      
+       return false;
    }
    
    bool VisitUCDGenericMultiMeshReader::readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output) {

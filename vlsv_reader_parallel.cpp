@@ -175,7 +175,7 @@ namespace vlsv {
     * @param attribsOut XML tag attributes read from the input file.
     * @return If true, array attributes were read successfully.*/
    bool ParallelReader::getArrayAttributes(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribsIn,
-                                           std::map<std::string,std::string>& attribsOut) const {
+                                           std::map<std::string,std::string>& attribsOut) {
       bool success = true;
    
       // Master process reads footer:
@@ -200,8 +200,10 @@ namespace vlsv {
       char attribValue[maxLength];
       if (myRank == masterRank) {
          for (map<string,string>::const_iterator it=attribsOut.begin(); it!=attribsOut.end(); ++it) {
-            strncpy(attribName,it->first.c_str(),maxLength-1);
-            strncpy(attribValue,it->second.c_str(),maxLength-1);
+            //strncpy(attribName,it->first.c_str(),maxLength-1);
+            //strncpy(attribValue,it->second.c_str(),maxLength-1);
+			strncpy_s(attribName ,maxLength,it->first.c_str() ,it->first.size() );
+			strncpy_s(attribValue,maxLength,it->second.c_str(),it->second.size());
             MPI_Bcast(attribName,maxLength,MPI_Type<char>(),masterRank,comm);
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
@@ -289,7 +291,7 @@ namespace vlsv {
     * @param output Unique attribute values are inserted here.
     * @return If true, attribute values were read successfully.*/
    bool ParallelReader::getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,
-                                                 std::set<std::string>& output) const {
+                                                 std::set<std::string>& output) {
       bool success = true;
 
       // First the master process reads unique attribute values:                                              
@@ -314,7 +316,8 @@ namespace vlsv {
       char attribValue[maxLength];
       if (myRank == masterRank) {
          for (set<string>::const_iterator it=output.begin(); it!=output.end(); ++it) {
-            strncpy(attribValue,it->c_str(),maxLength-1);
+            //strncpy(attribValue,it->c_str(),maxLength-1);
+			strncpy_s(attribValue,maxLength,it->c_str(),it->size());
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
       } else {

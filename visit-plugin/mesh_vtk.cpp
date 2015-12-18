@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2013,2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -107,16 +107,16 @@ namespace vlsvplugin {
 	 
        case vlsv::datatype::INT:
          switch (dataSize) {
-          case sizeof(char):
+          case sizeof(int8_t):
             return VTK_CHAR;
             break;
-          case sizeof(short):
+          case sizeof(int16_t):
             return VTK_SHORT;
             break;
-          case sizeof(int):
+          case sizeof(int32_t):
             return VTK_INT;
             break;
-          case sizeof(long int):
+          case sizeof(int64_t):
             return VTK_LONG;
             break;
           default:
@@ -127,16 +127,16 @@ namespace vlsvplugin {
 	 
        case vlsv::datatype::UINT:
          switch (dataSize) {
-          case sizeof(char):
+          case sizeof(uint8_t):
             return VTK_UNSIGNED_CHAR;
             break;
-          case sizeof(short):
+          case sizeof(uint16_t):
             return VTK_UNSIGNED_SHORT;
             break;
-          case sizeof(int):
+          case sizeof(uint32_t):
             return VTK_UNSIGNED_INT;
             break;
-          case sizeof(long int):
+          case sizeof(uint64_t):
             return VTK_UNSIGNED_LONG;
             break;
           default:
@@ -153,9 +153,11 @@ namespace vlsvplugin {
           case sizeof(double):
             return VTK_DOUBLE;
             break;
+          #ifndef WINDOWS
           case sizeof(long double):
             return VTK_DATATYPE_NOT_FOUND;
             break;
+          #endif
           default:
             return VTK_DATATYPE_NOT_FOUND;
             break;

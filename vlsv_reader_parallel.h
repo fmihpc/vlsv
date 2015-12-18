@@ -34,14 +34,14 @@ namespace vlsv {
    
       bool close();
       bool getArrayAttributes(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribsIn,
-                              std::map<std::string,std::string>& attribsOut) const;
+                              std::map<std::string,std::string>& attribsOut);
       bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                         uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize);
       bool getArrayInfoMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                               uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& dataSize);
       uint64_t getBytesRead();
       double getReadTime() const;
-      bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output) const;
+      bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output);
       bool open(const std::string& fname,MPI_Comm comm,const int& masterRank,MPI_Info mpiInfo=MPI_INFO_NULL);
       bool readArrayMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                            const uint64_t& begin,const uint64_t& amount,char* buffer);

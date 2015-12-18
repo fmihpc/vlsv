@@ -18,6 +18,8 @@
  *  @author Arto Sandroos
  */
 
+#pragma once
+
 #ifndef VLSV_COMMON_H
 #define VLSV_COMMON_H
 
@@ -263,9 +265,11 @@ namespace vlsv {
                case sizeof(double):
                   value = convertFloat<double>(buffer);
                   break;
+               #ifndef WINDOWS
                case sizeof(long double):
                   value = convertFloat<long double>(buffer);
                   break;
+               #endif
                default:
                   std::cerr << "(VLSV) ERROR: Unsupported datatype in convertValue!" << std::endl;
                   std::cerr << "\t Exiting at convertValue VLSV::FLOAT." << std::endl;
