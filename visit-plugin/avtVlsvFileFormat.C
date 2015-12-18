@@ -449,6 +449,7 @@ void avtVlsvFileFormat::ActivateTimestep(void) {
    vlsvReader = new vlsv::Reader;
    if (vlsvReader->open(inputFile) == false) {
       debug2 << "VLSV\t ERROR: VLSVReader failed to open input file '" << inputFile << "'" << endl;
+	   debug2 << "VLSV\t Message from reader '" << vlsvReader->getLastError() << endl;
       vlsvReader->close();
       delete vlsvReader; vlsvReader = NULL;
       EXCEPTION1(InvalidDBTypeException,"VLSV Plugin could not open the file.");

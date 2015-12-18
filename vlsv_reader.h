@@ -36,11 +36,12 @@ namespace vlsv {
    
       virtual bool close();
       virtual bool getArrayAttributes(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribsIn,
-                                      std::map<std::string,std::string>& attribsOut) const;
+                                      std::map<std::string,std::string>& attribsOut);
       virtual bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                                 uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize);
       virtual bool getFileName(std::string& openFile) const;
-      virtual bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output) const;
+	  virtual std::string getLastError() const;
+      virtual bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output);
       virtual bool loadArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
       virtual bool open(const std::string& fname);
       virtual bool readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
@@ -55,6 +56,7 @@ namespace vlsv {
     protected:
       unsigned char endiannessFile;   /**< Endianness in VLSV file.*/
       unsigned char endiannessReader; /**< Endianness of computer which reads the data.*/
+	  std::string errorString;
       std::fstream filein;            /**< Input file stream.*/
       std::string fileName;           /**< Name of the input file.*/
       bool fileOpen;                  /**< If true, a file is currently open.*/
@@ -71,6 +73,8 @@ namespace vlsv {
          uint64_t vectorSize;
          uint64_t dataSize;
       } arrayOpen;
+
+      bool withError(const std::stringstream& ss);
    };
 
    template<typename T> inline
@@ -86,14 +90,22 @@ namespace vlsv {
       datatype::type datatype;
       uint64_t dataSize;
       if (Reader::getArrayInfo(tagName,attribs,arraySize,vectorSize,datatype,dataSize) == false) {
-         std::cerr << "vlsv::Reader failed to get array info" << std::endl;
-         return false;
+         std::stringstream ss;
+         ss << "ERROR: Failed to get array info in " << __FILE__ << ":" << __LINE__;
+         return withError(ss);
       }
 
       // Check that requested read is inside the array:
-      if (begin > arraySize || (begin+amount) > arraySize) return false;
+      if (begin > arraySize || (begin+amount) > arraySize) {
+         std::stringstream ss;
+         ss << "ERROR: Starting element " << begin << " is larger than array size " << arraySize;
+         ss << " or amount to read " << begin+amount << " exceeds array size in ";
+         ss << __FILE__ << ":" << __LINE__;
+         return withError(ss);
+      }
 
-      // Read data into temporary buffer:
+      // Read data into temporary buffer. Reader::readArray already prints an 
+      // error message so we don't need to do that here:
       char* buffer = new char[amount*vectorSize*dataSize];
       if (Reader::readArray(tagName,attribs,begin,amount,buffer) == false) {
          delete [] buffer; buffer = NULL;
@@ -125,23 +137,37 @@ namespace vlsv {
       uint64_t dataSize;
       
       // Get array info containing parameter value:
-      bool success = Reader::getArrayInfo("PARAMETER",attribs,arraySize,vectorSize,dataType,dataSize);
-      if (success == false) {
-         return success;
+      if (Reader::getArrayInfo("PARAMETER",attribs,arraySize,vectorSize,dataType,dataSize) == false) {
+         std::stringstream ss;
+         ss << "ERROR: Failed to get array info in " << __FILE__ << ":" << __LINE__;
+         return withError(ss);
       }
       
       // Check that the array contains a single parameter value:
-      if (arraySize != 1) return false;
-      if (vectorSize != 1) return false;
+      if (arraySize != 1) {
+         std::stringstream ss;
+         ss << "ERROR: Array does not contain a parameter in " << __FILE__ << ":" << __LINE__;
+         return withError(ss);
+      }
+      if (vectorSize != 1) {
+         std::stringstream ss;
+         ss << "ERROR: Array does not contain a parameter in " << __FILE__ << ":" << __LINE__;
+         return withError(ss);
+      }
       
-      // Read parameter value into temporary buffer:
+      // Read parameter value into temporary buffer. Note that 
+      // Reader::readArray already prints an error message so we don't 
+      // need to do that here:
       char* buffer = new char[arraySize*vectorSize*dataSize];
-      success = Reader::readArray("PARAMETER",attribs,0,1,buffer);
+      if (Reader::readArray("PARAMETER",attribs,0,1,buffer) == false) {
+         delete [] buffer; buffer = NULL;
+         return false;
+      }
 
       // Convert read value into requested datatype:
       convertValue<T>(value,buffer,dataType,dataSize,false);
       delete [] buffer; buffer = NULL;
-      return success;
+      return true;
    }
 
 } // namespace vlsv

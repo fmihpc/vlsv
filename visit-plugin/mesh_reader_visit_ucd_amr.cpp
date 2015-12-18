@@ -133,7 +133,9 @@ namespace vlsvplugin {
    void VisitUCDAMRReader::cylindricalNodeLookup2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
 							 uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
 							 vtkUnstructuredGrid* ugrid) {
-      #warning FIXME Cylindrical node lookup 2D
+    #ifndef WINDOWS
+        #warning FIXME Cylindrical node lookup 2D
+    #endif
       const int cellType = VTK_QUAD;
       vtkIdType vertices[4];
       unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator nodeIt;
@@ -329,7 +331,9 @@ namespace vlsvplugin {
    
    void VisitUCDAMRReader::insertCylindricalNodes2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
 							  uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
-      #warning FIXME Cylindrical AMR node insert 2D
+      #ifndef WINDOWS
+         #warning FIXME Cylindrical AMR node insert 2D
+      #endif
       vtkIdType counter = 0;
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
       

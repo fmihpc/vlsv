@@ -30,7 +30,8 @@ dist:
 # Dependencies
 
 DEPS_AMR = vlsv_amr.h vlsv_amr.cpp
-DEPS_COMMON = muxml.h vlsv_common.h 
+DEPS_COMMON = muxml.h vlsv_common.h
+DEPS_FILE_IO = portable_file_io.h portable_file_io.cpp
 DEPS_MULTI_IO=multi_io_unit.h multi_io_unit.cpp
 DEPS_MUXML = muxml.h muxml.cpp
 DEPS_VLSVCOMMON = vlsv_common.h vlsv_common.cpp
@@ -40,12 +41,15 @@ DEPS_PARAREADER = ${DEPS_READER} vlsv_reader_parallel.h vlsv_reader_parallel.cpp
 DEPS_WRITER = ${DEPS_VLSVCOMMON} vlsv_writer.h vlsv_writer.cpp
 DEPS_VLSV2SILO = vlsv_reader.o muxml.o vlsv_common.o vlsv2silo.cpp
 
-OBJS=multi_io_unit.o muxml.o vlsv_amr.o vlsv_common.o vlsv_common_mpi.o vlsv_reader.o vlsv_reader_parallel.o vlsv_writer.o
+OBJS=multi_io_unit.o muxml.o vlsv_amr.o vlsv_common.o vlsv_common_mpi.o vlsv_reader.o vlsv_reader_parallel.o vlsv_writer.o portable_file_io.o
 
 # Build rules
 
 lib: ${OBJS}
 	${AR} r libvlsv.a ${OBJS}
+
+portable_file_io.o: ${DEPS_FILE_IO}
+	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -c portable_file_io.cpp
 
 multi_io_unit.o: ${DEPS_MULTI_IO}
 	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -c multi_io_unit.cpp

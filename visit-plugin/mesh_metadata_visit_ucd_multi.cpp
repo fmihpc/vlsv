@@ -231,17 +231,17 @@ namespace vlsvplugin {
       
       // Check that vlsv::Reader exists:
       if (vlsvReader == NULL) {
-	 debug3 << "VLSV\t\t ERROR: vlsv::Reader is NULL" << endl;
-	 return false;
+	     debug3 << "VLSV\t\t ERROR: vlsv::Reader is NULL" << endl;
+	     return false;
       }
-      
+
       // Read mesh bounding box:
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("mesh",name));
       delete [] meshBoundingBox; meshBoundingBox = NULL;
       if (vlsvReader->read("MESH_BBOX",attribs,0,6,meshBoundingBox) == false) {
-	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
-	 return false;
+		debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
+		return false;
       }
       blockSize = meshBoundingBox[3]*meshBoundingBox[4]*meshBoundingBox[5];
       debug4 << "VLSV\t\t Mesh size in blocks: " << meshBoundingBox[0] << ' ' << meshBoundingBox[1] << ' ' << meshBoundingBox[2];
@@ -250,9 +250,10 @@ namespace vlsvplugin {
       // Read domain info:
       int64_t* domainInfo = NULL;
       if (vlsvReader->read("MESH_DOMAIN_SIZES",attribs,0,VisitMeshMetadata::N_domains,domainInfo) == false) {
-	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_ZONES'" << endl;
-	 delete [] domainInfo; domainInfo = NULL;
-	 return false;
+		debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_DOMAIN_SIZES' in " << __FILE__ << ":" << __LINE__ << endl;
+		debug3 << "VLSV\t\t Message from VLSV Reader '" << vlsvReader->getLastError() << "'" << endl;
+		delete [] domainInfo; domainInfo = NULL;
+		return false;
       }
       
       // Calculate offsets where data for each domain begins:
