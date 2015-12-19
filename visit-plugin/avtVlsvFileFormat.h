@@ -41,6 +41,8 @@
 //                            avtVlsvFileFormat.h                           //
 // ************************************************************************* //
 
+#pragma once
+
 #ifndef AVT_Vlsv_FILE_FORMAT_H
 #define AVT_Vlsv_FILE_FORMAT_H
 
