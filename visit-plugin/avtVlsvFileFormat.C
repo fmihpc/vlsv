@@ -42,6 +42,7 @@
 
 #include <avtVlsvFileFormat.h>
 
+#include <algorithm>
 #include <string>
 
 #include <vtkPoints.h>
@@ -87,8 +88,21 @@
 using namespace std;
 
 int avtVlsvFileFormat::objectCounter = 0;
-
 static const int VTK_DATATYPE_NOT_FOUND = -999;
+
+// Template wrappers for VisitMeshMetadata and MeshReader constructors.
+// They simply create a new object of type T and return a pointer to the superclass.
+template<typename T> inline vlsvplugin::VisitMeshMetadata* metadataConstructorWrapper() {return new T;}
+template<typename T> inline vlsvplugin::MeshReader* readerConstructorWrapper() { return new T; }
+
+// Aliases for pointers to constructor wrappers.
+typedef vlsvplugin::VisitMeshMetadata* (*metadataConstructor)();
+typedef vlsvplugin::MeshReader* (*readerConstructor)();
+
+// Maps where constructor wrappers are stored for all supported mesh formats.
+// The map keys are the unique mesh format names defined in namespace vlsv::mesh (vlsv_common.h)
+static map<string, metadataConstructor> meshMetadataFormats;
+static map<string, readerConstructor> meshReaderFormats;
 
 // ****************************************************************************
 //  Method: avtVlsvFileFormat constructor
@@ -123,16 +137,24 @@ avtVlsvFileFormat::avtVlsvFileFormat(const char *filename): avtSTMDFileFormat(&f
    // INITIALIZE DATA MEMBERS
    inputFile = filename;
    vlsvReader = NULL;
-   
-   /*
-   // TEST
-   #ifdef PARALLEL
-      domainOffsets = NULL;
-   #endif
-   // END TEST
-   */
-   
    FreeUpResources();
+
+   // Create constructor functions (for metadata and mesh readers) 
+   // for all supported mesh formats and place them in their respective containers:
+   if (meshMetadataFormats.size() == 0) {
+      meshMetadataFormats[vlsv::mesh::STRING_POINT] = &metadataConstructorWrapper<vlsvplugin::VisitPointMeshMetadata>;
+      meshMetadataFormats[vlsv::mesh::STRING_QUAD_MULTI] = &metadataConstructorWrapper<vlsvplugin::VisitQuadMultiMeshMetadata>;
+      meshMetadataFormats[vlsv::mesh::STRING_UCD_AMR] = &metadataConstructorWrapper<vlsvplugin::VisitUCDAMRMetadata>;
+      meshMetadataFormats[vlsv::mesh::STRING_UCD_MULTI] = &metadataConstructorWrapper<vlsvplugin::VisitUCDMultiMeshMetadata>;
+      meshMetadataFormats[vlsv::mesh::STRING_UCD_GENERIC_MULTI] = &metadataConstructorWrapper<vlsvplugin::VisitUCDGenericMultiMeshMetadata>;
+   }
+   if (meshReaderFormats.size() == 0) {
+      meshReaderFormats[vlsv::mesh::STRING_POINT] = &readerConstructorWrapper<vlsvplugin::VisitPointMeshReader>;
+      meshReaderFormats[vlsv::mesh::STRING_QUAD_MULTI] = &readerConstructorWrapper<vlsvplugin::VisitQuadMultiMeshReader>;
+      meshReaderFormats[vlsv::mesh::STRING_UCD_AMR] = &readerConstructorWrapper<vlsvplugin::VisitUCDAMRReader>;
+      meshReaderFormats[vlsv::mesh::STRING_UCD_MULTI] = &readerConstructorWrapper<vlsvplugin::VisitUCDMultiMeshReader>;
+      meshReaderFormats[vlsv::mesh::STRING_UCD_GENERIC_MULTI] = &readerConstructorWrapper<vlsvplugin::VisitUCDGenericMultiMeshReader>;
+   }
 }
 
 avtVlsvFileFormat::~avtVlsvFileFormat() {
@@ -179,24 +201,12 @@ void avtVlsvFileFormat::FreeUpResources(void) {
    metadataRead = false;
 
    // Deallocate mesh metadata:
-   for (map<string,vlsvplugin::VisitMeshMetadata*>::iterator it=meshMetadata.begin(); it!=meshMetadata.end(); ++it) {
-      delete it->second; it->second = NULL;
-   }
+   for (auto& it : meshMetadata) {delete it.second; it.second = NULL;}
    meshMetadata.clear();
    
    // Deallocate mesh readers:
-   for (map<string,vlsvplugin::MeshReader*>::iterator it=meshReaders.begin(); it!=meshReaders.end(); ++it) {
-      delete it->second; it->second = NULL;
-   }
+   for (auto& it: meshReaders) { delete it.second; it.second = NULL; }
    meshReaders.clear();
-   
-   /*
-   // TEST
-   #ifdef PARALLEL
-      delete [] domainOffsets; domainOffsets = NULL;
-   #endif
-   // END TEST
-   */
 }
 
 void avtVlsvFileFormat::addMesh(avtDatabaseMetaData* md,const vlsvplugin::VisitMeshMetadata* const meshMetadata) {
@@ -221,22 +231,7 @@ void avtVlsvFileFormat::addMesh(avtDatabaseMetaData* md,const vlsvplugin::VisitM
    mesh->SetNumberCells(meshMetadata->getNumberOfTotalZones());
    mesh->hasLogicalBounds = false;
    mesh->hasSpatialExtents = false;
-   
-   /*
-   if (bounds != NULL) {
-      mesh->SetBounds(bounds);
-      mesh->hasLogicalBounds = true;
-   } else {
-      mesh->hasLogicalBounds = false;
-   }
-   
-   if (extents != NULL) {
-      mesh->SetExtents(extents);
-      mesh->hasSpatialExtents = true;
-   } else {
-      mesh->hasSpatialExtents = false;
-   }*/
-   
+
    md->Add(mesh);
 }
 
@@ -314,12 +309,12 @@ void avtVlsvFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData* md) {
    // - Add mesh names and types to VisIt metadata
    if (metadataRead == false) {
       if (readMetadata() == false) {
-	 debug1 << "VLSV\t ERROR: Failed to read metadata" << endl;
-	 return;
+         debug1 << "VLSV\t ERROR: Failed to read metadata" << endl;
+         return;
       }
    }
    
-   for (map<string,vlsvplugin::VisitMeshMetadata*>::iterator it=meshMetadata.begin(); it!=meshMetadata.end(); ++it) {
+   for (auto it=meshMetadata.begin(); it!=meshMetadata.end(); ++it) {
       addMesh(md,it->second);
    }
    
@@ -366,31 +361,31 @@ void avtVlsvFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData* md) {
    // AddTensorVarToMetaData(md, varname, mesh_for_this_var, cent,tensor_dim);
    //
    
-   for (map<string,vlsvplugin::VisitMeshMetadata*>::iterator it=meshMetadata.begin(); it!=meshMetadata.end(); ++it) {
+   for (auto it=meshMetadata.begin(); it!=meshMetadata.end(); ++it) {
       avtCentering centering;
-      const vector<vlsvplugin::VariableMetadata>& variables = it->second->getVariables();
-      for (vector<vlsvplugin::VariableMetadata>::const_iterator var=variables.begin(); var!=variables.end(); ++var) {
-	 // Determine variable centering:
-	 if ((*var).centering == vlsvplugin::ZONE_CENTERED) centering = AVT_ZONECENT;
-	 else centering = AVT_NODECENT;
+      const auto& variables = it->second->getVariables();
+      for (auto var=variables.begin(); var!=variables.end(); ++var) {
+         // Determine variable centering:
+         if ((*var).centering == vlsvplugin::ZONE_CENTERED) centering = AVT_ZONECENT;
+         else centering = AVT_NODECENT;
 
-	 // Add variable as a correct type to mesh:
-	 switch ((*var).vectorSize) {
-	  case 1:
-	    AddScalarVarToMetaData(md,(*var).name,it->second->getName(),centering);
-	    break;
-	  case 2:
-	    AddVectorVarToMetaData(md,(*var).name,it->second->getName(),centering,2);
-	    break;
-	  case 3:
-	    AddVectorVarToMetaData(md,(*var).name,it->second->getName(),centering,3);
-	    break;
-	  case 9:
-	    AddTensorVarToMetaData(md,(*var).name,it->second->getName(),centering,9);
-	    break;
-	  default:
-	    break;
-	 }
+         // Add variable as a correct type to mesh:
+         switch ((*var).vectorSize) {
+         case 1:
+            AddScalarVarToMetaData(md,(*var).name,it->second->getName(),centering);
+            break;
+         case 2:
+            AddVectorVarToMetaData(md,(*var).name,it->second->getName(),centering,2);
+            break;
+         case 3:
+            AddVectorVarToMetaData(md,(*var).name,it->second->getName(),centering,3);
+            break;
+         case 9:
+            AddTensorVarToMetaData(md,(*var).name,it->second->getName(),centering,9);
+            break;
+         default:
+            break;
+	      }
       }
    }
    
@@ -435,15 +430,6 @@ void avtVlsvFileFormat::ActivateTimestep(void) {
    
    // Delete old VLSVReader:
    delete vlsvReader; vlsvReader = NULL;
-
-   /*
-   // TEST
-   #ifdef PARALLEL
-      delete [] domainOffsets; domainOffsets = NULL;
-      N_domains = 2*mpiProcessCount+1;
-   #endif
-   // END TEST
-   */
 
    // Create new VLSVReader and open given file:
    vlsvReader = new vlsv::Reader;
@@ -505,7 +491,7 @@ vtkDataSet* avtVlsvFileFormat::GetMesh(int domain,const char *meshname) {
    }
    
    // Get metadata:
-   map<string,vlsvplugin::VisitMeshMetadata*>::iterator metadata = meshMetadata.find(meshname);
+   auto metadata = meshMetadata.find(meshname);
    if (metadata == meshMetadata.end()) {
       debug2 << "VLSV\t ERROR: Metadata for mesh '" << meshname << "' not found" << endl;
       EXCEPTION1(InvalidVariableException, meshname);
@@ -513,7 +499,7 @@ vtkDataSet* avtVlsvFileFormat::GetMesh(int domain,const char *meshname) {
    }
 
    // Get mesh reader:
-   map<string,vlsvplugin::MeshReader*>::iterator reader = meshReaders.find(meshname);
+   auto reader = meshReaders.find(meshname);
    if (reader == meshReaders.end()) {
       debug2 << "VLSV\t ERROR: Mesh reader for mesh '" << meshname << "' not found" << endl;
       EXCEPTION1(InvalidVariableException, meshname);
@@ -571,26 +557,26 @@ bool avtVlsvFileFormat::PrepareVariable(int domain,const char* varName,
    bool found = false;
    string meshName;
    metadata = meshMetadata.find(previousMesh);
-   const vector<vlsvplugin::VariableMetadata>& variables = metadata->second->getVariables();
+   const auto& variables = metadata->second->getVariables();
    for (variableMetadata=variables.begin(); variableMetadata!=variables.end(); ++variableMetadata) {
       if (variableMetadata->name == varName) {
-	 meshName = previousMesh;
-	 found = true;
-	 break;
+         meshName = previousMesh;
+         found = true;
+         break;
       }
    }
    
    // Try all other meshes:
    if (found == false) for (metadata=meshMetadata.begin(); metadata!=meshMetadata.end(); ++metadata) {
       if (metadata->second->getName() == previousMesh) continue;
-      const vector<vlsvplugin::VariableMetadata>& variables = metadata->second->getVariables();
+      const auto& variables = metadata->second->getVariables();
       for (variableMetadata=variables.begin(); variableMetadata!=variables.end(); ++variableMetadata) {
-	 if (variableMetadata->name == varName) {
-	    meshName     = metadata->second->getName();
-	    previousMesh = metadata->second->getName();
-	    found = true;
-	    break;
-	 }
+         if (variableMetadata->name == varName) {
+            meshName     = metadata->second->getName();
+            previousMesh = metadata->second->getName();
+            found = true;
+            break;
+         }
       }
       if (found == true) break;
    }
@@ -736,129 +722,44 @@ bool avtVlsvFileFormat::readMetadata() {
    if (vlsvReader->getUniqueAttributeValues("MESH","name",meshNames) == false) {
       return false;
    }
-   
+
    // Iterate over all meshes in the file:
-   for (set<string>::const_iterator it=meshNames.begin(); it!=meshNames.end(); ++it) {
-      debug4 << "VLSV\t found mesh '" << *it << "'" << endl;
-   
+   for (auto& it : meshNames) {
+      debug4 << "VLSV\t found mesh '" << it << "'" << endl;
+
       // Read mesh type:
-      map<string,string> attribsOut;
-      list<pair<string,string> > attribsIn;
-      attribsIn.push_back(make_pair("name",*it));
-      vlsvReader->getArrayAttributes("MESH",attribsIn,attribsOut);
+      map<string, string> attribsOut;
+      list<pair<string, string> > attribsIn;
+      attribsIn.push_back(make_pair("name", it));
+      vlsvReader->getArrayAttributes("MESH", attribsIn, attribsOut);
       if (attribsOut.find("type") == attribsOut.end()) {
-	 debug4 << "VLSV\t skipping it because its type is unspecified" << endl;
-	 continue;
+         debug4 << "VLSV\t skipping it because its type is unspecified" << endl;
+         continue;
       }
-      
+
       // Check if mesh type corresponds to one of types supported by VisIt:
       bool supportedType = true;
-      if (attribsOut["type"] == vlsv::mesh::STRING_POINT) {
-	 vlsvplugin::VisitPointMeshMetadata* pointMesh = new vlsvplugin::VisitPointMeshMetadata();
-	 if (pointMesh->read(vlsvReader,attribsOut) == false) {
-	    debug2 << "VLSV\t\t Failed to read point mesh metadata" << endl;
-	    delete pointMesh; pointMesh = NULL;
-	 } else {
-	    // Insert metadata to map meshMetadata:
-	    pair<map<string,vlsvplugin::VisitMeshMetadata*>::iterator,bool> position = 
-	      meshMetadata.insert(make_pair(*it,pointMesh));
-	    
-	    if (position.second == true) {
-	       meshReaders[*it] = new vlsvplugin::VisitPointMeshReader();
-	       debug4 << "VLSV\t\t Created point mesh reader" << endl;
-	    } else {
-	       debug2 << "VLSV\t\t Failed to insert point mesh metadata" << endl;
-	       map<string,vlsvplugin::VisitMeshMetadata*>::iterator tmp = meshMetadata.find(*it);
-	       delete tmp->second; tmp->second = NULL;
-	       meshMetadata.erase(tmp);
-	    }
-	 }
-      } else if (attribsOut["type"] == vlsv::mesh::STRING_QUAD_MULTI) {
-	 vlsvplugin::VisitQuadMultiMeshMetadata* multiMesh = new vlsvplugin::VisitQuadMultiMeshMetadata();
-	 if (multiMesh->read(vlsvReader,attribsOut) == false) {
-	    debug2 << "VLSV\t\t Failed to read multimesh metadata" << endl;
-	    delete multiMesh; multiMesh = NULL;
-	 } else {
-	    // Insert metadata to map meshMetadata:
-	    pair<map<string,vlsvplugin::VisitMeshMetadata*>::iterator,bool> position = 
-	      meshMetadata.insert(make_pair(*it,multiMesh));
-	 
-	    if (position.second == true) {
-	       meshReaders[*it] = new vlsvplugin::VisitQuadMultiMeshReader();
-	       debug4 << "VLSV\t\t Created quad multimesh reader" << endl;
-	    } else {
-	       debug2 << "VLSV\t\t Failed to insert quad multimesh metadata" << endl;
-	       map<string,vlsvplugin::VisitMeshMetadata*>::iterator tmp = meshMetadata.find(*it);
-	       delete tmp->second; tmp->second = NULL;
-	       meshMetadata.erase(tmp);
-	    }
-	 }
-      } else if (attribsOut["type"] == vlsv::mesh::STRING_UCD_AMR) {
-	 vlsvplugin::VisitUCDAMRMetadata* amrUCD = new vlsvplugin::VisitUCDAMRMetadata();
-	 if (amrUCD->read(vlsvReader,attribsOut) == false) {
-	    debug2 << "VLSV\t\t Failed to read amr mesh metadata" << endl;
-	    delete amrUCD; amrUCD = NULL;
-	 } else {
-	    // Insert metadata to map meshMetadata:
-	    pair<map<string,vlsvplugin::VisitMeshMetadata*>::iterator,bool> position =
-	      meshMetadata.insert(make_pair(*it,amrUCD));
-	    
-	    if (position.second == true) {
-	       meshReaders[*it] = new vlsvplugin::VisitUCDAMRReader();
-	       debug4 << "VLSV\t\t Created UCD AMR reader" << endl;
-	    } else {
-	       debug2 << "VLSV\t\t Failed to insert UCD AMR metadata" << endl;
-	       map<string,vlsvplugin::VisitMeshMetadata*>::iterator tmp = meshMetadata.find(*it);
-	       delete tmp->second; tmp->second = NULL;
-	       meshMetadata.erase(tmp);
-	    }
-	 }
-      } else if (attribsOut["type"] == vlsv::mesh::STRING_UCD_MULTI) {
-	 vlsvplugin::VisitUCDMultiMeshMetadata* multiUCD = new vlsvplugin::VisitUCDMultiMeshMetadata();
-	 if (multiUCD->read(vlsvReader,attribsOut) == false) {
-	    debug2 << "VLSV\t\t Failed to read multimesh metadata" << endl;
-	    delete multiUCD; multiUCD = NULL;
-	 } else {
-	    // Insert metadata to map meshMetadata:
-	    pair<map<string,vlsvplugin::VisitMeshMetadata*>::iterator,bool> position =
-	      meshMetadata.insert(make_pair(*it,multiUCD));
-	    
-	    if (position.second == true) {
-	       meshReaders[*it] = new vlsvplugin::VisitUCDMultiMeshReader();
-	       debug4 << "VLSV\t\t Created UCD multimesh reader" << endl;
-	    } else {
-	       debug2 << "VLSV\t\t Failed to insert UCD multimesh metadata" << endl;
-	       map<string,vlsvplugin::VisitMeshMetadata*>::iterator tmp = meshMetadata.find(*it);
-	       delete tmp->second; tmp->second = NULL;
-	       meshMetadata.erase(tmp);
-	    }
-	 }
-      } else if (attribsOut["type"] == vlsv::mesh::STRING_UCD_GENERIC_MULTI) {
-	 vlsvplugin::VisitUCDGenericMultiMeshMetadata* multiUCD = new vlsvplugin::VisitUCDGenericMultiMeshMetadata();
-	 if (multiUCD->read(vlsvReader,attribsOut) == false) {
-	    debug2 << "VLSV\t\t Failed to read generic UCD multimesh metadata" << endl;
-	    delete multiUCD; multiUCD = NULL;
-	 } else {
-	    // Insert metadata to map meshMetadata:
-	    pair<map<string,vlsvplugin::VisitMeshMetadata*>::iterator,bool> position =
-	      meshMetadata.insert(make_pair(*it,multiUCD));
-	    
-	    if (position.second == true) {
-	       meshReaders[*it] = new vlsvplugin::VisitUCDGenericMultiMeshReader();
-	       debug4 << "VLSV\t\t Created Generic UCD multimesh reader" << endl;
-	    } else {
-	       debug2 << "VLSV\t\t Failed to insert Generic UCD multimesh metadata" << endl;
-	       map<string,vlsvplugin::VisitMeshMetadata*>::iterator tmp = meshMetadata.find(*it);
-	       delete tmp->second; tmp->second = NULL;
-	       meshMetadata.erase(tmp);
-	    }
-	 }	    
-      } else {
-	 supportedType = false;
-      }
+      if (meshMetadataFormats.find(attribsOut["type"]) != meshMetadataFormats.end()) {
+         vlsvplugin::VisitMeshMetadata* mesh = (*meshMetadataFormats[attribsOut["type"]])();
+         if (mesh->read(vlsvReader, attribsOut) == false) {
+            debug2 << "VLSV\t\t Failed to read metadata of mesh type '" << attribsOut["type"] << "'" << endl;
+            delete mesh; mesh = NULL;
+         } else {
+            // Insert metadata to map meshMetadata:
+            auto position = meshMetadata.insert(make_pair(it, mesh));
+            if (position.second == true) {
+               meshReaders[it] = (*meshReaderFormats[attribsOut["type"]])();
+               debug4 << "VLSV\t\t Created reader for mesh type '" << attribsOut["type"] << "'" << endl;
+            } else {
+               debug2 << "VLSV\t\t Failed to insert point mesh metadata" << endl;
+               auto tmp = meshMetadata.find(it);
+               delete tmp->second; tmp->second = NULL;
+               meshMetadata.erase(tmp);
+            }
+         }
+      }      
    }
 
    metadataRead = true;
    return success;
 }
-
