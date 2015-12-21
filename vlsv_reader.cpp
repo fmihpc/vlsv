@@ -175,7 +175,7 @@ namespace vlsv {
       // then chdir back to current working directory. 
       // Chdir returns zero value if it succeeds
       if (fileio::chdir(pathName.c_str()) != 0) success = false;
-      filein.open(fnameWithoutPath.c_str(), fstream::in);
+      filein.open(fnameWithoutPath.c_str(), fstream::in | fstream::binary);
       if (fileio::chdir(cwd) != 0) success = false;
 
       if (filein.good() == true) {
