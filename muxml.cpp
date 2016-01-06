@@ -33,7 +33,7 @@ XMLNode::XMLNode(XMLNode* parent): parent(parent) { }
 /** Destructor for XMLNode. Recursively calls delete for all children.*/
 XMLNode::~XMLNode() {
    // Delete all children:
-   for_each(children.begin(), children.end(), [](auto it){delete it.second; it.second=NULL;} );
+   for (auto& it: children) {delete it.second; it.second=NULL;}
 }
 
 /** Constructor for MuXML. Creates the root node MuXML::root.*/

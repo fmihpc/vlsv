@@ -410,10 +410,9 @@ namespace vlsv {
       MPI_Offset unitOffset = 0;
       for (auto i=0; i<multiwriteList.size(); ++i) {
          if (multiwriteFlush(i,unitOffset,multiwriteList[i].first,multiwriteList[i].second) == false) success = false;
-         /*for (auto it=multiwriteList[i].first; it!=multiwriteList[i].second; ++it) {
+         for (auto it=multiwriteList[i].first; it!=multiwriteList[i].second; ++it) {
             unitOffset += it->amount*dataSize;
-         }*/
-         for_each(multiwriteList[i].first, multiwriteList[i].second, [&](auto it) {unitOffset += it.amount*dataSize; });
+         }
       }
 
       if (multiwriteFooter(tagName,attribs) == false) success = false;
@@ -434,10 +433,9 @@ namespace vlsv {
 
       // Count the total number of multiwrite units:
       N_multiwriteUnits = 0;
-      //for (list<Multi_IO_Unit>::const_iterator it=start; it!=stop; ++it) {
-      //   ++N_multiwriteUnits;
-      //}
-      for_each(start, stop, [&](auto it) {++N_multiwriteUnits;} );
+      for (list<Multi_IO_Unit>::const_iterator it=start; it!=stop; ++it) {
+         ++N_multiwriteUnits;
+      }
 
       // Allocate memory for an MPI_Struct that is used to 
       // write all multiwrite units with a single collective call:
@@ -507,11 +505,11 @@ namespace vlsv {
       uint64_t totalBytes = 0;
       for (auto i=0; i<N_processes; ++i) totalBytes += bytesPerProcess[i];
 
-      muxml::XMLNode* root = xmlWriter->getRoot();
-      muxml::XMLNode* xmlnode = xmlWriter->find("VLSV",root);
-      muxml::XMLNode* node = xmlWriter->addNode(xmlnode,tagName,offset);
-      for (auto it=attribs.begin(); it!=attribs.end(); ++it) {
-         xmlWriter->addAttribute(node,it->first,it->second);
+      auto root = xmlWriter->getRoot();
+      auto xmlnode = const_cast<muxml::XMLNode*>(xmlWriter->find("VLSV",root));
+      auto node = xmlWriter->addNode(xmlnode,tagName,offset);
+      for (const auto& it : attribs) {
+         xmlWriter->addAttribute(node,it.first,it.second);
       }
       xmlWriter->addAttribute(node,"vectorsize",vectorSize);
       xmlWriter->addAttribute(node,"arraysize",totalBytes/dataSize/vectorSize);

@@ -153,6 +153,7 @@ namespace vlsv {
    std::string getStringDatatype(const vlsv::datatype::type& dt);
    const std::string& getMeshGeometry(geometry::type geom);
    geometry::type getMeshGeometry(const std::string& s);
+   mesh::type getMeshType(const std::string& s);
    datatype::type getVLSVDatatype(const std::string& s);
    
    // ********************************************* //

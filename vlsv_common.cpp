@@ -77,6 +77,16 @@ namespace vlsv {
       return geometry::UNKNOWN;
    }
 
+   mesh::type getMeshType(const std::string& s) {
+      if (s == mesh::STRING_POINT) return mesh::POINT;
+      else if (s == mesh::STRING_QUAD) return mesh::QUAD;
+      else if (s == mesh::STRING_QUAD_MULTI) return mesh::QUAD_MULTI;
+      else if (s == mesh::STRING_UCD_AMR) return mesh::UCD_AMR;
+      else if (s == mesh::STRING_UCD_MULTI) return mesh::UCD_MULTI;
+      else if (s == mesh::STRING_UCD_GENERIC_MULTI) return mesh::UCD_GENERIC_MULTI;
+      else return mesh::UNKNOWN;
+   }
+
    std::string getStringDatatype(const vlsv::datatype::type& dt) {
       switch (dt) {
        case datatype::UNKNOWN:

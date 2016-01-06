@@ -11,3 +11,9 @@ visit-plugin/Makefile
 *.png
 *.html
 *.o
+*vcxproj*
+*.sln
+*.suo
+.vs*
+*.opensdf
+*.sdf
