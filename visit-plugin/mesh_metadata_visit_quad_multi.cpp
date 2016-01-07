@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2013,2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -26,19 +26,19 @@ using namespace std;
 namespace vlsvplugin {
    
    VisitQuadMultiMeshMetadata::VisitQuadMultiMeshMetadata(): VisitMeshMetadata() { 
-      domainMetadataRead = false;
-      meshMetadataRead = false;
-      domainOffsets = NULL;
-      ghostOffsets = NULL;
-      meshCoordinates = NULL;
-      variableOffsets = NULL;
+      //domainMetadataRead = false;
+      //meshMetadataRead = false;
+      //domainOffsets = NULL;
+      //ghostOffsets = NULL;
+      //meshCoordinates = NULL;
+      //variableOffsets = NULL;
    }
    
    VisitQuadMultiMeshMetadata::~VisitQuadMultiMeshMetadata() { 
-      delete [] domainOffsets; domainOffsets = NULL;
-      delete [] ghostOffsets; ghostOffsets = NULL;
-      delete [] meshCoordinates; meshCoordinates = NULL;
-      delete [] variableOffsets; variableOffsets = NULL;
+      //delete [] domainOffsets; domainOffsets = NULL;
+      //delete [] ghostOffsets; ghostOffsets = NULL;
+      //delete [] meshCoordinates; meshCoordinates = NULL;
+      //delete [] variableOffsets; variableOffsets = NULL;
    }
    
    bool VisitQuadMultiMeshMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
@@ -58,55 +58,59 @@ namespace vlsvplugin {
       }
       
       debug4 << "VLSV\t\t Domain: " << domain << " cell offsets: ";
-      debug4 << (this->domainOffsets)[domain] << ' ' << (this->domainOffsets)[domain+1];
-      debug4 << " ghost offsets: " << (this->ghostOffsets)[domain] << ' ' << (this->ghostOffsets)[domain+1];
-      debug4 << " variable offsets: " << (this->variableOffsets)[domain] << ' ' << (this->variableOffsets)[domain+1];
+      debug4 << (this->zoneDomainOffsets)[domain] << ' ' << (this->zoneDomainOffsets)[domain+1];
+      debug4 << " ghost offsets: " << (this->zoneGhostOffsets)[domain] << ' ' << (this->zoneGhostOffsets)[domain+1];
+      debug4 << " variable offsets: " << (this->zoneVariableOffsets)[domain] << ' ' << (this->zoneVariableOffsets)[domain+1];
       debug4 << endl;
-      
-      domainOffsets   = this->domainOffsets;
-      ghostOffsets    = this->ghostOffsets;
-      variableOffsets = this->variableOffsets;
+
+      //domainOffsets   = this->domainOffsets;
+      //ghostOffsets    = this->ghostOffsets;
+      //variableOffsets = this->variableOffsets;
+      domainOffsets = this->zoneDomainOffsets.data();
+      ghostOffsets = this->zoneGhostOffsets.data();
+      variableOffsets = this->zoneVariableOffsets.data();
       return true;
    }
    
-   const uint64_t* VisitQuadMultiMeshMetadata::getDomainOffsets() {return domainOffsets;}
+   const uint64_t* VisitQuadMultiMeshMetadata::getDomainOffsets() {return zoneDomainOffsets.data();}
    
-   const uint64_t* VisitQuadMultiMeshMetadata::getGhostOffsets() {return ghostOffsets;}
+   const uint64_t* VisitQuadMultiMeshMetadata::getGhostOffsets() {return zoneGhostOffsets.data();}
    
-   const float* VisitQuadMultiMeshMetadata::getMeshBoundingBox() {return meshCoordinates;}
+   const float* VisitQuadMultiMeshMetadata::getMeshBoundingBox() {return meshCoordinates.data();}
 
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfGhostNodes(int domain) const {
+   /*uint64_t VisitQuadMultiMeshMetadata::getNumberOfGhostNodes(uint64_t domain) const {
       return 0;
    }
    
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfGhostZones(int domain) const {
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfGhostZones(uint64_t domain) const {
       return ghostOffsets[domain+1]-ghostOffsets[domain];
    }
    
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfLocalNodes(int domain) const {
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfLocalNodes(uint64_t domain) const {
       return 0;
    }
    
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfLocalZones(int domain) const {
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfLocalZones(uint64_t domain) const {
       return getNumberOfTotalZones(domain)-getNumberOfGhostZones(domain);
    }
    
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfTotalNodes(int domain) const {
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfTotalNodes(uint64_t domain) const {
       return 0;
    }
    
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfTotalZones(int domain) const {
+   uint64_t VisitQuadMultiMeshMetadata::getNumberOfTotalZones(uint64_t domain) const {
       return domainOffsets[domain+1]-domainOffsets[domain];
-   }
+   }*/
    
-   const uint64_t* VisitQuadMultiMeshMetadata::getVariableOffsets() {return variableOffsets;}
+   const uint64_t* VisitQuadMultiMeshMetadata::getVariableOffsets() {return zoneVariableOffsets.data();}
    
    bool VisitQuadMultiMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       // Exit if mesh metadata has already been read:
       if (meshMetadataRead == true) return true;
       
-      // Call superclass read function:
+      // Call superclass read function. If it fails, meshMetadataRead has value 'false'.
       if (VisitMeshMetadata::read(vlsvReader,attribs) == false) return false;
+      meshMetadataRead = false;
       
       // Check that we are reading multi-domain mesh metadata:
       map<string,string>::const_iterator it = attribs.find("type");
@@ -196,59 +200,11 @@ namespace vlsvplugin {
       }
 
       meshMetadataRead = true;
-      return true;
+      return meshMetadataRead;
    }
    
    bool VisitQuadMultiMeshMetadata::readDomains(vlsv::Reader* vlsvReader) {
-      // Exit if domain metadata has already been read:
-      if (domainMetadataRead == true) return true;
-      debug2 << "VLSV\t\t VisitQuadMultiMeshMetadata::readDomains called" << endl;      
-      
-      // Check that VLSVReader exists:
-      if (vlsvReader == NULL) {
-	 debug3 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
-	 return false;
-      }
-
-      // Read mesh bounding box:
-      list<pair<string,string> > attribs;
-      attribs.push_back(make_pair("mesh",name));
-      delete [] meshCoordinates; meshCoordinates = NULL;
-      if (vlsvReader->read("MESH_BBOX",attribs,0,6,meshCoordinates) == false) {
-	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
-	 return false;
-      }
-      debug4 << "VLSV\t\t Mesh corner coordinates: " << meshCoordinates[0] << ' ' << meshCoordinates[1] << ' ' << meshCoordinates[2];
-      debug4 << " cell sizes: " << meshCoordinates[3] << ' ' << meshCoordinates[4] << ' ' << meshCoordinates[5] << endl;
-      
-      // Read domain info:
-      int64_t* domainInfo = NULL;
-      if (vlsvReader->read("MESH_ZONES",attribs,0,VisitMeshMetadata::N_domains,domainInfo) == false) {
-	 debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_ZONES'" << endl;
-	 delete [] domainInfo; domainInfo = NULL;
-	 return false;
-      }
-      
-      // Calculate offsets where data for each domain begins:
-      delete [] domainOffsets;   domainOffsets   = new uint64_t[VisitMeshMetadata::N_domains+1];
-      delete [] ghostOffsets;    ghostOffsets    = new uint64_t[VisitMeshMetadata::N_domains+1];
-      delete [] variableOffsets; variableOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
-      domainOffsets[0]   = 0;
-      ghostOffsets[0]    = 0;
-      variableOffsets[0] = 0;
-      for (int64_t i=0; i<VisitMeshMetadata::N_domains; ++i) {
-	 domainOffsets[i+1]   = domainOffsets[i] + domainInfo[i*2];
-	 ghostOffsets[i+1]    = ghostOffsets[i] + domainInfo[i*2+1];
-	 variableOffsets[i+1] = variableOffsets[i] + domainInfo[i*2+0]-domainInfo[i*2+1];	 
-      }
-      delete [] domainInfo; domainInfo = NULL;
-      
-      // Compute total number of real and ghost cells:
-      N_ghostZones = ghostOffsets[VisitMeshMetadata::N_domains];
-      N_localZones  = variableOffsets[VisitMeshMetadata::N_domains];
-      
-      domainMetadataRead = true;
-      return true;
+      return VisitMeshMetadata::readDomainMetadata(vlsvReader);
    }
 
 } // namespace vlsvplugin

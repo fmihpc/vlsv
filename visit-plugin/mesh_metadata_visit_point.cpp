@@ -29,52 +29,55 @@ namespace vlsvplugin {
    
    VisitPointMeshMetadata::~VisitPointMeshMetadata() { }
 
-   const vlsv::geometry::type& VisitPointMeshMetadata::getMeshGeometry() const {return geometry;}
+   //const vlsv::geometry::type& VisitPointMeshMetadata::getMeshGeometry() const {return geometry;}
 
-   uint64_t VisitPointMeshMetadata::getNumberOfGhostNodes(int domain) const {
+   uint64_t VisitPointMeshMetadata::getNumberOfGhostNodes(uint64_t domain) const {
       return MeshMetadata::getNumberOfGhostZones();
    }
    
-   uint64_t VisitPointMeshMetadata::getNumberOfGhostZones(int domain) const {
+   uint64_t VisitPointMeshMetadata::getNumberOfGhostZones(uint64_t domain) const {
       return MeshMetadata::getNumberOfGhostZones();
    }
 
-   uint64_t VisitPointMeshMetadata::getNumberOfLocalNodes(int domain) const {
+   uint64_t VisitPointMeshMetadata::getNumberOfLocalNodes(uint64_t domain) const {
       return MeshMetadata::getNumberOfLocalZones();
    }
    
-   uint64_t VisitPointMeshMetadata::getNumberOfLocalZones(int domain) const {
+   uint64_t VisitPointMeshMetadata::getNumberOfLocalZones(uint64_t domain) const {
       return MeshMetadata::getNumberOfLocalZones();
    }
 
-   uint64_t VisitPointMeshMetadata::getNumberOfTotalNodes(int domain) const {
+   uint64_t VisitPointMeshMetadata::getNumberOfTotalNodes(uint64_t domain) const {
       return MeshMetadata::getNumberOfTotalZones();
    }
    
-   uint64_t VisitPointMeshMetadata::getNumberOfTotalZones(int domain) const {
+   uint64_t VisitPointMeshMetadata::getNumberOfTotalZones(uint64_t domain) const {
       return MeshMetadata::getNumberOfTotalZones();
    }
    
    bool VisitPointMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
+      if (meshMetadataRead == true) return meshMetadataRead;
+
       // Call superclass read function:
       if (VisitMeshMetadata::read(vlsvReader,attribs) == false) return false;
+      meshMetadataRead = false;
       
       // Check that we are reading point mesh metadata:
       bool success = true;
-      map<string,string>::const_iterator it = attribs.find("type");
+      auto it = attribs.find("type");
       if (it == attribs.end()) {
-	 debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
-	 success = false;
+         debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
+         success = false;
       }
       
       if (it->second != vlsv::mesh::STRING_POINT) {
-	 debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << vlsv::mesh::STRING_POINT << "'" << endl;
-	 success = false;
+         debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << vlsv::mesh::STRING_POINT << "'" << endl;
+         success = false;
       } else {
-	 meshType = AVT_POINT_MESH;
-	 meshTypeString = "AVT_POINT_MESH";
-	 spatialDimension = 3;
-	 topologicalDimension = 0;
+         meshType = AVT_POINT_MESH;
+         meshTypeString = "AVT_POINT_MESH";
+         spatialDimension = 3;
+         topologicalDimension = 0;
       }
 
       it = attribs.find("arraysize");
@@ -85,12 +88,14 @@ namespace vlsvplugin {
 
       // Get coordinate system:
       it = attribs.find("geometry");
-      if (it == attribs.end()) geometry = vlsv::geometry::CARTESIAN;
-      else {
-	 geometry = vlsv::getMeshGeometry(it->second);
+      if (it == attribs.end()) {
+         geometry = vlsv::geometry::CARTESIAN;
+      } else {
+         geometry = vlsv::getMeshGeometry(it->second);
       }
-      
-      return success;
+
+      if (success == true) meshMetadataRead = true;
+      return meshMetadataRead;
    }
    
 } // namespace vlsvplugin

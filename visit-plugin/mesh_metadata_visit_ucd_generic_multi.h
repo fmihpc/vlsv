@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2014-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #ifndef MESH_METADATA_VISIT_UCD_GENERIC_MULTI_H
 #define MESH_METADATA_VISIT_UCD_GENERIC_MULTI_H
 
@@ -30,7 +32,7 @@ namespace vlsvplugin {
       VisitUCDGenericMultiMeshMetadata();
       virtual ~VisitUCDGenericMultiMeshMetadata();
       
-      uint64_t getBlockSize() const;
+      //uint64_t getBlockSize() const;
       bool getDomainInfoNodes(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 			      const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
       bool getDomainInfoZones(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
@@ -43,13 +45,13 @@ namespace vlsvplugin {
       vlsv::datatype::type getNodeDatatype() const;
       const uint64_t getNodeOffset(int domain) const;
       const uint64_t getNumberOfNodes(int domain) const;
-      const vlsv::geometry::type& getMeshGeometry() const;
-      uint64_t getNumberOfGhostNodes(int domain) const;
-      uint64_t getNumberOfGhostZones(int domain) const;
-      uint64_t getNumberOfLocalNodes(int domain) const;
-      uint64_t getNumberOfLocalZones(int domain) const;
-      uint64_t getNumberOfTotalNodes(int domain) const;
-      uint64_t getNumberOfTotalZones(int domain) const;
+      //const vlsv::geometry::type& getMeshGeometry() const;
+      //uint64_t getNumberOfGhostNodes(uint64_t domain) const;
+      //uint64_t getNumberOfGhostZones(uint64_t domain) const;
+      //uint64_t getNumberOfLocalNodes(uint64_t domain) const;
+      //uint64_t getNumberOfLocalZones(uint64_t domain) const;
+      uint64_t getNumberOfTotalNodes(uint64_t domain) const;
+      uint64_t getNumberOfTotalZones(uint64_t domain) const;
       const uint64_t* getVariableOffsets();
       const uint64_t getZoneOffset(int domain) const;
       
@@ -57,27 +59,27 @@ namespace vlsvplugin {
       
     protected:
 
-      bool domainMetadataRead;        /**< If true, domain metadata has been read.*/
-      bool meshMetadataRead;          /**< If true, mesh metadata has been read.*/
+      //bool domainMetadataRead;        /**< If true, domain metadata has been read.*/
+      //bool meshMetadataRead;          /**< If true, mesh metadata has been read.*/
 
       vlsv::datatype::type nodeDatatype;
       int nodeDataSize;
       
-      vlsv::geometry::type geometry;  /**< Mesh geometry (Cartesian, Cylindrical, etc.).*/
-      uint64_t blockSize;             /**< Number of cells in one block/patch. This will 
-				       * probably be deprecated in the future.*/
-      uint64_t* ghostNodeOffsets;
-      uint64_t* ghostZoneOffsets;
-      uint64_t* meshBoundingBox;      /**< Mesh bounding box information. Contains elements 
-				       * defined in enumeration vlsv::ucdgenericmulti::bbox::elements.*/
-      uint64_t* nodeOffsets;          /**< Offsets into array containing node coordinates. Tells where 
-				       * data for each domain begins. Size of array is number of domains+1.*/
-      uint64_t* nodeVariableOffsets;  /**< Offsets into arrays containing node-centered variables.
-				       * Size of array is number of domains+1.*/
-      uint64_t* zoneOffsets;          /**< Offsets into array containing zone connectivity entries. Tells
-				       * where data for each domain begins. Size of array is number of domains+1.*/
-      uint64_t* zoneVariableOffsets;  /**< Offsets into arrays containing zone-centered variables.
-				       * Size of array is number of domains+1.*/
+      //vlsv::geometry::type geometry;  /**< Mesh geometry (Cartesian, Cylindrical, etc.).*/
+      //uint64_t blockSize;             /**< Number of cells in one block/patch. This will 
+      //                                 * probably be deprecated in the future.*/
+      //uint64_t* ghostNodeOffsets;
+      //uint64_t* ghostZoneOffsets;
+      //uint64_t* meshBoundingBox;      /**< Mesh bounding box information. Contains elements 
+      //                                 * defined in enumeration vlsv::ucdgenericmulti::bbox::elements.*/
+      //uint64_t* nodeOffsets;          /**< Offsets into array containing node coordinates. Tells where 
+      //                                 * data for each domain begins. Size of array is number of domains+1.*/
+      //uint64_t* nodeVariableOffsets;  /**< Offsets into arrays containing node-centered variables.
+      //                                 * Size of array is number of domains+1.*/
+      //uint64_t* zoneOffsets;          /**< Offsets into array containing zone connectivity entries. Tells
+      //                                 * where data for each domain begins. Size of array is number of domains+1.*/
+      //uint64_t* zoneVariableOffsets;  /**< Offsets into arrays containing zone-centered variables.
+      //                                 * Size of array is number of domains+1.*/
 
       bool readDomains(vlsv::Reader* vlsvReader);
    };

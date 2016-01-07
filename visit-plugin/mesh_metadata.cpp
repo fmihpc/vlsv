@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -28,6 +28,8 @@ namespace vlsvplugin {
      centering(centering),name(name),vectorSize(vectorSize) { }
    
    MeshMetadata::MeshMetadata() {
+      meshMetadataRead = false;
+      geometry = vlsv::geometry::UNKNOWN;
       name   = "";
       arraySize = 0;
       dataSize = 0;
@@ -65,13 +67,15 @@ namespace vlsvplugin {
    
    vlsv::datatype::type MeshMetadata::getDatatype() const {return datatype;}
    
+   uint64_t MeshMetadata::getMaximumRefinementLevel() const {return maxRefinementLevel;}
+
    void MeshMetadata::getMeshPeriodicity(bool& xPeriodic,bool& yPeriodic,bool& zPeriodic) const {
       xPeriodic = this->xPeriodic;
       yPeriodic = this->yPeriodic;
       zPeriodic = this->zPeriodic;
    }
    
-   uint64_t MeshMetadata::getMaximumRefinementLevel() const {return maxRefinementLevel;}
+   const vlsv::geometry::type& MeshMetadata::getMeshGeometry() const {return geometry;}
    
    std::string MeshMetadata::getName() const {return name;}
 
@@ -112,8 +116,9 @@ namespace vlsvplugin {
 
    bool MeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       // Check that reader exists:
-      if (vlsvReader == NULL) return false;
-      
+      meshMetadataRead = false;
+      if (vlsvReader == NULL) return meshMetadataRead;
+
       bool success = true;
       map<string,string>::const_iterator it;
       
@@ -125,6 +130,14 @@ namespace vlsvplugin {
          success = false; 
       } else {
          name = it->second;
+      }
+      // Get mesh type:
+      it = attribs.find("type");
+      if (it == attribs.end()) {
+         debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
+         success = false;
+      } else {
+         vlsvMeshType = vlsv::getMeshType(it->second);
       }
       
       // Get arraysize, vectorsize, datasize, datatype:
@@ -207,7 +220,8 @@ namespace vlsvplugin {
          }
       }
 
-      return success;
+      if (success == true) meshMetadataRead = true;
+      return meshMetadataRead;
    }
 }
 

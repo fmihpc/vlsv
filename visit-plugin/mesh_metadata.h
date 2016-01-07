@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2013,2015 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -15,6 +15,8 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+//#pragma once
 
 #ifndef MESH_METADATA_H
 #define MESH_METADATA_H
@@ -50,20 +52,21 @@ namespace vlsvplugin {
       virtual uint64_t getDataSize() const;
       virtual vlsv::datatype::type getDatatype() const;
       virtual uint64_t getMaximumRefinementLevel() const;
+      virtual const vlsv::geometry::type& getMeshGeometry() const;
       virtual void getMeshPeriodicity(bool& xPeriodic,bool& yPeriodic,bool& zPeriodic) const;
       virtual std::string getName() const;
       virtual uint64_t getNumberOfGhostNodes() const;
-      virtual uint64_t getNumberOfGhostNodes(int domain) const =0;
+      virtual uint64_t getNumberOfGhostNodes(uint64_t domain) const =0;
       virtual uint64_t getNumberOfGhostZones() const;
-      virtual uint64_t getNumberOfGhostZones(int domain) const =0;
+      virtual uint64_t getNumberOfGhostZones(uint64_t domain) const =0;
       virtual uint64_t getNumberOfLocalNodes() const;
-      virtual uint64_t getNumberOfLocalNodes(int domain) const =0;
+      virtual uint64_t getNumberOfLocalNodes(uint64_t domain) const =0;
       virtual uint64_t getNumberOfLocalZones() const;
-      virtual uint64_t getNumberOfLocalZones(int domain) const =0;
+      virtual uint64_t getNumberOfLocalZones(uint64_t domain) const =0;
       virtual uint64_t getNumberOfTotalNodes() const;
-      virtual uint64_t getNumberOfTotalNodes(int domain) const =0;
+      virtual uint64_t getNumberOfTotalNodes(uint64_t domain) const =0;
       virtual uint64_t getNumberOfTotalZones() const;
-      virtual uint64_t getNumberOfTotalZones(int domain) const =0;
+      virtual uint64_t getNumberOfTotalZones(uint64_t domain) const =0;
       virtual const double* getTransform() const;
       virtual const std::vector<VariableMetadata>& getVariables() const;
       virtual uint64_t getVectorSize() const;
@@ -78,6 +81,7 @@ namespace vlsvplugin {
       virtual bool read(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
       
     protected:
+      bool meshMetadataRead;
       uint64_t arraySize;
       uint64_t vectorSize;
       uint64_t dataSize;
@@ -95,6 +99,8 @@ namespace vlsvplugin {
       uint64_t N_totalNodes;    /**< Total number of zones (local+ghost) in the mesh, summer over all domains.*/
       uint64_t N_totalZones;    /**< Total number of zones (local+ghost) in the mesh, summed over all domains.*/
       
+      vlsv::geometry::type geometry;  /**< Mesh geometry (Cartesian, Cylindrical, etc.).*/
+      vlsv::mesh::type vlsvMeshType;
       std::string name;         /**< Name of the mesh.*/
       std::string xLabel;       /**< x-coordinate axis label.*/
       std::string yLabel;       /**< y-coordinate axis label.*/

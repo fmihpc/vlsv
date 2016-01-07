@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -16,6 +16,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #ifndef MESH_METADATA_VISIT_POINT_H
 #define MESH_METADATA_VISIT_POINT_H
 
@@ -27,18 +29,18 @@ namespace vlsvplugin {
       VisitPointMeshMetadata();
       ~VisitPointMeshMetadata();
 
-      const vlsv::geometry::type& getMeshGeometry() const;
-      uint64_t getNumberOfGhostNodes(int domain) const;
-      uint64_t getNumberOfGhostZones(int domain) const;
-      uint64_t getNumberOfLocalNodes(int domain) const;
-      uint64_t getNumberOfLocalZones(int domain) const;
-      uint64_t getNumberOfTotalNodes(int domain) const;
-      uint64_t getNumberOfTotalZones(int domain) const;
+      //const vlsv::geometry::type& getMeshGeometry() const;
+      uint64_t getNumberOfGhostNodes(uint64_t domain) const;
+      uint64_t getNumberOfGhostZones(uint64_t domain) const;
+      uint64_t getNumberOfLocalNodes(uint64_t domain) const;
+      uint64_t getNumberOfLocalZones(uint64_t domain) const;
+      uint64_t getNumberOfTotalNodes(uint64_t domain) const;
+      uint64_t getNumberOfTotalZones(uint64_t domain) const;
       
       bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
-      vlsv::geometry::type geometry;  /**< Mesh geometry (Cartesian, Cylindrical, etc.).*/
+      //vlsv::geometry::type geometry;  /**< Mesh geometry (Cartesian, Cylindrical, etc.).*/
    };   
 } // namespace vlsvplugin
 
