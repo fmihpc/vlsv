@@ -29,18 +29,9 @@ namespace vlsvplugin {
       VisitPointMeshMetadata();
       ~VisitPointMeshMetadata();
 
-      //const vlsv::geometry::type& getMeshGeometry() const;
-      uint64_t getNumberOfGhostNodes(uint64_t domain) const;
-      uint64_t getNumberOfGhostZones(uint64_t domain) const;
-      uint64_t getNumberOfLocalNodes(uint64_t domain) const;
-      uint64_t getNumberOfLocalZones(uint64_t domain) const;
-      uint64_t getNumberOfTotalNodes(uint64_t domain) const;
-      uint64_t getNumberOfTotalZones(uint64_t domain) const;
-      
       bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
-      //vlsv::geometry::type geometry;  /**< Mesh geometry (Cartesian, Cylindrical, etc.).*/
    };   
 } // namespace vlsvplugin
 

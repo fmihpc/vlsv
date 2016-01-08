@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -49,31 +49,31 @@ namespace vlsvplugin {
       uint64_t N_nodes_z;
 
       virtual void cartesianNodeLookup2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					 uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+					 uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
 					 vtkUnstructuredGrid* ugrid);
       virtual void cartesianNodeLookup3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-				       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+				       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
 				       vtkUnstructuredGrid* ugrid);
       virtual void cylindricalNodeLookup2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					   uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+					   uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
 					   vtkUnstructuredGrid* ugrid);
       virtual void cylindricalNodeLookup3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					   uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+					   uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
 					   vtkUnstructuredGrid* ugrid);
       virtual void sphericalNodeLookup(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-				       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+				       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
 				       vtkUnstructuredGrid* ugrid);
       
       virtual void insertCartesianNodes2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox);
+					uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox);
       virtual void insertCartesianNodes3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					  uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox);
+					  uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox);
       virtual void insertCylindricalNodes2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					    uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox);
+					    uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox);
       virtual void insertCylindricalNodes3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					    uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox);
+					    uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox);
       virtual void insertSphericalNodes(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox);
+					uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox);
       virtual bool readNodeCoordinateArrays(vlsv::Reader* vlsvReader,const std::string& meshName);
    };
 

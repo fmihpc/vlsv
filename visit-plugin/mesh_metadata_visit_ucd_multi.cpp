@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2016 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -25,21 +25,9 @@ using namespace std;
 
 namespace vlsvplugin {
 
-   VisitUCDMultiMeshMetadata::VisitUCDMultiMeshMetadata() {
-      //domainMetadataRead = false;
-      //meshMetadataRead = false;
-      //domainOffsets = NULL;
-      //ghostOffsets = NULL;
-      //meshBoundingBox = NULL;
-      //variableOffsets = NULL;
-   }
+   VisitUCDMultiMeshMetadata::VisitUCDMultiMeshMetadata() { }
    
-   VisitUCDMultiMeshMetadata::~VisitUCDMultiMeshMetadata() {
-      //delete [] domainOffsets; domainOffsets = NULL;
-      //delete [] ghostOffsets; ghostOffsets = NULL;
-      //delete [] meshBoundingBox; meshBoundingBox = NULL;
-      //delete [] variableOffsets; variableOffsets = NULL;
-   }
+   VisitUCDMultiMeshMetadata::~VisitUCDMultiMeshMetadata() { }
    
    bool VisitUCDMultiMeshMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 						                         const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
@@ -63,50 +51,11 @@ namespace vlsvplugin {
       debug4 << " variable offsets: " << (this->zoneVariableOffsets)[domain] << ' ' << (this->zoneVariableOffsets)[domain+1];
       debug4 << endl;
 
-//      domainOffsets   = this->domainOffsets;
-//      ghostOffsets    = this->ghostOffsets;
-//      variableOffsets = this->variableOffsets;
       domainOffsets = this->zoneDomainOffsets.data();
       ghostOffsets = this->zoneGhostOffsets.data();
       variableOffsets = this->zoneVariableOffsets.data();
       return true;
    }
-
-   //uint64_t VisitUCDMultiMeshMetadata::getBlockSize() const {return blockSize;}
-   //const uint64_t* VisitUCDMultiMeshMetadata::getDomainOffsets() {return domainOffsets.data();}
-   //const uint64_t* VisitUCDMultiMeshMetadata::getGhostOffsets() {return ghostOffsets.data();}
-   //const uint64_t* VisitUCDMultiMeshMetadata::getVariableOffsets() {return variableOffsets;}
-   //const std::vector<uint64_t>& VisitUCDMultiMeshMetadata::getDomainOffsets() const {return domainOffsets;}
-   //const std::vector<uint64_t>& VisitUCDMultiMeshMetadata::getGhostOffsets() const {return ghostOffsets;}
-   //const std::vector<uint64_t>& VisitUCDMultiMeshMetadata::getVariableOffsets() const {return variableOffsets;}
-
-   const uint64_t* VisitUCDMultiMeshMetadata::getMeshBoundingBox() {return meshBoundingBox.data();}
-
-   //const vlsv::geometry::type& VisitUCDMultiMeshMetadata::getMeshGeometry() const {return geometry;}
-   
-   /*uint64_t VisitUCDMultiMeshMetadata::getNumberOfGhostNodes(uint64_t domain) const {
-      return 0;
-   }
-   
-   uint64_t VisitUCDMultiMeshMetadata::getNumberOfGhostZones(uint64_t domain) const {
-      return blockSize*(ghostOffsets[domain+1]-ghostOffsets[domain]);
-   }
-   
-   uint64_t VisitUCDMultiMeshMetadata::getNumberOfLocalNodes(uint64_t domain) const {
-      return 0;
-   }
-   
-   uint64_t VisitUCDMultiMeshMetadata::getNumberOfLocalZones(uint64_t domain) const {
-      return getNumberOfTotalZones(domain)-getNumberOfGhostZones(domain);
-   }
-   
-   uint64_t VisitUCDMultiMeshMetadata::getNumberOfTotalNodes(uint64_t domain) const {
-      return 0;
-   }
-   
-   uint64_t VisitUCDMultiMeshMetadata::getNumberOfTotalZones(uint64_t domain) const {
-      return blockSize*(domainOffsets[domain+1]-domainOffsets[domain]);
-   }*/
 
    bool VisitUCDMultiMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       debug2 << "VLSV\t\t VisitUCDMultiMeshMetadata::read called" << endl;

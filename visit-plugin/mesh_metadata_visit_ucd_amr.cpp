@@ -25,21 +25,9 @@ using namespace std;
 
 namespace vlsvplugin {
 
-   VisitUCDAMRMetadata::VisitUCDAMRMetadata() {
-      //domainMetadataRead = false;
-      //meshMetadataRead = false;
-      //domainOffsets = NULL;
-      //ghostOffsets = NULL;
-      //meshBoundingBox = NULL;
-      //variableOffsets = NULL;
-   }
+   VisitUCDAMRMetadata::VisitUCDAMRMetadata() { }
    
-   VisitUCDAMRMetadata::~VisitUCDAMRMetadata() {
-      //delete [] domainOffsets; domainOffsets = NULL;
-      //delete [] ghostOffsets; ghostOffsets = NULL;
-      //delete [] meshBoundingBox; meshBoundingBox = NULL;
-      //delete [] variableOffsets; variableOffsets = NULL;
-   }
+   VisitUCDAMRMetadata::~VisitUCDAMRMetadata() { }
    
    bool VisitUCDAMRMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 						  const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
@@ -68,42 +56,6 @@ namespace vlsvplugin {
       variableOffsets = VisitMeshMetadata::zoneVariableOffsets.data();
       return true;
    }
-
-   //uint64_t VisitUCDAMRMetadata::getBlockSize() const {return blockSize;}
-   
-   //const uint64_t* VisitUCDAMRMetadata::getDomainOffsets() {return domainOffsets;}
-   
-   //const uint64_t* VisitUCDAMRMetadata::getGhostOffsets() {return ghostOffsets;}
-   
-   //const uint64_t* VisitUCDAMRMetadata::getMeshBoundingBox() {return meshBoundingBox;}
-
-   //const vlsv::geometry::type& VisitUCDAMRMetadata::getMeshGeometry() const {return geometry;}
-   
-   /*uint64_t VisitUCDAMRMetadata::getNumberOfGhostNodes(uint64_t domain) const {
-      return 0;
-   }
-   
-   uint64_t VisitUCDAMRMetadata::getNumberOfGhostZones(uint64_t domain) const {
-      return blockSize*(ghostOffsets[domain+1]-ghostOffsets[domain]);
-   }
-   
-   uint64_t VisitUCDAMRMetadata::getNumberOfLocalNodes(uint64_t domain) const {
-      return 0;
-   }
-   
-   uint64_t VisitUCDAMRMetadata::getNumberOfLocalZones(uint64_t domain) const {
-      return getNumberOfTotalZones(domain)-getNumberOfGhostZones(domain);
-   }
-   
-   uint64_t VisitUCDAMRMetadata::getNumberOfTotalNodes(uint64_t domain) const {
-      return 0;
-   }
-   
-   uint64_t VisitUCDAMRMetadata::getNumberOfTotalZones(uint64_t domain) const {
-      return blockSize*(domainOffsets[domain+1]-domainOffsets[domain]);
-   }*/
-   
-   //const uint64_t* VisitUCDAMRMetadata::getVariableOffsets() {return variableOffsets;}
 
    bool VisitUCDAMRMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       debug2 << "VLSV\t\t VisitUCDAMRMetadata::read called" << endl;
@@ -260,9 +212,6 @@ namespace vlsvplugin {
       }
       
       // Calculate offsets where data for each domain begins:
-      //delete [] domainOffsets;   domainOffsets   = new uint64_t[VisitMeshMetadata::N_domains+1];
-      //delete [] ghostOffsets;    ghostOffsets    = new uint64_t[VisitMeshMetadata::N_domains+1];
-      //delete [] variableOffsets; variableOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
       zoneDomainOffsets.resize(VisitMeshMetadata::N_domains+1); zoneDomainOffsets.shrink_to_fit();
       zoneGhostOffsets.resize(VisitMeshMetadata::N_domains+1); zoneGhostOffsets.shrink_to_fit();
       zoneVariableOffsets.resize(VisitMeshMetadata::N_domains+1); zoneVariableOffsets.shrink_to_fit();

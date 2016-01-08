@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -28,32 +28,6 @@ namespace vlsvplugin {
    VisitPointMeshMetadata::VisitPointMeshMetadata(): VisitMeshMetadata() { }
    
    VisitPointMeshMetadata::~VisitPointMeshMetadata() { }
-
-   //const vlsv::geometry::type& VisitPointMeshMetadata::getMeshGeometry() const {return geometry;}
-
-   uint64_t VisitPointMeshMetadata::getNumberOfGhostNodes(uint64_t domain) const {
-      return MeshMetadata::getNumberOfGhostZones();
-   }
-   
-   uint64_t VisitPointMeshMetadata::getNumberOfGhostZones(uint64_t domain) const {
-      return MeshMetadata::getNumberOfGhostZones();
-   }
-
-   uint64_t VisitPointMeshMetadata::getNumberOfLocalNodes(uint64_t domain) const {
-      return MeshMetadata::getNumberOfLocalZones();
-   }
-   
-   uint64_t VisitPointMeshMetadata::getNumberOfLocalZones(uint64_t domain) const {
-      return MeshMetadata::getNumberOfLocalZones();
-   }
-
-   uint64_t VisitPointMeshMetadata::getNumberOfTotalNodes(uint64_t domain) const {
-      return MeshMetadata::getNumberOfTotalZones();
-   }
-   
-   uint64_t VisitPointMeshMetadata::getNumberOfTotalZones(uint64_t domain) const {
-      return MeshMetadata::getNumberOfTotalZones();
-   }
    
    bool VisitPointMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       if (meshMetadataRead == true) return meshMetadataRead;

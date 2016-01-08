@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -77,11 +77,11 @@ namespace vlsvplugin {
          debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
          return false;
       }
-      const uint64_t N_cells = cellOffsets[domain+1]-cellOffsets[domain];
+      const auto N_cells = cellOffsets[domain+1]-cellOffsets[domain];
       debug4 << "VLSV\t\t N_cells: " << N_cells << endl;
       
       // Get mesh bounding box:
-      const float* const bbox = metadata->getMeshBoundingBox();
+      auto bbox = metadata->getMeshBoundingBox();
       if (bbox == NULL) {
          debug2 << "VLSV\t\t ERROR: Failed to obtain mesh bounding box" << endl;
          return false;
@@ -106,7 +106,7 @@ namespace vlsvplugin {
       unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual> nodeIndices;
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
       
-      for (uint64_t i=0; i<N_cells; ++i) {
+      for (auto i=0; i<N_cells; ++i) {
          result = nodeIndices.insert(make_pair(NodeIndices(ptr[0]+0,ptr[1]+1,ptr[2]+0),counter));
          if (result.second == true) ++counter;
          result = nodeIndices.insert(make_pair(NodeIndices(ptr[0]+0,ptr[1]+0,ptr[2]+0),counter));
@@ -137,20 +137,19 @@ namespace vlsvplugin {
       float* pointer = reinterpret_cast<float*>(coordinates->GetVoidPointer(0));
 
       // Get the transformation matrix
-      const double* transform = metadata->getTransform();
+      auto transform = metadata->getTransform();
       
-      for (unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator 
-	   it=nodeIndices.begin(); it!=nodeIndices.end(); ++it) {
-         const vtkIdType position = it->second;
+      for (const auto& it: nodeIndices) {
+         const vtkIdType position = it.second;
          if (3*position+2 >= N_uniqueNodes*3) {
             cerr << "position exceeds array size!" << endl;
             exit(1);
          }
          
          float crds[3];
-         crds[0] = bbox[0] + it->first.i * bbox[3];
-         crds[1] = bbox[1] + it->first.j * bbox[4];
-         crds[2] = bbox[2] + it->first.k * bbox[5];
+         crds[0] = bbox[0] + it.first.i * bbox[3];
+         crds[1] = bbox[1] + it.first.j * bbox[4];
+         crds[2] = bbox[2] + it.first.k * bbox[5];
          
          pointer[3*position+0] = transform[0]*crds[0] + transform[1]*crds[1] + transform[2 ]*crds[2] + transform[3 ];
          pointer[3*position+1] = transform[4]*crds[0] + transform[5]*crds[1] + transform[6 ]*crds[2] + transform[7 ];
@@ -168,7 +167,7 @@ namespace vlsvplugin {
       vtkIdType vertices[8];
       ptr = cells;
       unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::const_iterator nodeIt;
-      for (uint64_t i=0; i<N_cells; ++i) {
+      for (auto i=0; i<N_cells; ++i) {
          // Find indices of all eight nodes:
          nodeIt = nodeIndices.find(NodeIndices(ptr[0]+0,ptr[1]+1,ptr[2]+0));
          vertices[0] = nodeIt->second;

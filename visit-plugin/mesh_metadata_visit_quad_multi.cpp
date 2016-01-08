@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2015 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -25,21 +25,9 @@ using namespace std;
 
 namespace vlsvplugin {
    
-   VisitQuadMultiMeshMetadata::VisitQuadMultiMeshMetadata(): VisitMeshMetadata() { 
-      //domainMetadataRead = false;
-      //meshMetadataRead = false;
-      //domainOffsets = NULL;
-      //ghostOffsets = NULL;
-      //meshCoordinates = NULL;
-      //variableOffsets = NULL;
-   }
+   VisitQuadMultiMeshMetadata::VisitQuadMultiMeshMetadata(): VisitMeshMetadata() { }
    
-   VisitQuadMultiMeshMetadata::~VisitQuadMultiMeshMetadata() { 
-      //delete [] domainOffsets; domainOffsets = NULL;
-      //delete [] ghostOffsets; ghostOffsets = NULL;
-      //delete [] meshCoordinates; meshCoordinates = NULL;
-      //delete [] variableOffsets; variableOffsets = NULL;
-   }
+   VisitQuadMultiMeshMetadata::~VisitQuadMultiMeshMetadata() { }
    
    bool VisitQuadMultiMeshMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 						  const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
@@ -47,14 +35,14 @@ namespace vlsvplugin {
       
       // Check that VLSVReader exists:
       if (vlsvReader == NULL) {
-	 debug3 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
-	 return false;
+         debug3 << "VLSV\t\t ERROR: VLSVReader is NULL" << endl;
+         return false;
       }
 
       // Read domain info:
       if (readDomains(vlsvReader) == false) {
-	 debug3 << "VLSV\t\t ERROR: Failed to read quad multimesh domains" << endl;
-	 return false;
+         debug3 << "VLSV\t\t ERROR: Failed to read quad multimesh domains" << endl;
+         return false;
       }
       
       debug4 << "VLSV\t\t Domain: " << domain << " cell offsets: ";
@@ -63,46 +51,13 @@ namespace vlsvplugin {
       debug4 << " variable offsets: " << (this->zoneVariableOffsets)[domain] << ' ' << (this->zoneVariableOffsets)[domain+1];
       debug4 << endl;
 
-      //domainOffsets   = this->domainOffsets;
-      //ghostOffsets    = this->ghostOffsets;
-      //variableOffsets = this->variableOffsets;
       domainOffsets = this->zoneDomainOffsets.data();
       ghostOffsets = this->zoneGhostOffsets.data();
       variableOffsets = this->zoneVariableOffsets.data();
       return true;
    }
-   
-   const uint64_t* VisitQuadMultiMeshMetadata::getDomainOffsets() {return zoneDomainOffsets.data();}
-   
-   const uint64_t* VisitQuadMultiMeshMetadata::getGhostOffsets() {return zoneGhostOffsets.data();}
-   
-   const float* VisitQuadMultiMeshMetadata::getMeshBoundingBox() {return meshCoordinates.data();}
 
-   /*uint64_t VisitQuadMultiMeshMetadata::getNumberOfGhostNodes(uint64_t domain) const {
-      return 0;
-   }
-   
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfGhostZones(uint64_t domain) const {
-      return ghostOffsets[domain+1]-ghostOffsets[domain];
-   }
-   
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfLocalNodes(uint64_t domain) const {
-      return 0;
-   }
-   
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfLocalZones(uint64_t domain) const {
-      return getNumberOfTotalZones(domain)-getNumberOfGhostZones(domain);
-   }
-   
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfTotalNodes(uint64_t domain) const {
-      return 0;
-   }
-   
-   uint64_t VisitQuadMultiMeshMetadata::getNumberOfTotalZones(uint64_t domain) const {
-      return domainOffsets[domain+1]-domainOffsets[domain];
-   }*/
-   
-   const uint64_t* VisitQuadMultiMeshMetadata::getVariableOffsets() {return zoneVariableOffsets.data();}
+   const float* VisitQuadMultiMeshMetadata::getMeshBoundingBox() {return meshCoordinates.data();}
    
    bool VisitQuadMultiMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       // Exit if mesh metadata has already been read:
@@ -113,7 +68,7 @@ namespace vlsvplugin {
       meshMetadataRead = false;
       
       // Check that we are reading multi-domain mesh metadata:
-      map<string,string>::const_iterator it = attribs.find("type");
+      auto it = attribs.find("type");
       if (it == attribs.end()) {
          debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
          return false;
@@ -159,24 +114,23 @@ namespace vlsvplugin {
       
       // Remove variables that do not belong to this mesh:
       debug4 << "VLSV\t\t Found variables:" << endl;
-      for (set<string>::const_iterator it=variableNames.begin(); it!=variableNames.end(); ++it) {
+      for (const auto& it : variableNames) {
          map<string,string> attribsOut;
-         map<string,string>::const_iterator mapIt;
          list<pair<string,string> > attribsIn;
          attribsIn.push_back(make_pair("mesh",getName()));
-         attribsIn.push_back(make_pair("name",*it));
+         attribsIn.push_back(make_pair("name",it));
          
          // Skip variables belonging to other meshes:
          if (vlsvReader->getArrayAttributes("VARIABLE",attribsIn,attribsOut) == false) continue;
-         debug4 << "VLSV\t\t\t '" << *it << "' vectorsize: " << attribsOut["vectorsize"] << endl;
+         debug4 << "VLSV\t\t\t '" << it << "' vectorsize: " << attribsOut["vectorsize"] << endl;
          
          bool success = true;
          
          // Parse variable vector size:
          uint64_t vectorSize = 1;
-         mapIt = attribsOut.find("vectorsize");
+         auto mapIt = attribsOut.find("vectorsize");
          if (mapIt == attribsOut.end()) {
-            debug3 << "VLSV\t\t ERROR: Variable '" << *it << "' XML tag does not contain attribute 'vectorsize'" << endl;
+            debug3 << "VLSV\t\t ERROR: Variable '" << it << "' XML tag does not contain attribute 'vectorsize'" << endl;
             success = false;
          } else {
             vectorSize = atoi(mapIt->second.c_str());
@@ -189,14 +143,14 @@ namespace vlsvplugin {
             if (mapIt->second == "zone") centering = vlsvplugin::ZONE_CENTERED;
             else if (mapIt->second == "node") centering = vlsvplugin::NODE_CENTERED;
             else {
-               debug3 << "VLSV\t\t ERROR: Variable '" << *it << "' has unsupported centering!" << endl;
+               debug3 << "VLSV\t\t ERROR: Variable '" << it << "' has unsupported centering!" << endl;
                success = false;
             }
          }
 	 
          if (success == false) continue;
          
-         MeshMetadata::variableMetadata.push_back(vlsvplugin::VariableMetadata(centering,*it,vectorSize));
+         MeshMetadata::variableMetadata.push_back(vlsvplugin::VariableMetadata(centering,it,vectorSize));
       }
 
       meshMetadataRead = true;

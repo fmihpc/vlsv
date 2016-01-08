@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2015 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -27,6 +27,9 @@
 
 namespace vlsvplugin {
    
+   // Mesh bounding box: xmin,ymin,zmin,dx,dy,dz
+   // Stored in MeshMetadata::meshCoordinates, VisitMeshMetadata::meshBoundingBox not used.
+
    class VisitQuadMultiMeshMetadata: public VisitMeshMetadata {
     public:
       VisitQuadMultiMeshMetadata();
@@ -34,26 +37,10 @@ namespace vlsvplugin {
       
       bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 			 const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
-      const uint64_t* getDomainOffsets();
-      const uint64_t* getGhostOffsets();
-      const float* getMeshBoundingBox();
-      //uint64_t getNumberOfGhostNodes(uint64_t domain) const;
-      //uint64_t getNumberOfGhostZones(uint64_t domain) const;
-      //uint64_t getNumberOfLocalNodes(uint64_t domain) const;
-      //uint64_t getNumberOfLocalZones(uint64_t domain) const;
-      //uint64_t getNumberOfTotalNodes(uint64_t domain) const;
-      //uint64_t getNumberOfTotalZones(uint64_t domain) const;
-      const uint64_t* getVariableOffsets();
-      
+      const float* getMeshBoundingBox();      
       bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
-      //bool domainMetadataRead;        /**< If true, domain metadata has been read.*/
-      //bool meshMetadataRead;          /**< If true, mesh metadata has been read.*/
-      //uint64_t* domainOffsets;
-      //uint64_t* ghostOffsets;
-      //uint64_t* variableOffsets;
-      //float* meshCoordinates;
       
       bool readDomains(vlsv::Reader* vlsvReader);
    };

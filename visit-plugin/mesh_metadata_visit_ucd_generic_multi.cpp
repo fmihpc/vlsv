@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2016 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -25,29 +25,9 @@ using namespace std;
 
 namespace vlsvplugin {
 
-   VisitUCDGenericMultiMeshMetadata::VisitUCDGenericMultiMeshMetadata(): VisitMeshMetadata() {
-      //domainMetadataRead = false;
-      //meshMetadataRead = false;
-      //zoneOffsets = NULL;
-      //nodeOffsets = NULL;
-      //zoneOffsets = NULL;
-      //ghostNodeOffsets = NULL;
-      //ghostZoneOffsets = NULL;
-      //meshBoundingBox = NULL;
-      //zoneVariableOffsets = NULL;
-      //nodeVariableOffsets = NULL;
-   }
+   VisitUCDGenericMultiMeshMetadata::VisitUCDGenericMultiMeshMetadata(): VisitMeshMetadata() { }
    
-   VisitUCDGenericMultiMeshMetadata::~VisitUCDGenericMultiMeshMetadata() {
-      //delete [] zoneOffsets; zoneOffsets = NULL;
-      //delete [] nodeOffsets; nodeOffsets = NULL;
-      //delete [] zoneOffsets; zoneOffsets = NULL;
-      //delete [] ghostNodeOffsets; ghostNodeOffsets = NULL;
-      //delete [] ghostZoneOffsets; ghostZoneOffsets = NULL;
-      //delete [] meshBoundingBox; meshBoundingBox = NULL;
-      //delete [] zoneVariableOffsets; zoneVariableOffsets = NULL;
-      //delete [] nodeVariableOffsets; nodeVariableOffsets = NULL;
-   }
+   VisitUCDGenericMultiMeshMetadata::~VisitUCDGenericMultiMeshMetadata() { }
    
    bool VisitUCDGenericMultiMeshMetadata::getDomainInfoNodes(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 							     const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
@@ -105,59 +85,15 @@ namespace vlsvplugin {
       return true;
    }
 
-   //uint64_t VisitUCDGenericMultiMeshMetadata::getBlockSize() const {return blockSize;}
-
    const uint64_t VisitUCDGenericMultiMeshMetadata::getCellConnectivitySize(int domain) const {
       return zoneDomainOffsets[domain+1]-zoneDomainOffsets[domain];
    }
-   
-   //const uint64_t* VisitUCDGenericMultiMeshMetadata::getDomainOffsets() {return zoneOffsets;}
-   
-   //const uint64_t* VisitUCDGenericMultiMeshMetadata::getGhostOffsets() {return ghostZoneOffsets;}
-   
-   const uint64_t* VisitUCDGenericMultiMeshMetadata::getMeshBoundingBox() {return meshBoundingBox.data();}
-
-   //const vlsv::geometry::type& VisitUCDGenericMultiMeshMetadata::getMeshGeometry() const {return geometry;}
 
    vlsv::datatype::type VisitUCDGenericMultiMeshMetadata::getNodeDatatype() const {
       return nodeDatatype;
    }
    
    int VisitUCDGenericMultiMeshMetadata::getNodeDataSize() const {return nodeDataSize;}
-   
-   const uint64_t VisitUCDGenericMultiMeshMetadata::getNodeOffset(int domain) const {return nodeDomainOffsets[domain];}
-   
-   const uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfNodes(int domain) const {
-      return nodeDomainOffsets[domain+1]-nodeDomainOffsets[domain];
-   }
-   
-   //uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfGhostNodes(uint64_t domain) const {
-   //   return nodeGhostOffsets[domain+1]-nodeGhostOffsets[domain];
-   //}
-   
-   //uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfGhostZones(uint64_t domain) const {
-   //   return blockSize*(zoneGhostOffsets[domain+1]-zoneGhostOffsets[domain]);
-   //}
-   
-   //uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfLocalNodes(uint64_t domain) const {
-   //   return getNumberOfTotalNodes(domain)-getNumberOfGhostNodes(domain);
-   //}
-   
-   //uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfLocalZones(uint64_t domain) const {
-   //   return getNumberOfTotalZones(domain)-getNumberOfGhostZones(domain);
-   //}
-   
-   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfTotalNodes(uint64_t domain) const {
-      return nodeVariableOffsets[domain+1]-nodeVariableOffsets[domain];
-   }
-   
-   uint64_t VisitUCDGenericMultiMeshMetadata::getNumberOfTotalZones(uint64_t domain) const {
-      return blockSize*(zoneVariableOffsets[domain+1]-zoneVariableOffsets[domain]);
-   }
-   
-   const uint64_t* VisitUCDGenericMultiMeshMetadata::getVariableOffsets() {return zoneVariableOffsets.data();}
-
-   const uint64_t VisitUCDGenericMultiMeshMetadata::getZoneOffset(int domain) const {return zoneDomainOffsets[domain];}
    
    bool VisitUCDGenericMultiMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       debug2 << "VLSV\t\t VisitUCDGenericMultiMeshMetadata::read called" << endl;
@@ -317,7 +253,6 @@ namespace vlsvplugin {
       // Read mesh bounding box:
       list<pair<string,string> > attribs;
       attribs.push_back(make_pair("mesh",name));
-      //delete [] meshBoundingBox; meshBoundingBox = NULL;
       meshBoundingBox.resize(vlsv::ucdgenericmulti::bbox::SIZE);
       uint64_t* ptr = meshBoundingBox.data();
       if (vlsvReader->read("MESH_BBOX",attribs,0,vlsv::ucdgenericmulti::bbox::SIZE,ptr,false) == false) {
@@ -364,11 +299,6 @@ namespace vlsvplugin {
       }
       
       // Calculate offsets where data for each domain begins:
-      //delete [] nodeOffsets; nodeOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
-      //delete [] ghostNodeOffsets; ghostNodeOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
-      //delete [] ghostZoneOffsets; ghostZoneOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
-      //delete [] zoneVariableOffsets; zoneVariableOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
-      //delete [] nodeVariableOffsets; nodeVariableOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
       nodeDomainOffsets.resize(VisitMeshMetadata::N_domains+1); nodeDomainOffsets.shrink_to_fit();
       nodeGhostOffsets.resize(VisitMeshMetadata::N_domains+1); nodeGhostOffsets.shrink_to_fit();
       nodeVariableOffsets.resize(VisitMeshMetadata::N_domains+1); nodeVariableOffsets.shrink_to_fit();
@@ -416,7 +346,6 @@ namespace vlsvplugin {
          return false;
       }
       
-      //delete [] zoneOffsets; zoneOffsets = new uint64_t[VisitMeshMetadata::N_domains+1];
       zoneDomainOffsets.resize(VisitMeshMetadata::N_domains+1); zoneDomainOffsets.shrink_to_fit();
       zoneDomainOffsets[0] = 0;
       for (auto i=0; i<VisitMeshMetadata::N_domains; ++i) {

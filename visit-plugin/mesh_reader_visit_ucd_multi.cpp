@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -50,7 +50,7 @@ namespace vlsvplugin {
    }
 
    void VisitUCDMultiMeshReader::cartesianNodeLookup2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-						       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+						       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
 						       vtkUnstructuredGrid* ugrid) {
       const int cellType = VTK_QUAD;
       vtkIdType vertices[4];
@@ -87,7 +87,7 @@ namespace vlsvplugin {
    }
    
    void VisitUCDMultiMeshReader::cartesianNodeLookup3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-						     uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+						     uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
 						     vtkUnstructuredGrid* ugrid) {
       const int cellType = VTK_HEXAHEDRON;
       vtkIdType vertices[8];
@@ -134,7 +134,7 @@ namespace vlsvplugin {
    }
 
    void VisitUCDMultiMeshReader::cylindricalNodeLookup2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-                                                         uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+                                                         uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
                                                          vtkUnstructuredGrid* ugrid) {
       const int cellType = VTK_QUAD;
       vtkIdType vertices[4];
@@ -173,7 +173,7 @@ namespace vlsvplugin {
    }
 
    void VisitUCDMultiMeshReader::cylindricalNodeLookup3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-                                                         uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+                                                         uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
                                                          vtkUnstructuredGrid* ugrid) {
       const int cellType = VTK_HEXAHEDRON;
       vtkIdType vertices[8];
@@ -225,7 +225,7 @@ namespace vlsvplugin {
    }
 
    void VisitUCDMultiMeshReader::sphericalNodeLookup(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-						     uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox,
+						     uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
 						     vtkUnstructuredGrid* ugrid) {
       const int cellType = VTK_HEXAHEDRON;
       vtkIdType vertices[8];
@@ -273,7 +273,7 @@ namespace vlsvplugin {
    }   
    
    void VisitUCDMultiMeshReader::insertCartesianNodes2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-							uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
+							uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox) {
       vtkIdType counter = 0;
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
       
@@ -298,7 +298,7 @@ namespace vlsvplugin {
    }
    	  
    void VisitUCDMultiMeshReader::insertCartesianNodes3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-							uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
+							uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox) {
       vtkIdType counter = 0;
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
       
@@ -326,7 +326,7 @@ namespace vlsvplugin {
    }
    
    void VisitUCDMultiMeshReader::insertCylindricalNodes2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-                                                          uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
+                                                          uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox) {
       vtkIdType counter = 0;
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
       
@@ -353,7 +353,7 @@ namespace vlsvplugin {
    }
 	 
    void VisitUCDMultiMeshReader::insertCylindricalNodes3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-							  uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
+							  uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox) {
       vtkIdType counter = 0;
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
       
@@ -386,7 +386,7 @@ namespace vlsvplugin {
    }
    
    void VisitUCDMultiMeshReader::insertSphericalNodes(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-                                                      uint64_t N_totalBlocks,const uint64_t* blockGIDs,const uint64_t* bbox) {
+                                                      uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox) {
       vtkIdType counter = 0;
       pair<unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>::iterator,bool> result;
       
@@ -471,9 +471,9 @@ namespace vlsvplugin {
       debug4 << "VLSV\t\t N_blocks:      " << N_blocks << endl;
             
       // Get mesh bounding box:
-      const uint64_t* const bbox = metadata->getMeshBoundingBox();
-      if (bbox == NULL) {
-         debug2 << "VLSV\t\t ERROR: Failed to obtain mesh bounding box" << endl;
+      const vector<uint64_t>& bbox = metadata->getMeshBoundingBox();
+      if (bbox.size() != 6) {
+         debug2 << "VLSV\t\t ERROR: Failed to obtain a valid mesh bounding box" << endl;
          return false;
       }
       N_nodes_x = bbox[0]*bbox[3]+1;
@@ -724,9 +724,9 @@ namespace vlsvplugin {
       }
       
       // Get mesh bounding box:
-      const uint64_t* bbox = metadata->getMeshBoundingBox();
-      if (bbox == NULL) {
-         debug3 << "VLSV\t\t ERROR: Mesh bounding box array is NULL" << endl;
+      const std::vector<uint64_t>& bbox = metadata->getMeshBoundingBox();
+      if (bbox.size() != 6) {
+         debug3 << "VLSV\t\t ERROR: Mesh bounding box array is invalid" << endl;
          return false;
       }
       const uint64_t blockSize = bbox[3]*bbox[4]*bbox[5];

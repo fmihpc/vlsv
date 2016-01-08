@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2016 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -33,12 +33,8 @@ namespace vlsvplugin {
    VisitMeshMetadata::~VisitMeshMetadata() { }
    
    uint64_t VisitMeshMetadata::getBlockSize() const {return blockSize;}
-
-   const std::vector<uint64_t>& VisitMeshMetadata::getDomainOffsets() const {return zoneDomainOffsets;}
    
-   const std::vector<uint64_t>& VisitMeshMetadata::getGhostOffsets() const {return zoneGhostOffsets;}
-   
-   const std::vector<uint64_t>& VisitMeshMetadata::getVariableOffsets() const {return zoneVariableOffsets;}
+   uint64_t VisitMeshMetadata::getNodeDomainOffset(uint64_t domain) const {return nodeDomainOffsets[domain];}
 
    int VisitMeshMetadata::getBlockOrigin() const {return blockOrigin;}
    
@@ -52,7 +48,6 @@ namespace vlsvplugin {
    
    uint64_t VisitMeshMetadata::getNumberOfGhostNodes(uint64_t domain) const {
       return nodeGhostOffsets[domain+1]-nodeGhostOffsets[domain];
-//      return 0;
    }
 
    uint64_t VisitMeshMetadata::getNumberOfGhostZones(uint64_t domain) const {
@@ -61,7 +56,6 @@ namespace vlsvplugin {
 
    uint64_t VisitMeshMetadata::getNumberOfLocalNodes(uint64_t domain) const {
       return getNumberOfTotalNodes(domain)-getNumberOfGhostNodes(domain);
-//      return 0;
    }
 
    uint64_t VisitMeshMetadata::getNumberOfLocalZones(uint64_t domain) const {
@@ -69,7 +63,7 @@ namespace vlsvplugin {
    }
 
    uint64_t VisitMeshMetadata::getNumberOfTotalNodes(uint64_t domain) const {
-      return 0;
+      return nodeVariableOffsets[domain+1]-nodeVariableOffsets[domain];
    }
 
    uint64_t VisitMeshMetadata::getNumberOfTotalZones() const {return N_totalZones;}
@@ -81,6 +75,8 @@ namespace vlsvplugin {
    int VisitMeshMetadata::getSpatialDimension() const {return spatialDimension;}
    
    int VisitMeshMetadata::getTopologicalDimension() const {return topologicalDimension;}
+
+   uint64_t VisitMeshMetadata::getZoneDomainOffset(uint64_t domain) const {return zoneDomainOffsets[domain];}
 
    bool VisitMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       return MeshMetadata::read(vlsvReader,attribs);

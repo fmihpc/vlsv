@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -45,9 +45,9 @@ namespace vlsvplugin {
    bool VisitUCDGenericMultiMeshReader::readCellVariable(vlsv::Reader* vlsvReader,VisitUCDGenericMultiMeshMetadata*  metadata,
 							 const VariableMetadata& vmd,int domain,void*& output) {
       // Get mesh bounding box:
-      const uint64_t* bbox = metadata->getMeshBoundingBox();
-      if (bbox == NULL) {
-         debug3 << "VLSV\t\t ERROR: Mesh bounding box array is NULL" << endl;
+      const vector<uint64_t>& bbox = metadata->getMeshBoundingBox();
+      if (bbox.size() != vlsv::ucdgenericmulti::bbox::SIZE) {
+         debug3 << "VLSV\t\t ERROR: Mesh bounding box array is invalid" << endl;
          return false;
       }
       const uint64_t blockSize =
@@ -180,29 +180,29 @@ namespace vlsvplugin {
       debug4 << "VLSV\t\t N_blocks:      " << N_blocks << endl;
 
       // Get mesh bounding box:
-      const uint64_t* const bbox = metadata->getMeshBoundingBox();
-      if (bbox == NULL) {
-         debug2 << "VLSV\t\t ERROR: Failed to obtain mesh bounding box" << endl;
+      const vector<uint64_t>& bbox = metadata->getMeshBoundingBox();
+      if (bbox.size() != vlsv::ucdgenericmulti::bbox::SIZE) {
+         debug2 << "VLSV\t\t ERROR: Failed to obtain a valid mesh bounding box" << endl;
          return false;
       }
       const uint64_t blockSize =
           bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_X]
         * bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Y]
         * bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Z];
-      
+
       // Create vtkPoints object and read node coordinates to it:
-      const size_t N_uniqueNodes = metadata->getNumberOfNodes(domain);
+      const size_t N_uniqueNodes = metadata->getNumberOfTotalNodes(domain);
       debug4 << "VLSV\t\t Mesh has " << N_uniqueNodes << " unique nodes" << endl;
       debug5 << "VLSV\t\t Node coordinates datatype: " << metadata->getNodeDatatype() << " datasize: " << metadata->getNodeDataSize() << endl;
-      
+
       const int vtkDatatype = getVtkDatatype(metadata->getNodeDatatype(),metadata->getNodeDataSize());
       debug5 << "VLSV\t\t VTK datatype is: " << vtkDatatype << endl;
 
       vtkPoints* coordinates = vtkPoints::New(vtkDatatype);
-      if (readNodeCoordinateArrays(vlsvReader,metadata->getName(),metadata->getNodeOffset(domain),metadata->getNumberOfNodes(domain),coordinates) == false) {
+      if (readNodeCoordinateArrays(vlsvReader,metadata->getName(),metadata->getNodeDomainOffset(domain),metadata->getNumberOfTotalNodes(domain),coordinates) == false) {
          debug2 << "VLSV\t\t ERROR: Failed to read node coordinates" << endl;
       }
-      debug5 << "VLSV\t Read node coordinates, offset: " << metadata->getNodeOffset(domain) << " nodes: " << metadata->getNumberOfNodes(domain) << endl;
+      debug5 << "VLSV\t Read node coordinates, offset: " << metadata->getNodeDomainOffset(domain) << " nodes: " << metadata->getNumberOfTotalNodes(domain) << endl;
 
       // Create vtkUnstructuredGrid:
       vtkUnstructuredGrid* ugrid = vtkUnstructuredGrid::New();
@@ -214,7 +214,7 @@ namespace vlsvplugin {
       // Read cell connectivity from VLSV file:
       list<pair<string,string> > xmlAttributes;
       xmlAttributes.push_back(make_pair("name",metadata->getName()));
-      const uint32_t connectivityOffset = metadata->getZoneOffset(domain);
+      const uint32_t connectivityOffset = metadata->getZoneDomainOffset(domain);
       const uint32_t connectivitySize = metadata->getCellConnectivitySize(domain);
       debug4 << "VLSV\t\t offset to connectivity array: " << connectivityOffset << " size: " << connectivitySize << endl;
 
@@ -286,7 +286,6 @@ namespace vlsvplugin {
       }
 
       for (uint64_t i=0; i<amount; ++i) {
-         //points->SetPoint(i,buffer[3*i+0],buffer[3*i+1],buffer[3*i+2]);
          points->InsertNextPoint(buffer[3*i+0],buffer[3*i+1],buffer[3*i+2]);
       }
       
@@ -326,14 +325,6 @@ namespace vlsvplugin {
          debug3 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitUCDGenericMultiMeshMedata" << endl;
          return false;
       }
-
-      /*
-      if (vmd.centering == vlsvplugin::ZONE_CENTERED) {
-	 return readCellVariable(vlsvReader,metadata,vmd,domain,output);
-      } else {
-	 output = NULL;
-	 return false;
-      }*/
       
       // Get domain offset arrays:
       const uint64_t* dummy = NULL;
@@ -368,9 +359,9 @@ namespace vlsvplugin {
          N_localValues = metadata->getNumberOfLocalZones(domain);
          
          // Get mesh bounding box:
-         const uint64_t* bbox = metadata->getMeshBoundingBox();
-         if (bbox == NULL) {
-            debug3 << "VLSV\t\t ERROR: Mesh bounding box array is NULL" << endl;
+         const vector<uint64_t>& bbox = metadata->getMeshBoundingBox();
+         if (bbox.size() != vlsv::ucdgenericmulti::bbox::SIZE) {
+            debug3 << "VLSV\t\t ERROR: Mesh bounding box array is invalid" << endl;
             return false;
          }
          blockSize =
@@ -379,31 +370,6 @@ namespace vlsvplugin {
            * bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Z];
       }
       
-      /*
-      // Get mesh bounding box:
-      const uint64_t* bbox = metadata->getMeshBoundingBox();
-      if (bbox == NULL) {
-	 debug3 << "VLSV\t\t ERROR: Mesh bounding box array is NULL" << endl;
-	 return false;
-      }
-      const uint64_t blockSize =
-	  bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_X]
-	* bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Y]
-	* bbox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Z];
-      
-      // Get domain offset arrays:
-      const uint64_t* blockOffsets = NULL;
-      const uint64_t* ghostOffsets  = NULL;
-      const uint64_t* variableOffsets = NULL;
-      if (metadata->getDomainInfo(vlsvReader,domain,blockOffsets,ghostOffsets,variableOffsets) == false) {
-	 debug2 << "VLSV\t\t ERROR: Failed to obtain domain metadata" << endl;
-	 return false;
-      }
-      const uint64_t N_totalBlocks = blockOffsets[domain+1] - blockOffsets[domain];
-      const uint64_t N_ghosts      = ghostOffsets[domain+1] - ghostOffsets[domain];
-      const uint64_t N_blocks      = N_totalBlocks - N_ghosts;
-      const uint64_t components    = vmd.vectorSize;
-      */
       // Create vtkDataArray for variable data:
       bool success = true;
       //vtkFloatArray* rv = vtkFloatArray::New();

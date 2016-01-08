@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2015 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -36,8 +36,8 @@ namespace vlsvplugin {
       
       virtual int getBlockOrigin() const;
       virtual uint64_t getBlockSize() const;
-      virtual const std::vector<uint64_t>& getDomainOffsets() const;
-      virtual const std::vector<uint64_t>& getGhostOffsets() const;
+      virtual uint64_t getNodeDomainOffset(uint64_t domain) const;
+      virtual uint64_t getZoneDomainOffset(uint64_t domain) const;
       virtual const std::vector<uint64_t>& getMeshBoundingBox() const;
       virtual uint64_t getNumberOfGhostNodes(uint64_t domain) const;
       virtual uint64_t getNumberOfGhostZones(uint64_t domain) const;
@@ -46,7 +46,6 @@ namespace vlsvplugin {
       virtual uint64_t getNumberOfTotalNodes(uint64_t domain) const;
       virtual uint64_t getNumberOfTotalZones() const;
       virtual uint64_t getNumberOfTotalZones(uint64_t domain) const;
-      virtual const std::vector<uint64_t>& getVariableOffsets() const;
       virtual avtMeshType getMeshType() const;
       virtual std::string getMeshTypeString() const;
       virtual uint64_t getNumberOfDomains() const;
