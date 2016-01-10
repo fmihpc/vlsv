@@ -51,25 +51,30 @@ namespace vlsvplugin {
       virtual uint64_t getArraySize() const;
       virtual uint64_t getDataSize() const;
       virtual vlsv::datatype::type getDatatype() const;
+      virtual uint64_t getVectorSize() const;
+
       virtual uint64_t getMaximumRefinementLevel() const;
       virtual const vlsv::geometry::type& getMeshGeometry() const;
       virtual void getMeshPeriodicity(bool& xPeriodic,bool& yPeriodic,bool& zPeriodic) const;
       virtual std::string getName() const;
+
       virtual uint64_t getNumberOfGhostNodes() const;
       virtual uint64_t getNumberOfGhostNodes(uint64_t domain) const =0;
-      virtual uint64_t getNumberOfGhostZones() const;
-      virtual uint64_t getNumberOfGhostZones(uint64_t domain) const =0;
       virtual uint64_t getNumberOfLocalNodes() const;
       virtual uint64_t getNumberOfLocalNodes(uint64_t domain) const =0;
-      virtual uint64_t getNumberOfLocalZones() const;
-      virtual uint64_t getNumberOfLocalZones(uint64_t domain) const =0;
       virtual uint64_t getNumberOfTotalNodes() const;
       virtual uint64_t getNumberOfTotalNodes(uint64_t domain) const =0;
+
+      virtual uint64_t getNumberOfGhostZones() const;
+      virtual uint64_t getNumberOfGhostZones(uint64_t domain) const =0;
+      virtual uint64_t getNumberOfLocalZones() const;
+      virtual uint64_t getNumberOfLocalZones(uint64_t domain) const =0;      
       virtual uint64_t getNumberOfTotalZones() const;
       virtual uint64_t getNumberOfTotalZones(uint64_t domain) const =0;
+
       virtual const double* getTransform() const;
       virtual const std::vector<VariableMetadata>& getVariables() const;
-      virtual uint64_t getVectorSize() const;
+
       virtual std::string getXLabel() const;
       virtual std::string getYLabel() const;
       virtual std::string getZLabel() const;

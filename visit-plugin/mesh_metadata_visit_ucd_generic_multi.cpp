@@ -69,7 +69,7 @@ namespace vlsvplugin {
 	     
       // Read domain info:
       if (readDomains(vlsvReader) == false) {
-         debug3 << "VLSV\t\t ERROR: Failed to read quad multimesh domains" << endl;
+         debug3 << "VLSV\t\t ERROR: Failed to read generic ucd multimesh domains" << endl;
          return false;
       }
       
@@ -86,7 +86,7 @@ namespace vlsvplugin {
    }
 
    const uint64_t VisitUCDGenericMultiMeshMetadata::getCellConnectivitySize(int domain) const {
-      return zoneDomainOffsets[domain+1]-zoneDomainOffsets[domain];
+      return zoneConnectivityOffsets[domain+1]-zoneConnectivityOffsets[domain];
    }
 
    vlsv::datatype::type VisitUCDGenericMultiMeshMetadata::getNodeDatatype() const {
@@ -136,6 +136,7 @@ namespace vlsvplugin {
       it = attribs.find("arraysize");
       if (it == attribs.end()) return false;
       MeshMetadata::N_totalZones = atoi(it->second.c_str());
+      debug3 << "VLSV\t\t Mesh has " << MeshMetadata::N_totalZones << " zones" << endl;
 
       // Get mesh geometry:
       it = attribs.find("geometry");
@@ -273,7 +274,7 @@ namespace vlsvplugin {
         << meshBoundingBox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Y] << ' ' 
         << meshBoundingBox[vlsv::ucdgenericmulti::bbox::BLOCK_WIDTH_Z] << endl;
       
-      // Check that MESH_DOMAIN_SIZES has correct vectorsize (=4):
+      // Check that MESH_DOMAIN_SIZES has correct size:
       map<string,string> attribsOut;
       if (vlsvReader->getArrayAttributes("MESH_DOMAIN_SIZES",attribs,attribsOut) == false) {
          debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_DOMAIN_SIZES' attributes for mesh '" << getName() << "' from VLSV file" << endl;
@@ -303,8 +304,10 @@ namespace vlsvplugin {
       nodeGhostOffsets.resize(VisitMeshMetadata::N_domains+1); nodeGhostOffsets.shrink_to_fit();
       nodeVariableOffsets.resize(VisitMeshMetadata::N_domains+1); nodeVariableOffsets.shrink_to_fit();
       zoneGhostOffsets.resize(VisitMeshMetadata::N_domains+1); zoneGhostOffsets.shrink_to_fit();
+      zoneDomainOffsets.resize(VisitMeshMetadata::N_domains+1); zoneDomainOffsets.shrink_to_fit();
       zoneVariableOffsets.resize(VisitMeshMetadata::N_domains+1); zoneVariableOffsets.shrink_to_fit();
       nodeDomainOffsets[0]   = 0;
+      zoneDomainOffsets[0]   = 0;
       nodeGhostOffsets[0]    = 0;
       zoneGhostOffsets[0]    = 0;
       zoneVariableOffsets[0] = 0;
@@ -319,6 +322,9 @@ namespace vlsvplugin {
          
          zoneGhostOffsets[i+1] = zoneGhostOffsets[i]
            + domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::GHOST_BLOCKS];
+         zoneDomainOffsets[i+1] = zoneDomainOffsets[i]
+           + domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::TOTAL_BLOCKS]
+           - domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::GHOST_BLOCKS];
          nodeDomainOffsets[i+1] = nodeDomainOffsets[i]
            + domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::TOTAL_NODES];
          nodeGhostOffsets[i+1] = nodeGhostOffsets[i]
@@ -336,9 +342,10 @@ namespace vlsvplugin {
            + domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::TOTAL_NODES]
            - domainInfo[i*vlsv::ucdgenericmulti::domainsizes::SIZE+vlsv::ucdgenericmulti::domainsizes::GHOST_NODES];
       }
+      debug3 << "VLSV\t\t Mesh has " << MeshMetadata::N_localZones << " local zones in total" << endl;
       delete [] domainInfo; domainInfo = NULL;
       MeshMetadata::N_ghostZones = zoneGhostOffsets[VisitMeshMetadata::N_domains];
-      
+
       // Read offsets into cell connectivity array:
       if (vlsvReader->read("MESH_OFFSETS",attribs,0,VisitMeshMetadata::N_domains,domainInfo) == false) {
          debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_CELL_OFFSETS'" << endl;
@@ -346,10 +353,9 @@ namespace vlsvplugin {
          return false;
       }
       
-      zoneDomainOffsets.resize(VisitMeshMetadata::N_domains+1); zoneDomainOffsets.shrink_to_fit();
-      zoneDomainOffsets[0] = 0;
+      zoneConnectivityOffsets.resize(VisitMeshMetadata::N_domains+1); zoneConnectivityOffsets.shrink_to_fit();
       for (auto i=0; i<VisitMeshMetadata::N_domains; ++i) {
-         zoneDomainOffsets[i+1] = zoneDomainOffsets[i]
+         zoneConnectivityOffsets[i+1] = zoneConnectivityOffsets[i]
            + domainInfo[i*vlsv::ucdgenericmulti::offsets::SIZE+vlsv::ucdgenericmulti::offsets::ZONE_ENTRIES];
       }
       delete [] domainInfo; domainInfo = NULL;

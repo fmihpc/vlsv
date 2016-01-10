@@ -384,8 +384,10 @@ namespace vlsvplugin {
       attribs.push_back(make_pair("name",vmd.name));
       attribs.push_back(make_pair("mesh",md->getName()));
       if (vlsvReader->read("VARIABLE",attribs,variableOffsets[domain]*blockSize,N_localValues*blockSize,variableData,false) == false) {
-	 debug2 << "VLSV\t\t ERROR: Failed to read domain's real cell variable data" << endl;
-	 success = false;
+         debug2 << "VLSV\t\t ERROR: Failed to read domain's real cell variable data" << endl;
+         debug3 << "VLSV\t\t        variable offset: " << variableOffsets[domain] << " local values: " << N_localValues << endl;
+         debug3 << "VLSV\t\t        block size: " << blockSize << endl;
+         success = false;
       }
       
       // Read array that tell which domains contain ghost block data:
@@ -393,46 +395,46 @@ namespace vlsvplugin {
       meshAttribs.push_back(make_pair("mesh",md->getName()));
       uint64_t* ghostDomains = NULL;
       if (vlsvReader->read("MESH_GHOST_DOMAINS",meshAttribs,ghostOffsets[domain],N_ghostValues,ghostDomains,true) == false) {
-	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_DOMAINS array" << endl;
-	 delete [] ghostDomains; ghostDomains = NULL;
-	 success = false;
+         debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_DOMAINS array" << endl;
+         delete [] ghostDomains; ghostDomains = NULL;
+         success = false;
       }
       
       // Read array that tells local IDs of ghost cell data in each domain:
       uint64_t* ghostLocalIDs = NULL;
       if (vlsvReader->read("MESH_GHOST_LOCALIDS",meshAttribs,ghostOffsets[domain],N_ghostValues,ghostLocalIDs,true) == false) {
-	 debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_LOCALIDS array" << endl;
-	 delete [] ghostDomains; ghostDomains = NULL;
-	 delete [] ghostLocalIDs; ghostLocalIDs = NULL;
-	 success = false;
+         debug2 << "VLSV\t\t ERROR: Failed to read domain's MESH_GHOST_LOCALIDS array" << endl;
+         delete [] ghostDomains; ghostDomains = NULL;
+         delete [] ghostLocalIDs; ghostLocalIDs = NULL;
+         success = false;
       }
       
       // Read variable values for domain's ghost cells:
       if (success == true) {
-	 //float* ptr = variableData + N_blocks*blockSize*components;
-	 double* ptr = variableData + N_localValues*blockSize*N_components;
-	 for (uint64_t i=0; i<N_ghostValues; ++i) {
-	    const uint64_t ghostDomainID    = ghostDomains[i];
-	    const uint64_t ghostValueOffset = (variableOffsets[ghostDomainID] + ghostLocalIDs[i])*blockSize;
-	    if (vlsvReader->read("VARIABLE",attribs,ghostValueOffset,blockSize,ptr,false) == false) {
-	       debug2 << "VLSV\t\t ERROR: Failed to read domain's ghost values" << endl;
-	       success = false;
-	       break;
-	    }
-	    ptr += blockSize*N_components;
-	 }
+         //float* ptr = variableData + N_blocks*blockSize*components;
+         double* ptr = variableData + N_localValues*blockSize*N_components;
+         for (uint64_t i=0; i<N_ghostValues; ++i) {
+            const uint64_t ghostDomainID    = ghostDomains[i];
+            const uint64_t ghostValueOffset = (variableOffsets[ghostDomainID] + ghostLocalIDs[i])*blockSize;
+            if (vlsvReader->read("VARIABLE",attribs,ghostValueOffset,blockSize,ptr,false) == false) {
+               debug2 << "VLSV\t\t ERROR: Failed to read domain's ghost values" << endl;
+               success = false;
+               break;
+            }
+            ptr += blockSize*N_components;
+         }
       }
       
       delete [] ghostDomains; ghostDomains = NULL;
       delete [] ghostLocalIDs; ghostLocalIDs = NULL;
       
       if (success == false) {
-	 rv->Delete();
-	 output = NULL;
-	 return false;
+         rv->Delete();
+         output = NULL;
+         return false;
       } else {
-	 output = rv;
-	 return true;
+         output = rv;
+         return true;
       }
    }
       
