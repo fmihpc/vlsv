@@ -454,10 +454,6 @@ namespace vlsvplugin {
       }
       
       maxRefinementLevel = metadata->getMaximumRefinementLevel();
-      debug4 << "VLSV\t\t arraysize:            " << metadata->getArraySize() << endl;
-      debug4 << "VLSV\t\t vectorsize:           " << metadata->getVectorSize() << endl;
-      debug4 << "VLSV\t\t datasize:             " << metadata->getDataSize() << endl;
-      debug4 << "VLSV\t\t datatype:             " << metadata->getDatatype() << endl;
       debug4 << "VLSV\t\t max refinement level: " << maxRefinementLevel << endl;
 
       // Get domain offset arrays.

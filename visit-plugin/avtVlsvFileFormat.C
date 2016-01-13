@@ -314,8 +314,8 @@ void avtVlsvFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData* md) {
       }
    }
    
-   for (auto it=meshMetadata.begin(); it!=meshMetadata.end(); ++it) {
-      addMesh(md,it->second);
+   for (auto& it: meshMetadata) {
+      addMesh(md,it.second);
    }
    
    //
@@ -360,28 +360,27 @@ void avtVlsvFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData* md) {
    //
    // AddTensorVarToMetaData(md, varname, mesh_for_this_var, cent,tensor_dim);
    //
-   
-   for (auto it=meshMetadata.begin(); it!=meshMetadata.end(); ++it) {
+   for (auto& it: meshMetadata) {
       avtCentering centering;
-      const auto& variables = it->second->getVariables();
-      for (auto var=variables.begin(); var!=variables.end(); ++var) {
+      const auto& variables = it.second->getVariables();
+      for (auto& var: variables) {
          // Determine variable centering:
-         if ((*var).centering == vlsvplugin::ZONE_CENTERED) centering = AVT_ZONECENT;
+         if (var.centering == vlsvplugin::ZONE_CENTERED) centering = AVT_ZONECENT;
          else centering = AVT_NODECENT;
 
          // Add variable as a correct type to mesh:
-         switch ((*var).vectorSize) {
+         switch (var.vectorSize) {
          case 1:
-            AddScalarVarToMetaData(md,(*var).name,it->second->getName(),centering);
+            AddScalarVarToMetaData(md,var.name,it.second->getName(),centering);
             break;
          case 2:
-            AddVectorVarToMetaData(md,(*var).name,it->second->getName(),centering,2);
+            AddVectorVarToMetaData(md,var.name,it.second->getName(),centering,2);
             break;
          case 3:
-            AddVectorVarToMetaData(md,(*var).name,it->second->getName(),centering,3);
+            AddVectorVarToMetaData(md,var.name,it.second->getName(),centering,3);
             break;
          case 9:
-            AddTensorVarToMetaData(md,(*var).name,it->second->getName(),centering,9);
+            AddTensorVarToMetaData(md,var.name,it.second->getName(),centering,9);
             break;
          default:
             break;

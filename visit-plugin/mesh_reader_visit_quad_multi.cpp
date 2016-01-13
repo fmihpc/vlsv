@@ -64,11 +64,6 @@ namespace vlsvplugin {
          return false;
       }
       
-      debug4 << "VLSV\t\t arraysize:  " << metadata->getArraySize() << endl;
-      debug4 << "VLSV\t\t vectorsize: " << metadata->getVectorSize() << endl;
-      debug4 << "VLSV\t\t datasize:   " << metadata->getDataSize() << endl;
-      debug4 << "VLSV\t\t datatype:   " << metadata->getDatatype() << endl;
-
       // Get domain offset arrays:
       const uint64_t* cellOffsets = NULL;
       const uint64_t* ghostOffsets  = NULL;      

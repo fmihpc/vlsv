@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2015 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -48,29 +48,32 @@ namespace vlsvplugin {
       MeshMetadata();      
       virtual ~MeshMetadata();
 
-      virtual uint64_t getArraySize() const;
-      virtual uint64_t getDataSize() const;
-      virtual vlsv::datatype::type getDatatype() const;
-      virtual uint64_t getVectorSize() const;
-
       virtual uint64_t getMaximumRefinementLevel() const;
       virtual const vlsv::geometry::type& getMeshGeometry() const;
+      virtual const std::vector<uint64_t>& getMeshBoundingBox() const;
       virtual void getMeshPeriodicity(bool& xPeriodic,bool& yPeriodic,bool& zPeriodic) const;
       virtual std::string getName() const;
 
-      virtual uint64_t getNumberOfGhostNodes() const;
-      virtual uint64_t getNumberOfGhostNodes(uint64_t domain) const =0;
-      virtual uint64_t getNumberOfLocalNodes() const;
-      virtual uint64_t getNumberOfLocalNodes(uint64_t domain) const =0;
-      virtual uint64_t getNumberOfTotalNodes() const;
-      virtual uint64_t getNumberOfTotalNodes(uint64_t domain) const =0;
+      virtual uint64_t getNodeDomainOffset(uint64_t domain) const;
+      virtual uint64_t getZoneDomainOffset(uint64_t domain) const;
 
-      virtual uint64_t getNumberOfGhostZones() const;
-      virtual uint64_t getNumberOfGhostZones(uint64_t domain) const =0;
-      virtual uint64_t getNumberOfLocalZones() const;
-      virtual uint64_t getNumberOfLocalZones(uint64_t domain) const =0;      
+      virtual uint64_t getNumberOfDomains() const;
+      //virtual uint64_t getNumberOfGhostNodes() const;
+      virtual uint64_t getNumberOfGhostNodes(uint64_t domain) const;
+      //virtual uint64_t getNumberOfLocalNodes() const;
+      virtual uint64_t getNumberOfLocalNodes(uint64_t domain) const;
+      //virtual uint64_t getNumberOfTotalNodes() const;
+      virtual uint64_t getNumberOfTotalNodes(uint64_t domain) const;
+
+      //virtual uint64_t getNumberOfGhostZones() const;
+      virtual uint64_t getNumberOfGhostZones(uint64_t domain) const;
+      //virtual uint64_t getNumberOfLocalZones() const;
+      virtual uint64_t getNumberOfLocalZones(uint64_t domain) const;      
       virtual uint64_t getNumberOfTotalZones() const;
-      virtual uint64_t getNumberOfTotalZones(uint64_t domain) const =0;
+      virtual uint64_t getNumberOfTotalZones(uint64_t domain) const;
+
+      virtual int getSpatialDimension() const;
+      virtual int getTopologicalDimension() const;
 
       virtual const double* getTransform() const;
       virtual const std::vector<VariableMetadata>& getVariables() const;
@@ -84,19 +87,21 @@ namespace vlsvplugin {
       virtual bool hasTransform() const;
       
       virtual bool read(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
-      
+
     protected:
-      bool meshMetadataRead;
-      uint64_t arraySize;
-      uint64_t vectorSize;
-      uint64_t dataSize;
-      vlsv::datatype::type datatype;
+      bool domainMetadataRead;                /**< If true, domain metadata has been read.*/
+      bool meshMetadataRead;                  /**< If true, mesh metadata has been read.*/
       std::vector<VariableMetadata> variableMetadata;
+
+      int spatialDimension;       /**< Spatial dimension of mesh.*/
+      int topologicalDimension;   /**< Topological dimension of mesh.*/
 
       int32_t maxRefinementLevel; /**< Maximum refinement level in mesh, equals zero if
                                    * the mesh type does not support refinement, or if the 
                                    * mesh is not refined.*/
       
+      uint64_t blockSize;
+      uint64_t N_domains;       /**< Number of domains in the mesh.*/
       uint64_t N_ghostNodes;    /**< Total number of ghost nodes in the mesh, summed over all domains.*/
       uint64_t N_ghostZones;    /**< Total number of ghost zones in the mesh, summed over all domains.*/
       uint64_t N_localNodes;    /**< Total number of local nodes in the mesh, summer over all domains.*/
@@ -120,6 +125,19 @@ namespace vlsvplugin {
       std::string transformName; /**< Name of the transformation matrix that needs to be applied 
                                   * to the node coordinates. Zero length string indicates no matrix.*/
       double transform[16];      /**< Components of the transform matrix, defaults to identity matrix.*/
+
+      std::vector<uint64_t> meshBoundingBox;
+      std::vector<float> meshCoordinates;
+
+      std::vector<uint64_t> nodeDomainOffsets;
+      std::vector<uint64_t> nodeGhostOffsets;
+      std::vector<uint64_t> nodeVariableOffsets;
+
+      std::vector<uint64_t> zoneConnectivityOffsets; /**< For each domain, an offset into zone connectivity array
+                                                      * that tells where to start to read data from.*/
+      std::vector<uint64_t> zoneDomainOffsets;
+      std::vector<uint64_t> zoneGhostOffsets;
+      std::vector<uint64_t> zoneVariableOffsets;
    };
 }
 

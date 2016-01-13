@@ -24,16 +24,16 @@ using namespace std;
 
 namespace vlsvplugin {
    
-   VariableMetadata::VariableMetadata(VariableCentering centering,const std::string& name,int vectorSize): 
+   VariableMetadata::VariableMetadata(VariableCentering centering,const std::string& name,int vectorSize):
      centering(centering),name(name),vectorSize(vectorSize) { }
    
    MeshMetadata::MeshMetadata() {
+      blockSize = 1;
+      domainMetadataRead = false;
       meshMetadataRead = false;
       geometry = vlsv::geometry::UNKNOWN;
       name   = "";
-      arraySize = 0;
-      dataSize = 0;
-      vectorSize = 0;
+      N_domains    = 1;
       N_ghostNodes = 0;
       N_ghostZones = 0;
       N_localNodes = 0;
@@ -60,14 +60,10 @@ namespace vlsvplugin {
    }
    
    MeshMetadata::~MeshMetadata() { }
-
-   uint64_t MeshMetadata::getArraySize() const {return arraySize;}
-   
-   uint64_t MeshMetadata::getDataSize() const {return dataSize;}
-   
-   vlsv::datatype::type MeshMetadata::getDatatype() const {return datatype;}
    
    uint64_t MeshMetadata::getMaximumRefinementLevel() const {return maxRefinementLevel;}
+
+   const std::vector<uint64_t>& MeshMetadata::getMeshBoundingBox() const {return meshBoundingBox;}
 
    void MeshMetadata::getMeshPeriodicity(bool& xPeriodic,bool& yPeriodic,bool& zPeriodic) const {
       xPeriodic = this->xPeriodic;
@@ -76,26 +72,58 @@ namespace vlsvplugin {
    }
    
    const vlsv::geometry::type& MeshMetadata::getMeshGeometry() const {return geometry;}
-   
+
    std::string MeshMetadata::getName() const {return name;}
 
-   uint64_t MeshMetadata::getNumberOfGhostNodes() const {return N_ghostNodes;}
-   
-   uint64_t MeshMetadata::getNumberOfGhostZones() const {return N_ghostZones;}
+   uint64_t MeshMetadata::getNodeDomainOffset(uint64_t domain) const {return nodeDomainOffsets[domain];}
 
-   uint64_t MeshMetadata::getNumberOfLocalNodes() const {return N_localNodes;}
-   
-   uint64_t MeshMetadata::getNumberOfLocalZones() const {return N_localZones;}
+   uint64_t MeshMetadata::getZoneDomainOffset(uint64_t domain) const {return zoneDomainOffsets[domain];}
 
-   uint64_t MeshMetadata::getNumberOfTotalNodes() const {return N_totalNodes;}
+   uint64_t MeshMetadata::getNumberOfDomains() const {return N_domains;}
+
+   //uint64_t MeshMetadata::getNumberOfGhostNodes() const {return N_ghostNodes;}
    
+   uint64_t MeshMetadata::getNumberOfGhostNodes(uint64_t domain) const {
+      return nodeGhostOffsets[domain+1]-nodeGhostOffsets[domain];
+   }
+
+   //uint64_t MeshMetadata::getNumberOfGhostZones() const {return N_ghostZones;}
+
+   uint64_t MeshMetadata::getNumberOfGhostZones(uint64_t domain) const {
+      return blockSize*(zoneGhostOffsets[domain+1]-zoneGhostOffsets[domain]);
+   }
+
+   //uint64_t MeshMetadata::getNumberOfLocalNodes() const {return N_localNodes;}
+   
+   uint64_t MeshMetadata::getNumberOfLocalNodes(uint64_t domain) const {
+      return getNumberOfTotalNodes(domain)-getNumberOfGhostNodes(domain);
+   }
+
+   //uint64_t MeshMetadata::getNumberOfLocalZones() const {return N_localZones;}
+
+   uint64_t MeshMetadata::getNumberOfLocalZones(uint64_t domain) const {
+      return getNumberOfTotalZones(domain)-getNumberOfGhostZones(domain);
+   }
+
+   //uint64_t MeshMetadata::getNumberOfTotalNodes() const {return N_totalNodes;}
+   
+   uint64_t MeshMetadata::getNumberOfTotalNodes(uint64_t domain) const {
+      return nodeVariableOffsets[domain+1]-nodeVariableOffsets[domain];
+   }
+
    uint64_t MeshMetadata::getNumberOfTotalZones() const {return N_totalZones;}
+
+   uint64_t MeshMetadata::getNumberOfTotalZones(uint64_t domain) const {
+      return blockSize*(zoneDomainOffsets[domain+1]-zoneDomainOffsets[domain]);
+   }
+
+   int MeshMetadata::getSpatialDimension() const {return spatialDimension;}
+   
+   int MeshMetadata::getTopologicalDimension() const {return topologicalDimension;}
 
    const double* MeshMetadata::getTransform() const {return transform;}
 
    const std::vector<VariableMetadata>& MeshMetadata::getVariables() const {return variableMetadata;}
-   
-   uint64_t MeshMetadata::getVectorSize() const {return vectorSize;}
    
    std::string MeshMetadata::getXLabel() const {return xLabel;}
    
@@ -120,11 +148,10 @@ namespace vlsvplugin {
       if (vlsvReader == NULL) return meshMetadataRead;
 
       bool success = true;
-      map<string,string>::const_iterator it;
       
       // Get mandatory mesh parameters
       // Get mesh name:
-      it = attribs.find("name"); 
+      auto it = attribs.find("name"); 
       if (it == attribs.end()) {
          debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'name'" << endl;
          success = false; 
@@ -138,39 +165,6 @@ namespace vlsvplugin {
          success = false;
       } else {
          vlsvMeshType = vlsv::getMeshType(it->second);
-      }
-      
-      // Get arraysize, vectorsize, datasize, datatype:
-      it = attribs.find("arraysize"); 
-      if (it == attribs.end()) {
-         debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'arraysize'" << endl;
-         success = false;
-      } else {
-         arraySize = atoi(it->second.c_str());
-      }
-      
-      it = attribs.find("vectorsize");
-      if (it == attribs.end()) {
-         debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'vectorsize'" << endl;
-         success = false;
-      } else {
-         vectorSize = atoi(it->second.c_str());
-      }
-      
-      it = attribs.find("datasize");
-      if (it == attribs.end()) {
-         debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'datasize'" << endl;
-         success = false;
-      } else {
-         dataSize = atoi(it->second.c_str());
-      }
-      
-      it = attribs.find("datatype");
-      if (it == attribs.end()) {
-         debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'datatype'" << endl;
-         success = false;
-      } else {
-         datatype = vlsv::getVLSVDatatype(it->second);
       }
 
       // Get optional mesh parameters:
@@ -200,7 +194,7 @@ namespace vlsvplugin {
          }
 
          // Check arraysize and vectorsize for correctness:
-         map<string,string>::const_iterator xml = attribsOut.find("arraysize");
+         auto xml = attribsOut.find("arraysize");
          if (atoi(xml->second.c_str()) != 16) {
             debug3 << "VLSV\t\t ERROR: Transform matrix has wrong arraysize '" << atoi(xml->second.c_str()) << "', should be 16" << endl;
             transformName = ""; return false;

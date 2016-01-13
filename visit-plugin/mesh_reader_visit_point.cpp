@@ -60,13 +60,8 @@ namespace vlsvplugin {
          return false;
       }
 
-      debug4 << "VLSV\t\t arraysize:  " << metadata->getArraySize() << endl;
-      debug4 << "VLSV\t\t vectorsize: " << metadata->getVectorSize() << endl;
-      debug4 << "VLSV\t\t datasize:   " << metadata->getDataSize() << endl;
-      debug4 << "VLSV\t\t datatype:   " << metadata->getDatatype() << endl;
-      
       uint64_t readOffset = 0;
-      uint64_t N_points = metadata->getArraySize();
+      uint64_t N_points = metadata->getNumberOfTotalZones();
       
       // Determine VTK datatype that corresponds to the one in VLSV file:
       vtkPoints* points = NULL;
@@ -156,7 +151,7 @@ namespace vlsvplugin {
       points->Delete();
       ugrid->Allocate(N_points);
       
-      for (uint64_t i=0; i<N_points; ++i) {
+      for (auto i=0; i<N_points; ++i) {
          vtkIdType onevertex = static_cast<vtkIdType>(i);
          ugrid->InsertNextCell(VTK_VERTEX,1,&onevertex);
       }
