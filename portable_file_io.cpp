@@ -45,7 +45,7 @@ namespace fileio {
 		#ifdef WINDOWS
 			return _getcwd(buf,size);
 		#else
-			return getcwd(buf,size);
+			return ::getcwd(buf,size);
 		#endif
 	}
 
