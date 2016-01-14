@@ -37,7 +37,7 @@ namespace fileio {
 		#ifdef WINDOWS
 			return _chdir(path);
 		#else
-			return chdir(path);
+			return ::chdir(path);
 		#endif
 	}
 
