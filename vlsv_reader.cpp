@@ -155,7 +155,7 @@ namespace vlsv {
          #endif
          return false;
       }
-   
+
       // If given filename includes path, chdir into that path:
       string fnameWithoutPath;
       string pathName;
@@ -168,13 +168,14 @@ namespace vlsv {
          } else {
             pathName = fname.substr(0,position);
             fnameWithoutPath = fname.substr(position+1);
+            // Chdir to path containing input file and attempt to open the file, 
+            // then chdir back to current working directory. 
+            // Chdir returns zero value if it succeeds
+            // Not done if the string is empty as chdir fials in that case.
+            if (fileio::chdir(pathName.c_str()) != 0) success = false;
          }
       }
 
-      // Chdir to path containing input file and attempt to open the file, 
-      // then chdir back to current working directory. 
-      // Chdir returns zero value if it succeeds
-      if (fileio::chdir(pathName.c_str()) != 0) success = false;
       filein.open(fnameWithoutPath.c_str(), fstream::in);
       if (fileio::chdir(cwd) != 0) success = false;
 
@@ -185,6 +186,7 @@ namespace vlsv {
          filein.close();
          success = false;
       }
+
       if (success == false) {
          #ifndef NDEBUG
             cerr << "vlsv::Reader ERROR: File '" << fnameWithoutPath << "' could not be opened!" << endl;
