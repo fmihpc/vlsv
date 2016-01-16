@@ -68,7 +68,7 @@ namespace vlsv {
          if (arrayElements % maxElementsPerRead != 0) ++N_reads;
 
          // Add N_reads multi-read units:
-         for (auto i=0; i<N_reads; ++i) {
+         for (size_t i=0; i<N_reads; ++i) {
             auto elements = maxElementsPerRead;
             if ((i+1)*maxElementsPerRead >= arrayElements) elements = arrayElements - i*maxElementsPerRead;
 
@@ -132,7 +132,7 @@ namespace vlsv {
       // insert dummy reads to the end of multireadList:
       if (N_collectiveCalls > multireadList.size()) {
          const size_t N_dummyCalls = N_collectiveCalls-multireadList.size();
-         for (auto i=0; i<N_dummyCalls; ++i) {
+         for (size_t i=0; i<N_dummyCalls; ++i) {
             multireadList.push_back(make_pair(multiReadUnits.end(),multiReadUnits.end()));
          }
       }
@@ -142,7 +142,7 @@ namespace vlsv {
       unitOffset += arrayOffset*arrayOpen.vectorSize*arrayOpen.dataSize; // Byte offset relative to array start where 
                                                                          // this process starts to read data from.
 
-      for (auto i=0; i<multireadList.size(); ++i) {
+      for (size_t i=0; i<multireadList.size(); ++i) {
          if (flushMultiread(i,unitOffset,multireadList[i].first,multireadList[i].second) == false) success = false;
          for (auto it=multireadList[i].first; it!=multireadList[i].second; ++it) {
             unitOffset += it->amount*arrayOpen.dataSize;
@@ -211,7 +211,7 @@ namespace vlsv {
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
       } else {
-         for (auto i=0; i<N_attribs; ++i) {
+         for (size_t i=0; i<N_attribs; ++i) {
             MPI_Bcast(attribName,maxLength,MPI_Type<char>(),masterRank,comm);
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
             attribsOut[attribName] = attribValue;
@@ -327,7 +327,7 @@ namespace vlsv {
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
       } else {
-         for (auto i=0; i<N_entries; ++i) {
+         for (size_t i=0; i<N_entries; ++i) {
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
             output.insert(attribValue);
          }
@@ -485,7 +485,7 @@ namespace vlsv {
       // Read data:
       const auto t_start = MPI_Wtime();
       size_t offset = 0;
-      for (auto counter=0; counter<globalExtraCollectiveReads; ++counter) {
+      for (size_t counter=0; counter<globalExtraCollectiveReads; ++counter) {
          char*  pos;
          size_t readSize;
 

@@ -236,7 +236,6 @@ namespace vlsv {
       // failed quite often in meteo, at least when writing many small files. It was 
       // possibly caused by MPI_File_delete call, that's the reason for the barrier.
       int accessMode = (MPI_MODE_WRONLY | MPI_MODE_CREATE);
-      if (append == true) accessMode = (MPI_MODE_RDWR | MPI_MODE_CREATE);
       fileName = fname;
       if (dryRunning == false) {
          if (myrank == masterRank && append == false) MPI_File_delete(const_cast<char*>(fname.c_str()),mpiInfo);
@@ -257,17 +256,24 @@ namespace vlsv {
       }
       
       // Master process opens an XML tree for storing the footer:
-      uint64_t values[2];
+      uint64_t values[2] = {0,0};
       if (myrank == masterRank) {
          xmlWriter     = new muxml::MuXML();
-         muxml::XMLNode* root = xmlWriter->getRoot();
+         muxml::XMLNode* root = xmlWriter->getRoot();         
          if (append == false) {
             xmlWriter->addNode(root,"VLSV","");
          } else {
             // Read file endianness and footer position
-            fstream filein(fname,fstream::in);            
-            char* ptr = reinterpret_cast<char*>(values[0]);
+            fstream filein(fname,fstream::in);
+            char* ptr = reinterpret_cast<char*>(values);
             filein.read(ptr,2*sizeof(uint64_t));
+
+            // If the endianness of this computer does not match the file endianness, exit:
+            if (values[0] != detectEndianness()) {
+               MPI_File_Close(&fileptr);
+               fileOpen = false;
+               return false;
+            }
 
             // Read footer to xmlWriter
             filein.seekg(values[1]);
