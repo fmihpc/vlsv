@@ -84,21 +84,21 @@ namespace vlsv {
 
       // Calculate the maximum number of array elements written using a single multi-write.
       // Note: element = vector of size vectorSize, each vector element has byte size of datatypeBytesize.
-      size_t maxElementsPerWrite = getMaxBytesPerWrite() / (datatypeBytesize*vectorSize);
+      uint64_t maxElementsPerWrite = getMaxBytesPerWrite() / (datatypeBytesize*vectorSize);
       
       // Split the multi-write if the array has more elements than what we can 
       // write to output file using a single MPI collective:
       if (arrayElements > maxElementsPerWrite) {
          // Calculate how many collectives this process needs:
-         size_t N_writes = arrayElements / maxElementsPerWrite;
+         uint64_t N_writes = arrayElements / maxElementsPerWrite;
          if (arrayElements % maxElementsPerWrite != 0) ++N_writes;
 
          // Add N_writes multi-write units:
-         for (size_t i=0; i<N_writes; ++i) {
-            size_t elements = maxElementsPerWrite;
+         for (uint64_t i=0; i<N_writes; ++i) {
+            uint64_t elements = maxElementsPerWrite;
             if ((i+1)*maxElementsPerWrite >= arrayElements) elements = arrayElements - i*maxElementsPerWrite;
 
-            const size_t byteOffset = maxElementsPerWrite*vectorSize*datatypeBytesize;
+            const uint64_t byteOffset = maxElementsPerWrite*vectorSize*datatypeBytesize;
             multiwriteUnits[0].push_back(Multi_IO_Unit(array+i*byteOffset,getMPIDatatype(vlsvType,dataSize),elements*vectorSize));
          }
       } else {
@@ -161,7 +161,7 @@ namespace vlsv {
       // Master process writes footer offset to the start of file
       if (myrank == masterRank && dryRunning == false) {
          fstream footer;
-         size_t footerOffset = (size_t)endOffset;
+         uint64_t footerOffset = static_cast<uint64_t>(endOffset);
          
          footer.open(fileName.c_str(),fstream::in | fstream::out | fstream::binary | fstream::ate);
          char* ptr = reinterpret_cast<char*>(&footerOffset);
@@ -398,14 +398,14 @@ namespace vlsv {
 
       // Calculate how many collective MPI calls are needed to 
       // write all the data to output file:
-      size_t outputBytesize    = 0;
-      size_t myCollectiveCalls = 0;
+      uint64_t outputBytesize    = 0;
+      uint64_t myCollectiveCalls = 0;
       if (multiwriteUnits[0].size() > 0) myCollectiveCalls = 1;
 
       vector<pair<list<Multi_IO_Unit>::iterator,list<Multi_IO_Unit>::iterator> > multiwriteList;
       list<Multi_IO_Unit>::iterator first = multiwriteUnits[0].begin();
       list<Multi_IO_Unit>::iterator last  = multiwriteUnits[0].begin();
-      for (list<Multi_IO_Unit>::iterator it=multiwriteUnits[0].begin(); it!=multiwriteUnits[0].end(); ++it) {
+      for (auto it=multiwriteUnits[0].begin(); it!=multiwriteUnits[0].end(); ++it) {
          if (outputBytesize + (*it).amount*dataSize > getMaxBytesPerWrite()) {
             multiwriteList.push_back(make_pair(first,last));
             first = it; last = it;
@@ -418,12 +418,12 @@ namespace vlsv {
       }
       multiwriteList.push_back(make_pair(first,last));
 
-      size_t N_collectiveCalls;
-      MPI_Allreduce(&myCollectiveCalls,&N_collectiveCalls,1,MPI_Type<size_t>(),MPI_MAX,comm);
+      uint64_t N_collectiveCalls;
+      MPI_Allreduce(&myCollectiveCalls,&N_collectiveCalls,1,MPI_Type<uint64_t>(),MPI_MAX,comm);
 
       if (N_collectiveCalls > multiwriteList.size()) {
-         const size_t N_dummyCalls = N_collectiveCalls-multiwriteList.size();
-         for (size_t i=0; i<N_dummyCalls; ++i) {
+         const uint64_t N_dummyCalls = N_collectiveCalls-multiwriteList.size();
+         for (auto i=0; i<N_dummyCalls; ++i) {
             multiwriteList.push_back(make_pair(multiwriteUnits[0].end(),multiwriteUnits[0].end()));
          }
       }
@@ -469,8 +469,8 @@ namespace vlsv {
       if (multiwriteUnits[0].size() > 0) multiwriteOffsetPointer = start->array;
 
       // Copy pointers etc. to MPI struct:
-      size_t i=0;
-      size_t amount = 0;
+      uint64_t i=0;
+      uint64_t amount = 0;
       for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
          blockLengths[i]  = (*it).amount;
          displacements[i] = (*it).array - multiwriteOffsetPointer;

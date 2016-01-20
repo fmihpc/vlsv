@@ -170,10 +170,10 @@ namespace vlsv {
    /** Get the XML attributes for the given array on all processes. The file 
     * footer is read by master process only, who then broadcasts the contents 
     * to all processes. This function returns the same value on all processes.
-    * @param tagName Name of the array's XML tag.
-    * @param attribsIn XML tag attributes that uniquely define the array.
-    * @param attribsOut XML tag attributes read from the input file.
-    * @return If true, array attributes were read successfully.*/
+    * @param tagName Name of the array's XML tag. Only significant on master process.
+    * @param attribsIn XML tag attributes that uniquely define the array. Only significant on master process.
+    * @param attribsOut XML tag attributes read from the input file. The contents of attribsOut will be the same on all processes.
+    * @return If true, array attributes were read successfully. All processes return the same value.*/
    bool ParallelReader::getArrayAttributes(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribsIn,
                                            std::map<std::string,std::string>& attribsOut) const {
       bool success = true;
@@ -231,9 +231,9 @@ namespace vlsv {
    }
 
    /** Read array metadata to all processes.
-    * @param tagName Name of the XML tag corresponding to the array.
-    * @param attribs A list where the array attribute,value pairs are copied.
-    * @return If true, array metadata was read successfully.*/
+    * @param tagName Name of the XML tag corresponding to the array. Only significant on master process.
+    * @param attribs A list of attribute,value pairs that uniquely identify the array. Only significant on master process.
+    * @return If true, array metadata was read successfully. All processes return the same value.*/
    bool ParallelReader::getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {
       bool success = true;
       if (myRank == masterRank) {
@@ -256,8 +256,17 @@ namespace vlsv {
       return success;
    }
 
+   /** Read array metadata to all processes.
+    * @param Name of the array's XML tag. Only significant on master process.
+    * @param attribs A list of attribute,value pairs that uniquely identify the array. Only significant on master process.
+    * @param arraySize Total number of elements in array. Same value on all processes upon successful exit.
+    * @param vectorSize Size of the data vector in array. Same value on all processes upon successful exit.
+    * @param dataType Datatype of each vector element. Same value on all processes upon successful exit.
+    * @param byteSize Byte size of the datatype. Same value on all processes upon successful exit.
+    * @return If true, array metadata was successfully read and output variables contain meaningful values.
+    * Same return value is returned on all processes.*/
    bool ParallelReader::getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-				     uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize) {
+				                     uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize) {
       if (getArrayInfo(tagName,attribs) == false) return false;
    
       // Copy values to output variables:
@@ -289,10 +298,10 @@ namespace vlsv {
 
    /** Get unique XML attribute values for given tag name. This function 
     * must be called by all processes simultaneously.
-    * @param tagName Name of the XML tag.
-    * @param attribName Name of the attribute.
-    * @param output Unique attribute values are inserted here.
-    * @return If true, attribute values were read successfully.*/
+    * @param tagName Name of the XML tag. Only significant on master process.
+    * @param attribName Name of the attribute. Only significant on master process.
+    * @param output Unique attribute values are inserted here. The content will be the same on all processes.
+    * @return If true, attribute values were read successfully. All processes return the same value.*/
    bool ParallelReader::getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,
                                                  std::set<std::string>& output) const {
       bool success = true;
@@ -341,7 +350,7 @@ namespace vlsv {
       bool success = true;
       
       // Count the number of multi-read units read:
-      size_t N_multiReadUnits = 0;
+      uint64_t N_multiReadUnits = 0;
       for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
          ++N_multiReadUnits;
       }
@@ -397,11 +406,11 @@ namespace vlsv {
    }
 
    /** Open a VLSV file for parallel reading.
-    * @param fname Name of the VLSV file.
+    * @param fname Name of the VLSV file. Only significant on master process.
     * @param comm MPI communicator used in collective MPI operations.
-    * @param masterRank MPI rank of master process.
-    * @param mpiInfo Additional MPI info for optimizing file I/O.
-    * @return If true, VLSV file was opened successfully.*/
+    * @param masterRank MPI rank of master process. Must be the same value on all processes.
+    * @param mpiInfo Additional MPI info for optimizing file I/O. Must be the same value on all processes.
+    * @return If true, VLSV file was opened successfully. All processes return the same value.*/
    bool ParallelReader::open(const std::string& fname,MPI_Comm comm,const int& masterRank,MPI_Info mpiInfo) {
       bool success = true;
       this->comm = comm;
@@ -409,6 +418,9 @@ namespace vlsv {
       MPI_Comm_rank(comm,&myRank);
       MPI_Comm_size(comm,&processes);
       multireadStarted = false;
+
+      // Broadcast input file name to all processes:
+      if (broadcast(fname,fileName,this->comm,masterRank) == false) return false;
 
       // Attempt to open the given input file using MPI:
       fileName = fname;
@@ -425,25 +437,16 @@ namespace vlsv {
       }
       
       if (success == false) cerr << "MASTER failed to open VLSV file" << endl;
-   
-      // Check that all processes have opened the file successfully:
-      unsigned char globalSuccess = 0;
-      if (success == true) globalSuccess = 1;
-      unsigned char* results = new unsigned char[processes];
-      MPI_Allgather(&globalSuccess,1,MPI_Type<unsigned char>(),results,1,MPI_Type<unsigned char>(),comm);
-      for (int i=0; i<processes; ++i) if (results[i] == 0) success = false;
-      delete [] results; results = NULL;
-      if (success == false) return success;
-      
+
       // Broadcast file endianness to all processes:
       MPI_Bcast(&endiannessFile,1,MPI_Type<unsigned char>(),masterRank,comm);
 
       bytesRead = 0;
-      return success;
+      return checkSuccess(success,this->comm);
    }
 
    bool ParallelReader::readArrayMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-					const uint64_t& begin,const uint64_t& amount,char* buffer) {
+					                    const uint64_t& begin,const uint64_t& amount,char* buffer) {
       if (myRank != masterRank) {
          cerr << "(PARALLEL READER) readArrayMaster erroneously called on process #" << myRank << endl;
          exit(1);
@@ -454,12 +457,12 @@ namespace vlsv {
 
    /** Read data from an array in VLSV file using collective MPI file I/O operations.
     * XML tag name and contents of list 'attribs' need to uniquely define the array.
-    * @param tagName Array XML tag name.
-    * @param attribs Additional attributes limiting array search.
+    * @param tagName Array XML tag name. Only significant on master process.
+    * @param attribs Additional attributes limiting array search. Only significant on master process.
     * @param begin First array element read, i.e. this process' offset into the array.
     * @param amount Number of array elements to read.
     * @param buffer Buffer in which data is read from VLSV file.
-    * @return If true, this process read its data successfully.*/
+    * @return If true, array contents were successfully read. All processes return the same value.*/
    bool ParallelReader::readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                                   const uint64_t& begin,const uint64_t& amount,char* buffer) {
       bool success = true;
@@ -467,27 +470,27 @@ namespace vlsv {
       // Fetch array info to all processes:
       if (getArrayInfo(tagName,attribs) == false) return false;
       const MPI_Offset start = arrayOpen.offset + begin*arrayOpen.vectorSize*arrayOpen.dataSize;
-      const size_t readBytes = amount*arrayOpen.vectorSize*arrayOpen.dataSize;
+      const uint64_t readBytes = amount*arrayOpen.vectorSize*arrayOpen.dataSize;
 
       // If readBytes is larger than getMaxBytesPerRead() this process needs 
       // more than one collective call to read in all the data.
-      const size_t maxBytes = getMaxBytesPerRead();
-      size_t myExtraCollectiveReads = readBytes / maxBytes;
+      const uint64_t maxBytes = getMaxBytesPerRead();
+      uint64_t myExtraCollectiveReads = readBytes / maxBytes;
 
       // There's always at least one read:
       ++myExtraCollectiveReads;
 
       // Reduce the max number of required collective calls to all 
       // processes to prevent deadlock:
-      size_t globalExtraCollectiveReads;
-      MPI_Allreduce(&myExtraCollectiveReads,&globalExtraCollectiveReads,1,MPI_Type<size_t>(),MPI_MAX,comm);
+      uint64_t globalExtraCollectiveReads;
+      MPI_Allreduce(&myExtraCollectiveReads,&globalExtraCollectiveReads,1,MPI_Type<uint64_t>(),MPI_MAX,comm);
 
       // Read data:
       const double t_start = MPI_Wtime();
-      size_t offset = 0;
-      for (size_t counter=0; counter<globalExtraCollectiveReads; ++counter) {
+      uint64_t offset = 0;
+      for (uint64_t counter=0; counter<globalExtraCollectiveReads; ++counter) {
          char*  pos;
-         size_t readSize;
+         uint64_t readSize;
 
          if (counter < (myExtraCollectiveReads-1)) {
             pos      = buffer + counter*maxBytes;
@@ -531,9 +534,9 @@ namespace vlsv {
     * File I/O units are defined by calling addMultireadUnit. Data is not actually read until 
     * endMultiread is called. XML tag name and contents of list 'attribs' need to uniquely 
     * define the array.
-    * @param tagName Array XML tag name in VLSV file.
-    * @param attribs Additional attributes that uniquely define the array in file.
-    * @return If true, multi-read mode was started successfully.
+    * @param tagName Array XML tag name in VLSV file. Only significant on master process.
+    * @param attribs Additional attributes that uniquely define the array in file. Only significant on master process.
+    * @return If true, multi-read mode was started successfully. All processes return the same value.
     * @see addMultireadUnit.
     * @see endMultiread.*/
    bool ParallelReader::startMultiread(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs) {

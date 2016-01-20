@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2015 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -105,6 +105,10 @@ namespace vlsv {
       return true;
    }
 
+   /** Read the value of a parameter. All processes must call this function simultaneously.
+    * @param parameterName Name of the parameter. Only significant on master process.
+    * @param value Variable where parameter's value will be written. Will be the same value on all processes upon successful exit.
+    * @return If true, parameter was successfully read. All processes return the same value.*/
    template<typename T> inline
    bool ParallelReader::readParameter(const std::string& parameterName,T& value) {
       bool success = true;

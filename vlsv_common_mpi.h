@@ -23,8 +23,8 @@
 #include "vlsv_common.h"
 
 namespace vlsv {
-   size_t getMaxBytesPerRead();
-   size_t getMaxBytesPerWrite();
+   uint64_t getMaxBytesPerRead();
+   uint64_t getMaxBytesPerWrite();
 
    bool broadcast(const std::string& input,std::string& output,MPI_Comm comm,const int& masterRank);
    bool checkSuccess(const bool& myStatus,MPI_Comm comm);

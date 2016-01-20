@@ -26,7 +26,7 @@
 
 using namespace std;
 
-static const size_t MAX_MPI_FILE_IO_BYTES = 2147460000;
+static const uint64_t MAX_MPI_FILE_IO_BYTES = 2147460000;
 
 namespace vlsv {
 
@@ -34,7 +34,7 @@ namespace vlsv {
     * This should equal to numeric_limits<MPI_Count>::max() in MPI 3.0+, but in older 
     * library versions the 'count' parameter is simply an integer.
     * @return Maximum number of bytes read using a single MPI collective routine.*/
-   size_t getMaxBytesPerRead() {
+   uint64_t getMaxBytesPerRead() {
       // For some obscure reason OpenMPI can only write 2147479552 bytes with a single 
       // collective call. So I'm manually setting the max bytes to bit less than that.
       return MAX_MPI_FILE_IO_BYTES;
@@ -44,7 +44,7 @@ namespace vlsv {
     * This should equal to numeric_limits<MPI_Count>::max() in MPI 3.0+, but in older 
     * library versions the 'count' parameter is simply an integer.
     * @return Maximum number of bytes written using a single MPI collective routine.*/
-   size_t getMaxBytesPerWrite() {
+   uint64_t getMaxBytesPerWrite() {
       return MAX_MPI_FILE_IO_BYTES;
    }
 
