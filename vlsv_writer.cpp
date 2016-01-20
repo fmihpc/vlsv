@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2015 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -204,10 +204,10 @@ namespace vlsv {
     * header into the output file and caches a footer which will be written 
     * in Writer::close. If a file has already been opened and Writer::open 
     * is called again, the currently open file is closed before the new file is opened.
-    * @param fname The name of the output file.
+    * @param fname The name of the output file. Only significant on master process.
     * @param comm MPI communicator used in writing.
-    * @param masterProcessID ID of the MPI master process.
-    * @param mpiInfo MPI info, passed on to MPI_File_open.
+    * @param masterProcessID ID of the MPI master process. Must have the same value on all processes.
+    * @param mpiInfo MPI info, passed on to MPI_File_open. Must have the same value on all processes.
     * @return If true, a file was opened successfully.*/
    bool Writer::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo) {
       bool success = true;
@@ -218,6 +218,7 @@ namespace vlsv {
          if (fname == fileName) return true;
          close();
       }
+      fileOpen = false;
 
       MPI_Comm_dup(comm,&(this->comm));
       masterRank = masterProcessID;
@@ -225,6 +226,9 @@ namespace vlsv {
       MPI_Comm_size(this->comm,&N_processes);
       bytesWritten = 0;
       writeTime = 0;
+
+      // Broadcast output file name to all processes:
+      if (broadcast(fname,fileName,this->comm,masterRank) == false) return false;
 
       // Allocate per-thread storage:
       multiwriteOffsets.resize(1);
@@ -235,9 +239,8 @@ namespace vlsv {
       // failed quite often in meteo, at least when writing many small files. It was 
       // possibly caused by MPI_File_delete call, that's the reason for the barrier.
       int accessMode = (MPI_MODE_WRONLY | MPI_MODE_CREATE);
-      fileName = fname;
       if (dryRunning == false) {
-         if (myrank == masterRank) MPI_File_delete(const_cast<char*>(fname.c_str()),mpiInfo);
+         if (myrank == masterRank) MPI_File_delete(const_cast<char*>(fileName.c_str()),mpiInfo);
          MPI_Barrier(comm);
          if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&fileptr) != MPI_SUCCESS) {
             fileOpen = false;
@@ -319,10 +322,10 @@ namespace vlsv {
     * more than 2^32-1 bytes of data per process. The multi-write chunks are added 
     * by calling addMultiwriteUnit functions. The data 
     * is not written to the file until endMultiwrite is called.
-    * @param datatype String representation of the datatype, either 'int', 'uint', or 'float'.
+    * @param datatype String representation of the datatype, either 'int', 'uint', or 'float'. Only significant on master process.
     * @param arraySize Total number of array elements this process will write.
-    * @param vectorSize Size of the data vector stored in array element, each process must use the same vectorSize.
-    * @param dataSize Byte size of the primitive datatype, each process must use the same dataSize.
+    * @param vectorSize Size of the data vector stored in array element. Only significant on master process.
+    * @param dataSize Byte size of the primitive datatype. Only significant on master process.
     * @return If true, multi-write mode initialized successfully.
     * @see addMultiwriteUnit
     * @see endMultiwrite.*/
@@ -340,13 +343,17 @@ namespace vlsv {
         }
       multiwriteOffsets[0] = numeric_limits<unsigned int>::max();
 
+      // Broadcast vectorsize,datatype,and dataSize to all processes:
+      this->vectorSize = vectorSize;
+      MPI_Bcast(&(this->vectorSize),1,MPI_Type<uint64_t>(),masterRank,comm);
+      if (broadcast(datatype,this->dataType,comm,masterRank) == false) return false;
+      this->dataSize = dataSize;
+      MPI_Bcast(&(this->dataSize),1,MPI_Type<uint64_t>(),masterRank,comm);
+
       // Array datatype and byte size of each vector element are determined 
-      // from the template parameter, other values are copied from parameters:
-      this->dataType   = datatype;
+      // from the template parameter, other values are copied from parameters:      
       this->vlsvType   = getVLSVDatatype(datatype);
       this->arraySize  = arraySize;
-      this->vectorSize = vectorSize;
-      this->dataSize   = dataSize;
       multiwriteFinalized = false;
       N_multiwriteUnits = 0;
       endMultiwriteCounter = 0;
@@ -369,9 +376,9 @@ namespace vlsv {
    }
 
    /** Write multiwrite units to file.
-    * @param tagName Name of the XML tag for this array.
-    * @param attribs Attributes for the XML tag.
-    * @return If true, array was successfully written to file.*/
+    * @param tagName Name of the XML tag for this array. Only significant on master process.
+    * @param attribs Attributes for the XML tag. Only significant on master process.
+    * @return If true, array was successfully written to file. The return value is the same on all processes.*/
    bool Writer::endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs) {
       // Check that multiwrite mode has started successfully on all processes:
       bool success = true;
@@ -381,7 +388,14 @@ namespace vlsv {
          multiwriteInitialized = false;
          return false;
       }
-      
+
+      // Broadcast the array name to all processes:
+      string outputArrayName;
+      if (broadcast(tagName,outputArrayName,comm,masterRank) == false) {
+         multiwriteInitialized = false;
+         return false;
+      }
+
       // Calculate how many collective MPI calls are needed to 
       // write all the data to output file:
       size_t outputBytesize    = 0;
@@ -422,10 +436,9 @@ namespace vlsv {
          }
       }
 
-      if (multiwriteFooter(tagName,attribs) == false) success = false;
+      if (multiwriteFooter(outputArrayName,attribs) == false) success = false;
       multiwriteInitialized = false;
-      if (checkSuccess(success,comm) == false) return false;
-      return true;
+      return checkSuccess(success,comm);
    }
 
    /** Flush multi-write units to output file. This function does the actual file I/O.
@@ -530,6 +543,15 @@ namespace vlsv {
       return success;
    }
 
+   /** Write an array to output file.
+    * @param arrayName Name of the array. Only significant on master process.
+    * @param attribs XML attributes for the array. Only significant on master process.
+    * @param dataType String representation of the datatype. Only significant on master process.
+    * @param arraySize Number of array elements written by this process.
+    * @param vectorSize Size of the data vector stored in each array element. Only significant on master process.
+    * @param dataSize Byte size of vector element. Only significant on master process.
+    * @param array Pointer to data.
+    * @return If true, array was successfully written to the output file. Same value is returned on every process.*/
    bool Writer::writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
                            const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array) {
       // Check that everything is OK before continuing:

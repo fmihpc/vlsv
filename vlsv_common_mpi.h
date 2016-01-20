@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -26,6 +26,7 @@ namespace vlsv {
    size_t getMaxBytesPerRead();
    size_t getMaxBytesPerWrite();
 
+   bool broadcast(const std::string& input,std::string& output,MPI_Comm comm,const int& masterRank);
    bool checkSuccess(const bool& myStatus,MPI_Comm comm);
    MPI_Datatype getMPIDatatype(datatype::type dt,uint64_t dataSize);
 }

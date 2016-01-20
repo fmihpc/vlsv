@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2015 Finnish Meteorological Institute
+ *  Copyright 2011-2016 Finnish Meteorological Institute
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -200,8 +200,13 @@ namespace vlsv {
       char attribValue[maxLength];
       if (myRank == masterRank) {
          for (map<string,string>::const_iterator it=attribsOut.begin(); it!=attribsOut.end(); ++it) {
-            strncpy(attribName,it->first.c_str(),maxLength-1);
-            strncpy(attribValue,it->second.c_str(),maxLength-1);
+            #ifdef WINDOWS
+               strncpy_s(attribName ,maxLength,it->first.c_str() ,it->first.size() );
+               strncpy_s(attribValue,maxLength,it->second.c_str(),it->second.size());
+            #else
+               strncpy(attribName,it->first.c_str(),maxLength-1);
+               strncpy(attribValue,it->second.c_str(),maxLength-1);
+            #endif
             MPI_Bcast(attribName,maxLength,MPI_Type<char>(),masterRank,comm);
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
@@ -314,7 +319,11 @@ namespace vlsv {
       char attribValue[maxLength];
       if (myRank == masterRank) {
          for (set<string>::const_iterator it=output.begin(); it!=output.end(); ++it) {
-            strncpy(attribValue,it->c_str(),maxLength-1);
+            #ifdef WINDOWS
+               strncpy_s(attribValue,maxLength,it->c_str(),it->size());
+            #else
+               strncpy(attribValue,it->c_str(),maxLength-1);
+            #endif
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
       } else {
