@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2015 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -97,8 +98,8 @@ namespace vlsv {
       // Copy data from temporary buffer to output array:
       if (allocateMemory == true) outBuffer = new T[amount*arrayOpen.vectorSize];
       char* ptr = buffer;
-      for (auto i=0; i<amount; ++i) {
-         for (auto j=0; j<arrayOpen.vectorSize; ++j) {
+      for (uint64_t i=0; i<amount; ++i) {
+         for (uint64_t j=0; j<arrayOpen.vectorSize; ++j) {
             convertValue<T>(outBuffer[i*arrayOpen.vectorSize+j],ptr,arrayOpen.dataType,arrayOpen.dataSize,false);
             ptr += arrayOpen.dataSize;
          }
@@ -107,6 +108,10 @@ namespace vlsv {
       return true;
    }
 
+   /** Read the value of a parameter. All processes must call this function simultaneously.
+    * @param parameterName Name of the parameter. Only significant on master process.
+    * @param value Variable where parameter's value will be written. Will be the same value on all processes upon successful exit.
+    * @return If true, parameter was successfully read. All processes return the same value.*/
    template<typename T> inline
    bool ParallelReader::readParameter(const std::string& parameterName,T& value) {
       bool success = true;

@@ -1,6 +1,7 @@
 /* This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013,2015 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -26,7 +27,7 @@
 
 using namespace std;
 
-static const size_t MAX_MPI_FILE_IO_BYTES = 2147460000;
+static const uint64_t MAX_MPI_FILE_IO_BYTES = 2147460000;
 
 namespace vlsv {
 
@@ -34,7 +35,7 @@ namespace vlsv {
     * This should equal to numeric_limits<MPI_Count>::max() in MPI 3.0+, but in older 
     * library versions the 'count' parameter is simply an integer.
     * @return Maximum number of bytes read using a single MPI collective routine.*/
-   size_t getMaxBytesPerRead() {
+   uint64_t getMaxBytesPerRead() {
       // For some obscure reason OpenMPI can only write 2147479552 bytes with a single 
       // collective call. So I'm manually setting the max bytes to bit less than that.
       return MAX_MPI_FILE_IO_BYTES;
@@ -44,8 +45,35 @@ namespace vlsv {
     * This should equal to numeric_limits<MPI_Count>::max() in MPI 3.0+, but in older 
     * library versions the 'count' parameter is simply an integer.
     * @return Maximum number of bytes written using a single MPI collective routine.*/
-   size_t getMaxBytesPerWrite() {
+   uint64_t getMaxBytesPerWrite() {
       return MAX_MPI_FILE_IO_BYTES;
+   }
+
+
+   bool broadcast(const std::string& input,std::string& output,MPI_Comm comm,const int& masterRank) {
+      bool success = true;
+      size_t length = input.size();
+      if (MPI_Bcast(&length,1,MPI_Type<size_t>(),masterRank,comm) != MPI_SUCCESS) success = false;
+      if (checkSuccess(success,comm) == false) return false;
+
+      int myRank;
+      MPI_Comm_rank(comm,&myRank);
+
+      // Copy string from input to tmp on master process only:
+      char* tmp = new char[length+1];
+      if (myRank == masterRank) {
+         #ifdef WINDOWS
+            strncpy_s(tmp,length+1,input.c_str(),length+1);
+         #else
+            strncpy(tmp,input.c_str(),length+1);
+         #endif
+      }
+
+      // Broadcast input string to all processes:
+      if (MPI_Bcast(tmp,length+1,MPI_Type<char>(),masterRank,comm) != MPI_SUCCESS) success = false;
+      output = tmp;
+      delete [] tmp; tmp = nullptr;
+      return checkSuccess(success,comm);
    }
 
    /** Check that all processes in communicator comm called this function 

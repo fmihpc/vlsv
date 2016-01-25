@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2014 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -88,7 +89,7 @@ namespace vlsv {
       offsets.resize(maxRefinementLevel+1);
       
       offsets[0] = 0;
-      for (auto i=1; i<maxRefinementLevel+1; ++i) {
+      for (uint64_t i=1; i<maxRefinementLevel+1; ++i) {
          offsets[i] = offsets[i-1] + N_cells0 * pow(8,i-1);
       }
       
