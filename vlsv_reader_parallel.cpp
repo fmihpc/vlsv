@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -69,7 +70,7 @@ namespace vlsv {
 
          // Add N_reads multi-read units:
          for (size_t i=0; i<N_reads; ++i) {
-            size_t elements = maxElementsPerRead;
+            auto elements = maxElementsPerRead;
             if ((i+1)*maxElementsPerRead >= arrayElements) elements = arrayElements - i*maxElementsPerRead;
 
             const size_t byteOffset = maxElementsPerRead*arrayOpen.vectorSize*datatypeBytesize;
@@ -109,9 +110,9 @@ namespace vlsv {
       if (multiReadUnits.size() > 0) myCollectiveCalls = 1;
 
       vector<pair<list<Multi_IO_Unit>::iterator,list<Multi_IO_Unit>::iterator> > multireadList;
-      list<Multi_IO_Unit>::iterator first = multiReadUnits.begin();
-      list<Multi_IO_Unit>::iterator last  = multiReadUnits.begin();
-      for (list<Multi_IO_Unit>::iterator it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
+      auto first = multiReadUnits.begin();
+      auto last  = multiReadUnits.begin();
+      for (auto it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
          if (inputBytesize + it->amount*arrayOpen.dataSize > getMaxBytesPerRead()) {
             multireadList.push_back(make_pair(first,last));
             first = it; last = it;
@@ -144,7 +145,7 @@ namespace vlsv {
 
       for (size_t i=0; i<multireadList.size(); ++i) {
          if (flushMultiread(i,unitOffset,multireadList[i].first,multireadList[i].second) == false) success = false;
-         for (std::list<Multi_IO_Unit>::iterator it=multireadList[i].first; it!=multireadList[i].second; ++it) {
+         for (auto it=multireadList[i].first; it!=multireadList[i].second; ++it) {
             unitOffset += it->amount*arrayOpen.dataSize;
          }
       }
@@ -199,13 +200,13 @@ namespace vlsv {
       char attribName[maxLength];
       char attribValue[maxLength];
       if (myRank == masterRank) {
-         for (map<string,string>::const_iterator it=attribsOut.begin(); it!=attribsOut.end(); ++it) {
+         for (auto& it: attribsOut) {
             #ifdef WINDOWS
-               strncpy_s(attribName ,maxLength,it->first.c_str() ,it->first.size() );
-               strncpy_s(attribValue,maxLength,it->second.c_str(),it->second.size());
+               strncpy_s(attribName ,maxLength,it.first.c_str() ,it.first.size() );
+               strncpy_s(attribValue,maxLength,it.second.c_str(),it.second.size());
             #else
-               strncpy(attribName,it->first.c_str(),maxLength-1);
-               strncpy(attribValue,it->second.c_str(),maxLength-1);
+               strncpy(attribName ,it.first.c_str() ,maxLength-1);
+               strncpy(attribValue,it.second.c_str(),maxLength-1);
             #endif
             MPI_Bcast(attribName,maxLength,MPI_Type<char>(),masterRank,comm);
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
@@ -266,7 +267,7 @@ namespace vlsv {
     * @return If true, array metadata was successfully read and output variables contain meaningful values.
     * Same return value is returned on all processes.*/
    bool ParallelReader::getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
-				                     uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize) {
+                                     uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize) {
       if (getArrayInfo(tagName,attribs) == false) return false;
    
       // Copy values to output variables:
@@ -327,11 +328,11 @@ namespace vlsv {
       const unsigned int maxLength = 512;
       char attribValue[maxLength];
       if (myRank == masterRank) {
-         for (set<string>::const_iterator it=output.begin(); it!=output.end(); ++it) {
+         for (auto& it: output) {
             #ifdef WINDOWS
-               strncpy_s(attribValue,maxLength,it->c_str(),it->size());
+               strncpy_s(attribValue,maxLength,it.c_str(),it.size());
             #else
-               strncpy(attribValue,it->c_str(),maxLength-1);
+               strncpy(attribValue,it.c_str(),maxLength-1);
             #endif
             MPI_Bcast(attribValue,maxLength,MPI_Type<char>(),masterRank,comm);
          }
@@ -348,10 +349,10 @@ namespace vlsv {
    bool ParallelReader::flushMultiread(const size_t& unit,const MPI_Offset& fileOffset,
                                        std::list<Multi_IO_Unit>::iterator& start,std::list<Multi_IO_Unit>::iterator& stop) {
       bool success = true;
-      
+
       // Count the number of multi-read units read:
       uint64_t N_multiReadUnits = 0;
-      for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
+      for (auto it=start; it!=stop; ++it) {
          ++N_multiReadUnits;
       }
 
@@ -366,7 +367,7 @@ namespace vlsv {
       // Copy pointers etc. to MPI struct:
       size_t i=0;
       size_t amount = 0;
-      for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
+      for (auto it=start; it!=stop; ++it) {
          blockLengths[i]  = it->amount;
          displacements[i] = it->array - multireadOffsetPointer;
          datatypes[i]     = it->mpiType;
@@ -386,7 +387,7 @@ namespace vlsv {
          MPI_Type_commit(&inputType);
 
          // Read data from output file with a single collective call:
-         const double t_start = MPI_Wtime();
+         const auto t_start = MPI_Wtime();
          MPI_File_read_at_all(filePtr,fileOffset,multireadOffsetPointer,1,inputType,MPI_STATUS_IGNORE);
          readTime += (MPI_Wtime() - t_start);
          MPI_Type_free(&inputType);
@@ -394,7 +395,7 @@ namespace vlsv {
          bytesRead += amount;
       } else {
          // Process has no data to read but needs to participate in the collective call to prevent deadlock:
-         const double t_start = MPI_Wtime();
+         const auto t_start = MPI_Wtime();
          MPI_File_read_at_all(filePtr,fileOffset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
          readTime += (MPI_Wtime() - t_start);
       }
@@ -435,7 +436,6 @@ namespace vlsv {
       if (myRank == masterRank) {
          if (Reader::open(fname) == false) success = false;
       }
-      
       if (success == false) cerr << "MASTER failed to open VLSV file" << endl;
 
       // Broadcast file endianness to all processes:
@@ -486,7 +486,7 @@ namespace vlsv {
       MPI_Allreduce(&myExtraCollectiveReads,&globalExtraCollectiveReads,1,MPI_Type<uint64_t>(),MPI_MAX,comm);
 
       // Read data:
-      const double t_start = MPI_Wtime();
+      const auto t_start = MPI_Wtime();
       uint64_t offset = 0;
       for (uint64_t counter=0; counter<globalExtraCollectiveReads; ++counter) {
          char*  pos;

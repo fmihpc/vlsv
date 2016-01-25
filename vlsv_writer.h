@@ -62,7 +62,7 @@ namespace vlsv {
       double getWriteTime() const;
       void endDryRunning();
       bool endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs);
-      bool open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo=MPI_INFO_NULL);
+      bool open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo=MPI_INFO_NULL,bool append=false);
       bool setSize(MPI_Offset newSize);
       void startDryRun();
       bool startMultiwrite(const std::string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize);      

@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -208,8 +209,10 @@ namespace vlsv {
     * @param comm MPI communicator used in writing.
     * @param masterProcessID ID of the MPI master process. Must have the same value on all processes.
     * @param mpiInfo MPI info, passed on to MPI_File_open. Must have the same value on all processes.
+    * @param append If true, then data should be appended to existing vlsv file instead of rewriting it.
+    * Only significant on master process.
     * @return If true, a file was opened successfully.*/
-   bool Writer::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo) {
+   bool Writer::open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo,bool append) {
       bool success = true;
    
       // If a file with the same name has already been opened, return immediately.
@@ -240,7 +243,7 @@ namespace vlsv {
       // possibly caused by MPI_File_delete call, that's the reason for the barrier.
       int accessMode = (MPI_MODE_WRONLY | MPI_MODE_CREATE);
       if (dryRunning == false) {
-         if (myrank == masterRank) MPI_File_delete(const_cast<char*>(fileName.c_str()),mpiInfo);
+         if (myrank == masterRank && append == false) MPI_File_delete(const_cast<char*>(fname.c_str()),mpiInfo);
          MPI_Barrier(comm);
          if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&fileptr) != MPI_SUCCESS) {
             fileOpen = false;
@@ -258,28 +261,55 @@ namespace vlsv {
       }
       
       // Master process opens an XML tree for storing the footer:
+      uint64_t values[2] = {0,0};
       if (myrank == masterRank) {
          xmlWriter     = new muxml::MuXML();
-         muxml::XMLNode* root = xmlWriter->getRoot();
-         xmlWriter->addNode(root,"VLSV","");
+         muxml::XMLNode* root = xmlWriter->getRoot();         
+         if (append == false) {
+            xmlWriter->addNode(root,"VLSV","");
+         } else {
+            // Read file endianness and footer position
+            fstream filein;
+            if (dryRunning == false) filein.open(fname,fstream::in);
+            char* ptr = reinterpret_cast<char*>(values);
+            filein.read(ptr,2*sizeof(uint64_t));
+
+            // If the endianness of this computer does not match the file endianness, exit:
+            if (values[0] != detectEndianness()) {
+               if (dryRunning == false) MPI_File_close(&fileptr);
+               fileOpen = false;
+               return false;
+            }
+
+            // Read footer to xmlWriter
+            if (dryRunning == false) {
+               filein.seekg(values[1]);
+               xmlWriter->read(filein);
+               filein.close();
+            }
+         }
       }
 
       // Master writes 2 64bit integers to the start of file. 
       // Second value will be overwritten in close() function to tell 
       // the position of footer:
       if (myrank == masterRank) {
-         // Write file endianness to the first byte:
-         uint64_t endianness = 0;
-         unsigned char* ptr = reinterpret_cast<unsigned char*>(&endianness);
-         ptr[0] = detectEndianness();
-         const double t_start = MPI_Wtime();
-         if (dryRunning == false) {
-            if (MPI_File_write_at(fileptr,0,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) success = false;
-            if (MPI_File_write_at(fileptr,8,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) success = false;
+         if (append == false) {
+            // Write file endianness to the first byte:
+            uint64_t endianness = 0;
+            unsigned char* ptr = reinterpret_cast<unsigned char*>(&endianness);
+            ptr[0] = detectEndianness();
+            const double t_start = MPI_Wtime();
+            if (dryRunning == false) {
+               if (MPI_File_write_at(fileptr,0,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) success = false;
+               if (MPI_File_write_at(fileptr,8,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) success = false;
+            }
+            writeTime += (MPI_Wtime() - t_start);
+            offset += 2*sizeof(uint64_t); //only master rank keeps a running count
+            bytesWritten += 2*sizeof(uint64_t);
+         } else {
+            offset = values[1];
          }
-         writeTime += (MPI_Wtime() - t_start);
-         offset += 2*sizeof(uint64_t); //only master rank keeps a running count
-         bytesWritten += 2*sizeof(uint64_t);
       }
 
       // Check that everything is OK, if not then we need to close the file here. 
@@ -423,7 +453,7 @@ namespace vlsv {
 
       if (N_collectiveCalls > multiwriteList.size()) {
          const uint64_t N_dummyCalls = N_collectiveCalls-multiwriteList.size();
-         for (auto i=0; i<N_dummyCalls; ++i) {
+         for (uint64_t i=0; i<N_dummyCalls; ++i) {
             multiwriteList.push_back(make_pair(multiwriteUnits[0].end(),multiwriteUnits[0].end()));
          }
       }
