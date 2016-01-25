@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -176,7 +177,7 @@ namespace vlsv {
          }
       }
 
-      filein.open(fnameWithoutPath.c_str(), fstream::in);
+      filein.open(fnameWithoutPath.c_str(), fstream::in | fstream::binary);
       if (fileio::chdir(cwd) != 0) success = false;
 
       if (filein.good() == true) {
