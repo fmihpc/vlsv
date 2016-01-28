@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
  *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -45,8 +46,8 @@ namespace vlsvplugin {
       virtual bool readDomainMetadata(vlsv::Reader* vlsvReader);
 
       int blockOrigin;
-      avtMeshType meshType;       /**< Mesh type, one of AVT_POINT_MESH, ... */
-      std::string meshTypeString; /**< String representation of mesh type.*/      
+      avtMeshType meshType;       /**< Mesh type, one of Visit/VTK mesh types such as AVT_POINT_MESH, ... */
+      std::string meshTypeString; /**< String representation of Visit/VTK mesh type.*/      
    };
 } // namespace vlsvplugin
 

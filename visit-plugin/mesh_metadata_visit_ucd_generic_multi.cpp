@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -29,6 +30,10 @@ namespace vlsvplugin {
    
    VisitUCDGenericMultiMeshMetadata::~VisitUCDGenericMultiMeshMetadata() { }
    
+   const std::string& VisitUCDGenericMultiMeshMetadata::getCorrectVlsvMeshType() const {
+      return vlsv::mesh::STRING_UCD_GENERIC_MULTI;
+   }
+
    bool VisitUCDGenericMultiMeshMetadata::getDomainInfoNodes(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 							     const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
       debug2 << "VLSV\t\t VisitUCDGenericMultiMeshMetadata::getDomainInfoNodes called, domain: " << domain << endl;
@@ -106,24 +111,13 @@ namespace vlsvplugin {
       meshMetadataRead = false;
       
       // Parse values from XML tag 'MESH' associated with this mesh.
-      // Check that we are reading multi-domain unstructured mesh metadata:
-      auto it = attribs.find("type");
-      if (it == attribs.end()) {
-         debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
-         return false;
-      }
-      if (it->second != vlsv::mesh::STRING_UCD_GENERIC_MULTI) {
-         debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << vlsv::mesh::STRING_UCD_GENERIC_MULTI << "'" << endl;
-         return false;
-      }
-      
       meshType = AVT_UNSTRUCTURED_MESH;
       meshTypeString = "AVT_UNSTRUCTURED_MESH";
       spatialDimension = 3;
       topologicalDimension = 3;
       
       // Check for definition of spatial dimensions (could be two):
-      it = attribs.find("spatial_dimension");
+      auto it = attribs.find("spatial_dimension");
       if (it != attribs.end()) {
          spatialDimension = atoi(it->second.c_str());
          if (spatialDimension < 2 || spatialDimension > 3) {
@@ -137,14 +131,6 @@ namespace vlsvplugin {
       if (it == attribs.end()) return false;
       MeshMetadata::N_totalZones = atoi(it->second.c_str());
       debug3 << "VLSV\t\t Mesh has " << MeshMetadata::N_totalZones << " zones" << endl;
-
-      // Get mesh geometry:
-      it = attribs.find("geometry");
-      if (it == attribs.end()) geometry = vlsv::geometry::CARTESIAN;
-      else {
-         geometry = vlsv::getMeshGeometry(it->second);
-         if (geometry == vlsv::geometry::UNKNOWN) geometry = vlsv::geometry::CARTESIAN;
-      }
 
       // Read XML tag 'MESH_DOMAIN_SIZES' to figure out how many domains the mesh has:
       map<string,string> attribsOut;
@@ -186,54 +172,6 @@ namespace vlsvplugin {
          nodeDataSize = atoi(it->second.c_str());
       }
       debug4 << "VLSV\t\t Node coordinate datasize: " << nodeDataSize << endl;
-      
-      // Read 'VARIABLE' XML tags to parse names of variables in this mesh:
-      set<string> variableNames;
-      if (vlsvReader->getUniqueAttributeValues("VARIABLE","name",variableNames) == false) {
-         debug3 << "VLSV\t\t ERROR: Failed to read variable names" << endl;
-         return false;
-      }
-      
-      // Remove variables that do not belong to this mesh:
-      debug4 << "VLSV\t\t Found variables:" << endl;
-      for (const auto& it : variableNames) {
-         map<string,string> attribsOut;
-         list<pair<string,string> > attribsIn;
-         attribsIn.push_back(make_pair("mesh",getName()));
-         attribsIn.push_back(make_pair("name",it));
-         
-         // Skip variables belonging to other meshes:
-         if (vlsvReader->getArrayAttributes("VARIABLE",attribsIn,attribsOut) == false) continue;
-         debug4 << "VLSV\t\t\t '" << it << "' vectorsize: " << attribsOut["vectorsize"] << endl;
-         
-         bool success = true;
-         
-         // Parse variable vector size:
-         uint64_t vectorSize = 1;
-         auto mapIt = attribsOut.find("vectorsize");
-         if (mapIt == attribsOut.end()) {
-            debug3 << "VLSV\t\t ERROR: Variable '" << it << "' XML tag does not contain attribute 'vectorsize'" << endl;
-            success = false;
-         } else {
-            vectorSize = atoi(mapIt->second.c_str());
-         }
-         
-         // By default assume that variable is zone-centered:
-         vlsvplugin::VariableCentering centering = vlsvplugin::ZONE_CENTERED;
-         mapIt = attribsOut.find("centering");
-         if (mapIt != attribsOut.end()) {
-            if (mapIt->second == "zone") centering = vlsvplugin::ZONE_CENTERED;
-            else if (mapIt->second == "node") centering = vlsvplugin::NODE_CENTERED;
-            else {
-               debug3 << "VLSV\t\t ERROR: Variable '" << it << "' has unsupported centering!" << endl;
-               success = false;
-            }
-         }
-         
-         if (success == false) continue;
-         
-         MeshMetadata::variableMetadata.push_back(vlsvplugin::VariableMetadata(centering,it,vectorSize));
-      }
 
       meshMetadataRead = true;
       return true;

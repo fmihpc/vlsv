@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -24,7 +25,7 @@ using namespace std;
 
 namespace vlsvplugin {
    
-   VariableMetadata::VariableMetadata(VariableCentering centering,const std::string& name,int vectorSize):
+   VariableMetadata::VariableMetadata(VariableCentering centering,const std::string& name,uint64_t vectorSize):
      centering(centering),name(name),vectorSize(vectorSize) { }
    
    MeshMetadata::MeshMetadata() {
@@ -61,6 +62,32 @@ namespace vlsvplugin {
    
    MeshMetadata::~MeshMetadata() { }
    
+   bool MeshMetadata::checkVlsvMeshType(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs) {
+      // Check that we are reading multi-domain unstructured mesh metadata:
+      auto it = attribs.find("type");
+      if (it == attribs.end()) {
+         debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
+         return false;
+      }
+      if (it->second != getCorrectVlsvMeshType()) {
+         debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << getCorrectVlsvMeshType() << "'" << endl;
+         return false;
+      }
+      return true;
+   }
+
+   void MeshMetadata::getBlockWidths(uint64_t& blockWidthX,uint64_t& blockWidthY,uint64_t& blockWidthZ) const {
+      if (meshBoundingBox.size() < 6) {
+         blockWidthX = 1;
+         blockWidthY = 1;
+         blockWidthZ = 1;
+      } else {
+         blockWidthX = meshBoundingBox[3];
+         blockWidthY = meshBoundingBox[4];
+         blockWidthZ = meshBoundingBox[5];
+      }
+   }
+
    uint64_t MeshMetadata::getMaximumRefinementLevel() const {return maxRefinementLevel;}
 
    const std::vector<uint64_t>& MeshMetadata::getMeshBoundingBox() const {return meshBoundingBox;}
@@ -125,17 +152,17 @@ namespace vlsvplugin {
 
    const std::vector<VariableMetadata>& MeshMetadata::getVariables() const {return variableMetadata;}
    
-   std::string MeshMetadata::getXLabel() const {return xLabel;}
+   void MeshMetadata::getAxisLabels(std::string& xLabel,std::string& yLabel,std::string& zLabel) const {
+      xLabel = this->xLabel;
+      yLabel = this->yLabel;
+      zLabel = this->zLabel;
+   }
    
-   std::string MeshMetadata::getYLabel() const {return yLabel;}
-   
-   std::string MeshMetadata::getZLabel() const {return zLabel;}
-   
-   std::string MeshMetadata::getXUnits() const {return xUnits;}
-   
-   std::string MeshMetadata::getYUnits() const {return yUnits;}   
-
-   std::string MeshMetadata::getZUnits() const {return zUnits;}
+   void MeshMetadata::getAxisUnits(std::string& xUnits,std::string& yUnits,std::string& zUnits) const {
+      xUnits = this->xUnits;
+      yUnits = this->yUnits;
+      zUnits = this->zUnits;
+   }
 
    bool MeshMetadata::hasTransform() const {
       if (transformName.size() > 0) return true;
@@ -149,6 +176,9 @@ namespace vlsvplugin {
 
       bool success = true;
       
+      // Check that we are reading correct mesh type:
+      if (checkVlsvMeshType(vlsvReader,attribs) == false) return false;
+
       // Get mandatory mesh parameters
       // Get mesh name:
       auto it = attribs.find("name"); 
@@ -166,6 +196,11 @@ namespace vlsvplugin {
       } else {
          vlsvMeshType = vlsv::getMeshType(it->second);
       }
+      // Get mesh geometry:
+      if (readMeshGeometry(vlsvReader,attribs) == false) success = false;
+
+      // Get variables that belong to this mesh:
+      if (readVariables(vlsvReader,attribs) == false) success = false;
 
       // Get optional mesh parameters:
       transformName = "";
@@ -216,6 +251,79 @@ namespace vlsvplugin {
 
       if (success == true) meshMetadataRead = true;
       return meshMetadataRead;
+   }
+
+   /** Read mesh geometry from file and store it to MeshMetadata::geometry.
+    * @param vlsvReader vlsv::Reader that has input file open.
+    * @param attribs XML attributes for the array 'MESH'.
+    * @return If true, mesh geometry was successfully read.*/
+   bool MeshMetadata::readMeshGeometry(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
+      // Get mesh geometry:
+      auto it = attribs.find("geometry");
+      if (it == attribs.end()) {
+         geometry = vlsv::geometry::CARTESIAN;
+      } else {
+         geometry = vlsv::getMeshGeometry(it->second);
+         if (geometry == vlsv::geometry::UNKNOWN) geometry = vlsv::geometry::CARTESIAN;
+      }
+      return true;
+   }
+
+   /** Read variable metadata from input file and store to MeshMetadata::variableMetadata.
+    * @param vlsvReader vlsv::Reader that has input file open.
+    * @param attribs XML attributes for the array 'MESH'.
+    * @return If true, variables were read successfully.*/
+   bool MeshMetadata::readVariables(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
+      // Read 'VARIABLE' XML tags to parse names of variables in this mesh:
+      set<string> variableNames;
+      if (vlsvReader->getUniqueAttributeValues("VARIABLE","name",variableNames) == false) {
+         debug3 << "VLSV\t\t ERROR: Failed to read variable names" << endl;
+         return false;
+      }
+
+      // Remove variables that do not belong to this mesh:
+      debug4 << "VLSV\t\t Found variables:" << endl;
+      for (auto& it : variableNames) {
+         map<string,string> attribsOut;
+         map<string,string>::const_iterator mapIt;
+         list<pair<string,string> > attribsIn;
+         attribsIn.push_back(make_pair("mesh",getName()));
+         attribsIn.push_back(make_pair("name",it));
+	 
+         // Skip variables belonging to other meshes:
+         if (vlsvReader->getArrayAttributes("VARIABLE",attribsIn,attribsOut) == false) continue;
+         debug4 << "VLSV\t\t\t '" << it << "' vectorsize: " << attribsOut["vectorsize"] << endl;
+	 
+         bool success = true;
+	 
+         // Parse variable vector size:
+         uint64_t vectorSize = 1;
+         mapIt = attribsOut.find("vectorsize");
+         if (mapIt == attribsOut.end()) {
+            debug3 << "VLSV\t\t ERROR: Variable '" << it << "' XML tag does not contain attribute 'vectorsize'" << endl;
+            success = false;
+         } else {
+            vectorSize = atoi(mapIt->second.c_str());
+         }
+	 
+         // By default assume that variable is zone-centered:
+         vlsvplugin::VariableCentering centering = vlsvplugin::ZONE_CENTERED;
+         mapIt = attribsOut.find("centering");
+         if (mapIt != attribsOut.end()) {
+            if (mapIt->second == "zone") centering = vlsvplugin::ZONE_CENTERED;
+            else if (mapIt->second == "node") centering = vlsvplugin::NODE_CENTERED;
+            else {
+               debug3 << "VLSV\t\t ERROR: Variable '" << it << "' has unsupported centering!" << endl;
+               success = false;
+            }
+         }
+      
+         if (success == false) continue;
+	 
+         variableMetadata.push_back(vlsvplugin::VariableMetadata(centering,it,vectorSize));
+      }
+
+      return true;
    }
 }
 

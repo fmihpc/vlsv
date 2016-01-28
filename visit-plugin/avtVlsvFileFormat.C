@@ -221,13 +221,9 @@ void avtVlsvFileFormat::addMesh(avtDatabaseMetaData* md,const vlsvplugin::VisitM
    mesh->blockTitle = "blocks";
    mesh->blockPieceName = "block";
 
-   mesh->xLabel = meshMetadata->getXLabel();
-   mesh->yLabel = meshMetadata->getYLabel();
-   mesh->zLabel = meshMetadata->getZLabel();
-   mesh->xUnits = meshMetadata->getXUnits();
-   mesh->yUnits = meshMetadata->getYUnits();
-   mesh->zUnits = meshMetadata->getZUnits();
-   
+   meshMetadata->getAxisLabels(mesh->xLabel,mesh->yLabel,mesh->zLabel);
+   meshMetadata->getAxisUnits(mesh->xUnits,mesh->yUnits,mesh->zUnits);
+
    mesh->SetNumberCells( meshMetadata->getNumberOfTotalZones() );
    mesh->hasLogicalBounds = false;
    mesh->hasSpatialExtents = false;

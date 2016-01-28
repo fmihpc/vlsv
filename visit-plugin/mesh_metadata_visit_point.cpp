@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -29,44 +30,28 @@ namespace vlsvplugin {
    
    VisitPointMeshMetadata::~VisitPointMeshMetadata() { }
    
+   const std::string& VisitPointMeshMetadata::getCorrectVlsvMeshType() const {
+      return vlsv::mesh::STRING_POINT;
+   }
+
    bool VisitPointMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       if (meshMetadataRead == true) return meshMetadataRead;
 
       // Call superclass read function:
       if (VisitMeshMetadata::read(vlsvReader,attribs) == false) return false;
       meshMetadataRead = false;
-      
-      // Check that we are reading point mesh metadata:
       bool success = true;
-      auto it = attribs.find("type");
-      if (it == attribs.end()) {
-         debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
-         success = false;
-      }
-      
-      if (it->second != vlsv::mesh::STRING_POINT) {
-         debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << vlsv::mesh::STRING_POINT << "'" << endl;
-         success = false;
-      } else {
-         meshType = AVT_POINT_MESH;
-         meshTypeString = "AVT_POINT_MESH";
-         spatialDimension = 3;
-         topologicalDimension = 0;
-      }
 
-      it = attribs.find("arraysize");
+      meshType = AVT_POINT_MESH;
+      meshTypeString = "AVT_POINT_MESH";
+      spatialDimension = 3;
+      topologicalDimension = 0;
+
+      auto it = attribs.find("arraysize");
       if (it == attribs.end()) success = false;
       N_totalZones = atoi(it->second.c_str());
       N_localZones = N_totalZones;
       N_ghostZones = 0;
-
-      // Get coordinate system:
-      it = attribs.find("geometry");
-      if (it == attribs.end()) {
-         geometry = vlsv::geometry::CARTESIAN;
-      } else {
-         geometry = vlsv::getMeshGeometry(it->second);
-      }
 
       if (success == true) meshMetadataRead = true;
       return meshMetadataRead;

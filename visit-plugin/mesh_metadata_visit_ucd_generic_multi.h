@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2014-2016 Finnish Meteorological Institute
+ *  Copyright 2014-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -43,6 +44,8 @@ namespace vlsvplugin {
       bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
+      virtual const std::string& getCorrectVlsvMeshType() const;
+
       vlsv::datatype::type nodeDatatype; /**< Datatype for node coordinates.*/
       int nodeDataSize;                  /**< Byte size of nodeDatatype.*/
 

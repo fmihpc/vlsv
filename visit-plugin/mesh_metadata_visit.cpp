@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -31,8 +32,12 @@ namespace vlsvplugin {
 
    int VisitMeshMetadata::getBlockOrigin() const {return blockOrigin;}
 
+   /** Get VisIt / VTK mesh type that corresponds to the VLSV mesh.
+    * Type of VisIt / VTK mesh stored in the VLSV mesh.*/
    avtMeshType VisitMeshMetadata::getMeshType() const {return meshType;}
    
+   /** Get string representation of VisIt / VTK mesh type that corresponds to the VLSV mesh.
+    * @return String representation of VisIt / VTK mesh.*/
    std::string VisitMeshMetadata::getMeshTypeString() const {return meshTypeString;}
 
    bool VisitMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {

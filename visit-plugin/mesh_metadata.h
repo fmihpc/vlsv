@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -21,7 +22,6 @@
 #ifndef MESH_METADATA_H
 #define MESH_METADATA_H
 
-#include <map>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -35,11 +35,11 @@ namespace vlsvplugin {
    };
    
    struct VariableMetadata {
-      VariableMetadata(VariableCentering centering,const std::string& name,int vectorSize);
+      VariableMetadata(VariableCentering centering,const std::string& name,uint64_t vectorSize);
       
-      VariableCentering centering;
-      std::string name;
-      int vectorSize;
+      VariableCentering centering;     /**< Variable centering, either NODE_CENTERED or ZONE_CENTERED.*/
+      std::string name;                /**< Name of the variable.*/
+      uint64_t vectorSize;             /**< Size of the data vector, i.e., how many values per cell.*/
    };
    
    /** Virtual base class for storing mesh metadata.*/
@@ -48,6 +48,7 @@ namespace vlsvplugin {
       MeshMetadata();      
       virtual ~MeshMetadata();
 
+      virtual void getBlockWidths(uint64_t& blockWidthX,uint64_t& blockWidthY,uint64_t& blockWidthZ) const;
       virtual uint64_t getMaximumRefinementLevel() const;
       virtual const vlsv::geometry::type& getMeshGeometry() const;
       virtual const std::vector<uint64_t>& getMeshBoundingBox() const;
@@ -58,16 +59,11 @@ namespace vlsvplugin {
       virtual uint64_t getZoneDomainOffset(uint64_t domain) const;
 
       virtual uint64_t getNumberOfDomains() const;
-      //virtual uint64_t getNumberOfGhostNodes() const;
       virtual uint64_t getNumberOfGhostNodes(uint64_t domain) const;
-      //virtual uint64_t getNumberOfLocalNodes() const;
       virtual uint64_t getNumberOfLocalNodes(uint64_t domain) const;
-      //virtual uint64_t getNumberOfTotalNodes() const;
       virtual uint64_t getNumberOfTotalNodes(uint64_t domain) const;
 
-      //virtual uint64_t getNumberOfGhostZones() const;
       virtual uint64_t getNumberOfGhostZones(uint64_t domain) const;
-      //virtual uint64_t getNumberOfLocalZones() const;
       virtual uint64_t getNumberOfLocalZones(uint64_t domain) const;      
       virtual uint64_t getNumberOfTotalZones() const;
       virtual uint64_t getNumberOfTotalZones(uint64_t domain) const;
@@ -78,17 +74,19 @@ namespace vlsvplugin {
       virtual const double* getTransform() const;
       virtual const std::vector<VariableMetadata>& getVariables() const;
 
-      virtual std::string getXLabel() const;
-      virtual std::string getYLabel() const;
-      virtual std::string getZLabel() const;
-      virtual std::string getXUnits() const;
-      virtual std::string getYUnits() const;
-      virtual std::string getZUnits() const;
+      virtual void getAxisLabels(std::string& xLabel,std::string& yLabel,std::string& zLabel) const;
+      virtual void getAxisUnits(std::string& xUnits,std::string& yUnits,std::string& zUnits) const;
       virtual bool hasTransform() const;
       
       virtual bool read(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
 
     protected:
+
+      virtual const std::string& getCorrectVlsvMeshType() const = 0;
+      virtual bool checkVlsvMeshType(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
+      virtual bool readMeshGeometry(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
+      virtual bool readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
+
       bool domainMetadataRead;                /**< If true, domain metadata has been read.*/
       bool meshMetadataRead;                  /**< If true, mesh metadata has been read.*/
       std::vector<VariableMetadata> variableMetadata;

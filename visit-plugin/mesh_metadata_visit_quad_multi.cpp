@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -29,6 +30,10 @@ namespace vlsvplugin {
    
    VisitQuadMultiMeshMetadata::~VisitQuadMultiMeshMetadata() { }
    
+   const std::string& VisitQuadMultiMeshMetadata::getCorrectVlsvMeshType() const {
+      return vlsv::mesh::STRING_QUAD_MULTI;
+   }
+
    bool VisitQuadMultiMeshMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 						  const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
       debug2 << "VLSV\t\t VisitQuadMultiMeshMetadata::getDomainInfo called, domain: " << domain << endl;
@@ -67,24 +72,13 @@ namespace vlsvplugin {
       if (VisitMeshMetadata::read(vlsvReader,attribs) == false) return false;
       meshMetadataRead = false;
       
-      // Check that we are reading multi-domain mesh metadata:
-      auto it = attribs.find("type");
-      if (it == attribs.end()) {
-         debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
-         return false;
-      }      
-      if (it->second != vlsv::mesh::STRING_QUAD_MULTI) {
-         debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << vlsv::mesh::STRING_QUAD_MULTI << "'" << endl;
-         return false;
-      }
-      
       meshType = AVT_UNSTRUCTURED_MESH;
       meshTypeString = "AVT_UNSTRUCTURED_MESH";
       spatialDimension = 3;
       topologicalDimension = 3;
 
       // Figure out total number of cells in the mesh:
-      it = attribs.find("arraysize");
+      auto it = attribs.find("arraysize");
       if (it == attribs.end()) return false;
       MeshMetadata::N_totalZones = atoi(it->second.c_str());
       
@@ -103,54 +97,6 @@ namespace vlsvplugin {
       } else {
          debug3 << "VLSV\t\t Mesh has " << it->second << " domains" << endl;
          VisitMeshMetadata::N_domains = atoi(it->second.c_str());
-      }
-      
-      // Read 'VARIABLE' XML tags to parse names of variables in this mesh:
-      set<string> variableNames;
-      if (vlsvReader->getUniqueAttributeValues("VARIABLE","name",variableNames) == false) {
-         debug3 << "VLSV\t\t ERROR: Failed to read variable names" << endl;
-         return false;
-      }
-      
-      // Remove variables that do not belong to this mesh:
-      debug4 << "VLSV\t\t Found variables:" << endl;
-      for (const auto& it : variableNames) {
-         map<string,string> attribsOut;
-         list<pair<string,string> > attribsIn;
-         attribsIn.push_back(make_pair("mesh",getName()));
-         attribsIn.push_back(make_pair("name",it));
-         
-         // Skip variables belonging to other meshes:
-         if (vlsvReader->getArrayAttributes("VARIABLE",attribsIn,attribsOut) == false) continue;
-         debug4 << "VLSV\t\t\t '" << it << "' vectorsize: " << attribsOut["vectorsize"] << endl;
-         
-         bool success = true;
-         
-         // Parse variable vector size:
-         uint64_t vectorSize = 1;
-         auto mapIt = attribsOut.find("vectorsize");
-         if (mapIt == attribsOut.end()) {
-            debug3 << "VLSV\t\t ERROR: Variable '" << it << "' XML tag does not contain attribute 'vectorsize'" << endl;
-            success = false;
-         } else {
-            vectorSize = atoi(mapIt->second.c_str());
-         }
-         
-         // By default assume that variable is zone-centered:
-         vlsvplugin::VariableCentering centering = vlsvplugin::ZONE_CENTERED;
-         mapIt = attribsOut.find("centering");
-         if (mapIt != attribsOut.end()) {
-            if (mapIt->second == "zone") centering = vlsvplugin::ZONE_CENTERED;
-            else if (mapIt->second == "node") centering = vlsvplugin::NODE_CENTERED;
-            else {
-               debug3 << "VLSV\t\t ERROR: Variable '" << it << "' has unsupported centering!" << endl;
-               success = false;
-            }
-         }
-	 
-         if (success == false) continue;
-         
-         MeshMetadata::variableMetadata.push_back(vlsvplugin::VariableMetadata(centering,it,vectorSize));
       }
 
       meshMetadataRead = true;
