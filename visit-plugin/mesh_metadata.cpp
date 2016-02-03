@@ -108,31 +108,21 @@ namespace vlsvplugin {
 
    uint64_t MeshMetadata::getNumberOfDomains() const {return N_domains;}
 
-   //uint64_t MeshMetadata::getNumberOfGhostNodes() const {return N_ghostNodes;}
-   
    uint64_t MeshMetadata::getNumberOfGhostNodes(uint64_t domain) const {
       return nodeGhostOffsets[domain+1]-nodeGhostOffsets[domain];
    }
 
-   //uint64_t MeshMetadata::getNumberOfGhostZones() const {return N_ghostZones;}
-
    uint64_t MeshMetadata::getNumberOfGhostZones(uint64_t domain) const {
       return blockSize*(zoneGhostOffsets[domain+1]-zoneGhostOffsets[domain]);
    }
-
-   //uint64_t MeshMetadata::getNumberOfLocalNodes() const {return N_localNodes;}
    
    uint64_t MeshMetadata::getNumberOfLocalNodes(uint64_t domain) const {
       return getNumberOfTotalNodes(domain)-getNumberOfGhostNodes(domain);
    }
 
-   //uint64_t MeshMetadata::getNumberOfLocalZones() const {return N_localZones;}
-
    uint64_t MeshMetadata::getNumberOfLocalZones(uint64_t domain) const {
       return getNumberOfTotalZones(domain)-getNumberOfGhostZones(domain);
    }
-
-   //uint64_t MeshMetadata::getNumberOfTotalNodes() const {return N_totalNodes;}
    
    uint64_t MeshMetadata::getNumberOfTotalNodes(uint64_t domain) const {
       return nodeVariableOffsets[domain+1]-nodeVariableOffsets[domain];

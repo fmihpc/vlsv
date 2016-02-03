@@ -212,7 +212,7 @@ void avtVlsvFileFormat::FreeUpResources(void) {
 void avtVlsvFileFormat::addMesh(avtDatabaseMetaData* md,const vlsvplugin::VisitMeshMetadata* const meshMetadata) {
    avtMeshMetaData* mesh = new avtMeshMetaData;
    mesh->name = meshMetadata->getName();
-   mesh->meshType = meshMetadata->getMeshType();
+   mesh->meshType = meshMetadata->getAvtMeshType();
    mesh->numBlocks = meshMetadata->getNumberOfDomains();
    mesh->blockOrigin = meshMetadata->getBlockOrigin();
    mesh->cellOrigin = 0;

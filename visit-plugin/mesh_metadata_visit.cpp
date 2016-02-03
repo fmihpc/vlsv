@@ -34,11 +34,11 @@ namespace vlsvplugin {
 
    /** Get VisIt / VTK mesh type that corresponds to the VLSV mesh.
     * Type of VisIt / VTK mesh stored in the VLSV mesh.*/
-   avtMeshType VisitMeshMetadata::getMeshType() const {return meshType;}
+   avtMeshType VisitMeshMetadata::getAvtMeshType() const {return meshType;}
    
    /** Get string representation of VisIt / VTK mesh type that corresponds to the VLSV mesh.
     * @return String representation of VisIt / VTK mesh.*/
-   std::string VisitMeshMetadata::getMeshTypeString() const {return meshTypeString;}
+   std::string VisitMeshMetadata::getAvtMeshTypeString() const {return meshTypeString;}
 
    bool VisitMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       return MeshMetadata::read(vlsvReader,attribs);
@@ -103,7 +103,7 @@ namespace vlsvplugin {
       zoneDomainOffsets[0]   = 0;
       zoneGhostOffsets[0]    = 0;
       zoneVariableOffsets[0] = 0;
-      for (auto i=0; i<VisitMeshMetadata::N_domains; ++i) {
+      for (uint64_t i=0; i<VisitMeshMetadata::N_domains; ++i) {
          zoneDomainOffsets[i+1]   = zoneDomainOffsets[i] + domainInfo[i*2];
          zoneGhostOffsets[i+1]    = zoneGhostOffsets[i] + domainInfo[i*2+1];
          zoneVariableOffsets[i+1] = zoneVariableOffsets[i] + domainInfo[i*2+0]-domainInfo[i*2+1];

@@ -40,14 +40,14 @@ namespace vlsvplugin {
       
       // Check that vlsv::Reader exists:
       if (vlsvReader == NULL) {
-	 debug3 << "VLSV\t\t ERROR: vlsv::Reader is NULL" << endl;
-	 return false;
+         debug3 << "VLSV\t\t ERROR: vlsv::Reader is NULL" << endl;
+         return false;
       }
 	     
       // Read domain info:
       if (readDomains(vlsvReader) == false) {
-	 debug3 << "VLSV\t\t ERROR: Failed to read ucd amr mesh domains" << endl;
-	 return false;
+         debug3 << "VLSV\t\t ERROR: Failed to read ucd amr mesh domains" << endl;
+         return false;
       }
       
       debug4 << "VLSV\t\t Domain: " << domain << " cell offsets: ";

@@ -36,8 +36,8 @@ namespace vlsvplugin {
       virtual ~VisitMeshMetadata();
       
       virtual int getBlockOrigin() const;
-      virtual avtMeshType getMeshType() const;
-      virtual std::string getMeshTypeString() const;
+      virtual avtMeshType getAvtMeshType() const;
+      virtual std::string getAvtMeshTypeString() const;
 
       virtual bool read(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
       
