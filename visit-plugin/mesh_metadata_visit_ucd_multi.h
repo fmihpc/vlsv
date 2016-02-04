@@ -24,24 +24,24 @@
 
 #include <stdint.h>
 
-#include <mesh_metadata_visit.h>
+#include <mesh_metadata.h>
 
 namespace vlsvplugin {
    
    // Bounding box is a 6 element vector: xsize,ysize,zsize,xblocks,yblocks,zblocks
 
-   class VisitUCDMultiMeshMetadata: public VisitMeshMetadata {
+   class UCDMultiMeshMetadata: public MeshMetadata {
     public:
-      VisitUCDMultiMeshMetadata();
-      virtual ~VisitUCDMultiMeshMetadata();
+      UCDMultiMeshMetadata();
+      virtual ~UCDMultiMeshMetadata();
       
-      bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
-                         const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
-      bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
+      virtual bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+                                 const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
+      virtual bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
       virtual const std::string& getCorrectVlsvMeshType() const;
-      bool readDomains(vlsv::Reader* vlsvReader);
+      virtual bool readDomains(vlsv::Reader* vlsvReader);
    };
    
 } // namespace vlsvplugin

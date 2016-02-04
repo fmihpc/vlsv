@@ -24,22 +24,22 @@
 
 #include <stdint.h>
 
-#include <mesh_metadata_visit.h>
+#include <mesh_metadata.h>
 
 namespace vlsvplugin {
    
-   class VisitUCDAMRMetadata: public VisitMeshMetadata {
+   class UCDAMRMetadata: public MeshMetadata {
     public:
-      VisitUCDAMRMetadata();
-      virtual ~VisitUCDAMRMetadata();
+      UCDAMRMetadata();
+      virtual ~UCDAMRMetadata();
       
-      bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
-			 const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);      
-      bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
+      virtual bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+			                     const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);      
+      virtual bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
       virtual const std::string& getCorrectVlsvMeshType() const;
-      bool readDomains(vlsv::Reader* vlsvReader);
+      virtual bool readDomains(vlsv::Reader* vlsvReader);
    };
    
 } // namespace vlsvplugin

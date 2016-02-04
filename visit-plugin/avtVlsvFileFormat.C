@@ -69,11 +69,12 @@
 #include <set>
 #include <limits>
 
-#include <mesh_metadata_visit_point.h>
-#include <mesh_metadata_visit_quad_multi.h>
-#include <mesh_metadata_visit_ucd_amr.h>
-#include <mesh_metadata_visit_ucd_multi.h>
-#include <mesh_metadata_visit_ucd_generic_multi.h>
+//#include <mesh_metadata_visit_point.h>
+//#include <mesh_metadata_visit_quad_multi.h>
+//#include <mesh_metadata_visit_ucd_amr.h>
+//#include <mesh_metadata_visit_ucd_multi.h>
+//#include <mesh_metadata_visit_ucd_generic_multi.h>
+#include <mesh_metadata_visit_classes.h>
 
 #include <mesh_reader_visit_point.h>
 #include <mesh_reader_visit_quad_multi.h>

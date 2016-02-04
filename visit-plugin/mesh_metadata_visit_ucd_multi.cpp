@@ -26,17 +26,17 @@ using namespace std;
 
 namespace vlsvplugin {
 
-   VisitUCDMultiMeshMetadata::VisitUCDMultiMeshMetadata() { }
+   UCDMultiMeshMetadata::UCDMultiMeshMetadata() { }
    
-   VisitUCDMultiMeshMetadata::~VisitUCDMultiMeshMetadata() { }
+   UCDMultiMeshMetadata::~UCDMultiMeshMetadata() { }
    
-   const std::string& VisitUCDMultiMeshMetadata::getCorrectVlsvMeshType() const {
+   const std::string& UCDMultiMeshMetadata::getCorrectVlsvMeshType() const {
       return vlsv::mesh::STRING_UCD_MULTI;
    }
 
-   bool VisitUCDMultiMeshMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+   bool UCDMultiMeshMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 						                         const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
-      debug2 << "VLSV\t\t VisitUCDMultiMeshMetadata::getDomainInfo called, domain: " << domain << endl;
+      debug2 << "VLSV\t\t UCDMultiMeshMetadata::getDomainInfo called, domain: " << domain << endl;
       
       // Check that vlsv::Reader exists:
       if (vlsvReader == NULL) {
@@ -62,18 +62,16 @@ namespace vlsvplugin {
       return true;
    }
 
-   bool VisitUCDMultiMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
-      debug2 << "VLSV\t\t VisitUCDMultiMeshMetadata::read called" << endl;
+   bool UCDMultiMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
+      debug2 << "VLSV\t\t UCDMultiMeshMetadata::read called" << endl;
       
       // Exit if mesh metadata has already been read:
       if (meshMetadataRead == true) return true;
       
       // Call superclass read function:
-      if (VisitMeshMetadata::read(vlsvReader,attribs) == false) return false;
+      if (MeshMetadata::read(vlsvReader,attribs) == false) return false;
       meshMetadataRead = false;
       
-      meshType = AVT_UNSTRUCTURED_MESH;
-      meshTypeString = "AVT_UNSTRUCTURED_MESH";
       spatialDimension = 3;
       topologicalDimension = 3;
       
@@ -107,15 +105,15 @@ namespace vlsvplugin {
          return false;
       } else {
          debug3 << "VLSV\t\t Mesh has " << it->second << " domains" << endl;
-         VisitMeshMetadata::N_domains = atoi(it->second.c_str());
+         MeshMetadata::N_domains = atoi(it->second.c_str());
       }
       
       meshMetadataRead = true;
       return true;
    }
 
-   bool VisitUCDMultiMeshMetadata::readDomains(vlsv::Reader* vlsvReader) {
-      return VisitMeshMetadata::readDomainMetadata(vlsvReader);
+   bool UCDMultiMeshMetadata::readDomains(vlsv::Reader* vlsvReader) {
+      return MeshMetadata::readDomainMetadata(vlsvReader);
    }
       
 } // namespace vlsvplugin

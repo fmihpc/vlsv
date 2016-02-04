@@ -26,17 +26,17 @@ using namespace std;
 
 namespace vlsvplugin {
 
-   VisitUCDAMRMetadata::VisitUCDAMRMetadata() { }
+   UCDAMRMetadata::UCDAMRMetadata() { }
    
-   VisitUCDAMRMetadata::~VisitUCDAMRMetadata() { }
+   UCDAMRMetadata::~UCDAMRMetadata() { }
    
-   const std::string& VisitUCDAMRMetadata::getCorrectVlsvMeshType() const {
+   const std::string& UCDAMRMetadata::getCorrectVlsvMeshType() const {
       return vlsv::mesh::STRING_UCD_AMR;
    }
 
-   bool VisitUCDAMRMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+   bool UCDAMRMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 						  const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
-      debug2 << "VLSV\t\t VisitUCDAMRMetadata::getDomainInfo called, domain: " << domain << endl;
+      debug2 << "VLSV\t\t UCDAMRMetadata::getDomainInfo called, domain: " << domain << endl;
       
       // Check that vlsv::Reader exists:
       if (vlsvReader == NULL) {
@@ -56,24 +56,22 @@ namespace vlsvplugin {
       debug4 << " variable offsets: " << (this->zoneVariableOffsets)[domain] << ' ' << (this->zoneVariableOffsets)[domain+1];
       debug4 << endl;
       
-      domainOffsets   = VisitMeshMetadata::zoneDomainOffsets.data();
-      ghostOffsets    = VisitMeshMetadata::zoneGhostOffsets.data();
-      variableOffsets = VisitMeshMetadata::zoneVariableOffsets.data();
+      domainOffsets   = MeshMetadata::zoneDomainOffsets.data();
+      ghostOffsets    = MeshMetadata::zoneGhostOffsets.data();
+      variableOffsets = MeshMetadata::zoneVariableOffsets.data();
       return true;
    }
 
-   bool VisitUCDAMRMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
-      debug2 << "VLSV\t\t VisitUCDAMRMetadata::read called" << endl;
+   bool UCDAMRMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
+      debug2 << "VLSV\t\t UCDAMRMetadata::read called" << endl;
       
       // Exit if mesh metadata has already been read:
       if (meshMetadataRead == true) return true;
       
       // Call superclass read function:
-      if (VisitMeshMetadata::read(vlsvReader,attribs) == false) return false;
+      if (MeshMetadata::read(vlsvReader,attribs) == false) return false;
       meshMetadataRead = false;
 
-      meshType = AVT_UNSTRUCTURED_MESH;
-      meshTypeString = "AVT_UNSTRUCTURED_MESH";
       spatialDimension = 3;
       topologicalDimension = 3;
 
@@ -107,18 +105,18 @@ namespace vlsvplugin {
          return false;
       } else {
          debug3 << "VLSV\t\t Mesh has " << it->second << " domains" << endl;
-         VisitMeshMetadata::N_domains = atoi(it->second.c_str());
+         MeshMetadata::N_domains = atoi(it->second.c_str());
       }
 
       meshMetadataRead = true;
       return true;
    }
 
-   bool VisitUCDAMRMetadata::readDomains(vlsv::Reader* vlsvReader) {
+   bool UCDAMRMetadata::readDomains(vlsv::Reader* vlsvReader) {
       // Exit if domain metadata has already been read:
       if (domainMetadataRead == true) return true;
       domainMetadataRead = false;
-      debug2 << "VLSV\t\t VisitUCDAMRMetadata::readDomains called" << endl;
+      debug2 << "VLSV\t\t UCDAMRMetadata::readDomains called" << endl;
       
       // Check that vlsv::Reader exists:
       if (vlsvReader == NULL) {
@@ -141,20 +139,20 @@ namespace vlsvplugin {
       
       // Read domain info:
       int64_t* domainInfo = NULL;
-      if (vlsvReader->read("MESH_DOMAIN_SIZES",attribs,0,VisitMeshMetadata::N_domains,domainInfo) == false) {
+      if (vlsvReader->read("MESH_DOMAIN_SIZES",attribs,0,MeshMetadata::N_domains,domainInfo) == false) {
          debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_ZONES'" << endl;
          delete [] domainInfo; domainInfo = NULL;
          return false;
       }
       
       // Calculate offsets where data for each domain begins:
-      zoneDomainOffsets.resize(VisitMeshMetadata::N_domains+1); zoneDomainOffsets.shrink_to_fit();
-      zoneGhostOffsets.resize(VisitMeshMetadata::N_domains+1); zoneGhostOffsets.shrink_to_fit();
-      zoneVariableOffsets.resize(VisitMeshMetadata::N_domains+1); zoneVariableOffsets.shrink_to_fit();
+      zoneDomainOffsets.resize(MeshMetadata::N_domains+1); zoneDomainOffsets.shrink_to_fit();
+      zoneGhostOffsets.resize(MeshMetadata::N_domains+1); zoneGhostOffsets.shrink_to_fit();
+      zoneVariableOffsets.resize(MeshMetadata::N_domains+1); zoneVariableOffsets.shrink_to_fit();
       zoneDomainOffsets[0]   = 0;
       zoneGhostOffsets[0]    = 0;
       zoneVariableOffsets[0] = 0;
-      for (auto i=0; i<VisitMeshMetadata::N_domains; ++i) {
+      for (uint64_t i=0; i<MeshMetadata::N_domains; ++i) {
          zoneDomainOffsets[i+1]   = zoneDomainOffsets[i] + domainInfo[i*2];
          zoneGhostOffsets[i+1]    = zoneGhostOffsets[i] + domainInfo[i*2+1];
          zoneVariableOffsets[i+1] = zoneVariableOffsets[i] + domainInfo[i*2+0]-domainInfo[i*2+1];
@@ -162,8 +160,8 @@ namespace vlsvplugin {
       delete [] domainInfo; domainInfo = NULL;
       
       // Compute total number of real and ghost cells:
-      MeshMetadata::N_ghostZones = zoneGhostOffsets[VisitMeshMetadata::N_domains];
-      MeshMetadata::N_localZones  = zoneVariableOffsets[VisitMeshMetadata::N_domains];
+      MeshMetadata::N_ghostZones = zoneGhostOffsets[MeshMetadata::N_domains];
+      MeshMetadata::N_localZones  = zoneVariableOffsets[MeshMetadata::N_domains];
    
       domainMetadataRead = true;
       return true;

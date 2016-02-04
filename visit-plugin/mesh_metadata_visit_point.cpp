@@ -26,24 +26,22 @@ using namespace std;
 
 namespace vlsvplugin {
 
-   VisitPointMeshMetadata::VisitPointMeshMetadata(): VisitMeshMetadata() { }
+   PointMeshMetadata::PointMeshMetadata(): MeshMetadata() { }
    
-   VisitPointMeshMetadata::~VisitPointMeshMetadata() { }
+   PointMeshMetadata::~PointMeshMetadata() { }
    
-   const std::string& VisitPointMeshMetadata::getCorrectVlsvMeshType() const {
+   const std::string& PointMeshMetadata::getCorrectVlsvMeshType() const {
       return vlsv::mesh::STRING_POINT;
    }
 
-   bool VisitPointMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
+   bool PointMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       if (meshMetadataRead == true) return meshMetadataRead;
 
       // Call superclass read function:
-      if (VisitMeshMetadata::read(vlsvReader,attribs) == false) return false;
+      if (MeshMetadata::read(vlsvReader,attribs) == false) return false;
       meshMetadataRead = false;
       bool success = true;
 
-      meshType = AVT_POINT_MESH;
-      meshTypeString = "AVT_POINT_MESH";
       spatialDimension = 3;
       topologicalDimension = 0;
 

@@ -24,26 +24,26 @@
 
 #include <stdint.h>
 
-#include <mesh_metadata_visit.h>
+#include <mesh_metadata.h>
 
 namespace vlsvplugin {
    
    // Mesh bounding box: xmin,ymin,zmin,dx,dy,dz
    // Stored in MeshMetadata::meshCoordinates, VisitMeshMetadata::meshBoundingBox not used.
 
-   class VisitQuadMultiMeshMetadata: public VisitMeshMetadata {
+   class QuadMultiMeshMetadata: public MeshMetadata {
     public:
-      VisitQuadMultiMeshMetadata();
-      ~VisitQuadMultiMeshMetadata();
+      QuadMultiMeshMetadata();
+      virtual ~QuadMultiMeshMetadata();
       
-      bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
-			 const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
-      const float* getMeshBoundingBox();      
-      bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
+      virtual bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+			                     const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
+      virtual const float* getMeshBoundingBox();      
+      virtual bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
       virtual const std::string& getCorrectVlsvMeshType() const;
-      bool readDomains(vlsv::Reader* vlsvReader);
+      virtual bool readDomains(vlsv::Reader* vlsvReader);
    };
    
 } // namespace vlsvplugin

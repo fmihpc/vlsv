@@ -24,32 +24,31 @@
 
 #include <stdint.h>
 
-#include <mesh_metadata_visit.h>
+#include <mesh_metadata.h>
 
 namespace vlsvplugin {
    
-   class VisitUCDGenericMultiMeshMetadata: public VisitMeshMetadata {
+   class UCDGenericMultiMeshMetadata: public MeshMetadata {
     public:
-      VisitUCDGenericMultiMeshMetadata();
-      virtual ~VisitUCDGenericMultiMeshMetadata();
+      UCDGenericMultiMeshMetadata();
+      virtual ~UCDGenericMultiMeshMetadata();
       
-      bool getDomainInfoNodes(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
-			      const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
-      bool getDomainInfoZones(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
-			      const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
-      const uint64_t getCellConnectivitySize(int domain) const;
-      int getNodeDataSize() const;
-      vlsv::datatype::type getNodeDatatype() const;
+      virtual bool getDomainInfoNodes(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+			                          const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
+      virtual bool getDomainInfoZones(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+			                          const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
+      virtual const uint64_t getCellConnectivitySize(int domain) const;
+      virtual int getNodeDataSize() const;
+      virtual vlsv::datatype::type getNodeDatatype() const;
       
-      bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
+      virtual bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
       virtual const std::string& getCorrectVlsvMeshType() const;
+      virtual bool readDomains(vlsv::Reader* vlsvReader);
 
       vlsv::datatype::type nodeDatatype; /**< Datatype for node coordinates.*/
       int nodeDataSize;                  /**< Byte size of nodeDatatype.*/
-
-      bool readDomains(vlsv::Reader* vlsvReader);
    };
    
 } // namespace vlsvplugin

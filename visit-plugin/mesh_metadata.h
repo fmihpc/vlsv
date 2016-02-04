@@ -84,6 +84,7 @@ namespace vlsvplugin {
 
       virtual const std::string& getCorrectVlsvMeshType() const = 0;
       virtual bool checkVlsvMeshType(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
+      virtual bool readDomainMetadata(vlsv::Reader* vlsvReader);
       virtual bool readMeshGeometry(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
       virtual bool readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
 

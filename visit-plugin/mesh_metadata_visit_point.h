@@ -22,15 +22,15 @@
 #ifndef MESH_METADATA_VISIT_POINT_H
 #define MESH_METADATA_VISIT_POINT_H
 
-#include <mesh_metadata_visit.h>
+#include <mesh_metadata.h>
 
 namespace vlsvplugin {
-   class VisitPointMeshMetadata: public VisitMeshMetadata {
+   class PointMeshMetadata: public MeshMetadata {
     public:
-      VisitPointMeshMetadata();
-      ~VisitPointMeshMetadata();
+      PointMeshMetadata();
+      virtual ~PointMeshMetadata();
 
-      bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
+      virtual bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       
     protected:
        virtual const std::string& getCorrectVlsvMeshType() const;
