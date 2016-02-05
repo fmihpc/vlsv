@@ -77,5 +77,11 @@ namespace vlsvplugin {
 
    std::string VisitUCDGenericMultiMeshMetadata::getAvtMeshTypeString() const {return "AVT_UNSTRUCTURED_MESH";}
    
-   const std::string& VisitUCDGenericMultiMeshMetadata::getCorrectVlsvMeshType() const {return UCDGenericMultiMeshMetadata::getCorrectVlsvMeshType();}
+   const std::string& VisitUCDGenericMultiMeshMetadata::getCorrectVlsvMeshType() const {
+      return UCDGenericMultiMeshMetadata::getCorrectVlsvMeshType();
+   }
+
+   bool VisitUCDGenericMultiMeshMetadata::read(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs) {
+      return UCDGenericMultiMeshMetadata::read(vlsv,attribs);
+   }
 }

@@ -28,7 +28,7 @@
 
 namespace vlsvplugin {
    
-   class UCDGenericMultiMeshMetadata: public MeshMetadata {
+   class UCDGenericMultiMeshMetadata: public virtual MeshMetadata {
     public:
       UCDGenericMultiMeshMetadata();
       virtual ~UCDGenericMultiMeshMetadata();

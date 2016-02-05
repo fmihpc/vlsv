@@ -25,7 +25,7 @@
 #include <mesh_metadata.h>
 
 namespace vlsvplugin {
-   class PointMeshMetadata: public MeshMetadata {
+   class PointMeshMetadata: public virtual MeshMetadata {
     public:
       PointMeshMetadata();
       virtual ~PointMeshMetadata();

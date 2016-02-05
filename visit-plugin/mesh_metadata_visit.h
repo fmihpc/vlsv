@@ -30,7 +30,7 @@
 #include <mesh_metadata.h>
 
 namespace vlsvplugin {
-   class VisitMeshMetadata: public MeshMetadata {
+   class VisitMeshMetadata: public virtual MeshMetadata {
     public:
       VisitMeshMetadata();
       virtual ~VisitMeshMetadata();

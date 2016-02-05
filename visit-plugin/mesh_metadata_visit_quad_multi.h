@@ -31,7 +31,7 @@ namespace vlsvplugin {
    // Mesh bounding box: xmin,ymin,zmin,dx,dy,dz
    // Stored in MeshMetadata::meshCoordinates, VisitMeshMetadata::meshBoundingBox not used.
 
-   class QuadMultiMeshMetadata: public MeshMetadata {
+   class QuadMultiMeshMetadata: public virtual MeshMetadata {
     public:
       QuadMultiMeshMetadata();
       virtual ~QuadMultiMeshMetadata();

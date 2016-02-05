@@ -30,7 +30,7 @@ namespace vlsvplugin {
    
    // Bounding box is a 6 element vector: xsize,ysize,zsize,xblocks,yblocks,zblocks
 
-   class UCDMultiMeshMetadata: public MeshMetadata {
+   class UCDMultiMeshMetadata: public virtual MeshMetadata {
     public:
       UCDMultiMeshMetadata();
       virtual ~UCDMultiMeshMetadata();

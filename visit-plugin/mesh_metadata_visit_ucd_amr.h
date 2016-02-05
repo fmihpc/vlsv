@@ -28,7 +28,7 @@
 
 namespace vlsvplugin {
    
-   class UCDAMRMetadata: public MeshMetadata {
+   class UCDAMRMetadata: public virtual MeshMetadata {
     public:
       UCDAMRMetadata();
       virtual ~UCDAMRMetadata();

@@ -91,14 +91,19 @@ namespace vlsvplugin {
    }
 
    const uint64_t UCDGenericMultiMeshMetadata::getCellConnectivitySize(int domain) const {
+      debug2 << "VLSV\t\t VisitUCDGenericMultiMeshMetadata::getCellConnectivitySize called" << endl;
       return zoneConnectivityOffsets[domain+1]-zoneConnectivityOffsets[domain];
    }
 
    vlsv::datatype::type UCDGenericMultiMeshMetadata::getNodeDatatype() const {
+      debug2 << "VLSV\t\t VisitUCDGenericMultiMeshMetadata::getNodeDatatype called" << endl;
       return nodeDatatype;
    }
    
-   int UCDGenericMultiMeshMetadata::getNodeDataSize() const {return nodeDataSize;}
+   int UCDGenericMultiMeshMetadata::getNodeDataSize() const {
+      debug2 << "VLSV\t\t VisitUCDGenericMultiMeshMetadata::getNodeDataSize called" << endl;
+      return nodeDataSize;
+   }
    
    bool UCDGenericMultiMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
       debug2 << "VLSV\t\t VisitUCDGenericMultiMeshMetadata::read called" << endl;
@@ -194,6 +199,7 @@ namespace vlsvplugin {
       uint64_t* ptr = meshBoundingBox.data();
       if (vlsvReader->read("MESH_BBOX",attribs,0,vlsv::ucdgenericmulti::bbox::SIZE,ptr,false) == false) {
          debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
+         debug3 << "VLSV\t\t vlsv::Reader says '" << vlsvReader->getLastError() << "'" << endl;
          return false;
       }
       blockSize =

@@ -92,9 +92,8 @@ namespace vlsv {
       datatype::type datatype;
       uint64_t dataSize;
       if (Reader::getArrayInfo(tagName,attribs,arraySize,vectorSize,datatype,dataSize) == false) {
-         std::stringstream ss;
-         ss << "ERROR: Failed to get array info in " << __FILE__ << ":" << __LINE__;
-         return withError(ss);
+         // getArrayInfo already prints an error message
+         return false;
       }
 
       // Check that requested read is inside the array:

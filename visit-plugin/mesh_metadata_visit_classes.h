@@ -87,6 +87,8 @@ namespace vlsvplugin {
       virtual avtMeshType getAvtMeshType() const;
       virtual std::string getAvtMeshTypeString() const;
 
+      virtual bool read(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
+
    protected:
       virtual const std::string& getCorrectVlsvMeshType() const;
    };

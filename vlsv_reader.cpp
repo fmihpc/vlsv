@@ -99,7 +99,11 @@ namespace vlsv {
       muxml::XMLNode* node = xmlReader.find(tagName,attribs);
       if (node == NULL) {
          stringstream ss;
-         ss << "ERROR: Could not find requested array '" << tagName << "' in " << __FILE__ << ":" << __LINE__;
+         ss << "ERROR: Could not find requested array '" << tagName << "' with attribs ";
+         for (auto& it: attribs) {
+            ss << "'" << it.first << "'='" << it.second << "' ";
+         }
+         ss << " in " << __FILE__ << ":" << __LINE__;
          return withError(ss);
       }
 
