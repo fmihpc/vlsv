@@ -19,7 +19,6 @@
 
 #include <mesh_metadata_visit_ucd_amr.h>
 
-#include <DebugStream.h>
 #include <list>
 
 using namespace std;
@@ -36,25 +35,15 @@ namespace vlsvplugin {
 
    bool UCDAMRMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
 						  const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
-      debug2 << "VLSV\t\t UCDAMRMetadata::getDomainInfo called, domain: " << domain << endl;
-      
       // Check that vlsv::Reader exists:
       if (vlsvReader == NULL) {
-         debug3 << "VLSV\t\t ERROR: vlsv::Reader is NULL" << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: vlsv::Reader is NULL" << endl;
+         return MeshMetadata::exitWithError(ss);
       }
 	     
       // Read domain info:
-      if (readDomains(vlsvReader) == false) {
-         debug3 << "VLSV\t\t ERROR: Failed to read ucd amr mesh domains" << endl;
-         return false;
-      }
-      
-      debug4 << "VLSV\t\t Domain: " << domain << " cell offsets: ";
-      debug4 << (this->zoneDomainOffsets)[domain] << ' ' << (this->zoneDomainOffsets)[domain+1];
-      debug4 << " ghost offsets: " << (this->zoneGhostOffsets)[domain] << ' ' << (this->zoneGhostOffsets)[domain+1];
-      debug4 << " variable offsets: " << (this->zoneVariableOffsets)[domain] << ' ' << (this->zoneVariableOffsets)[domain+1];
-      debug4 << endl;
+      if (readDomains(vlsvReader) == false) return false;
       
       domainOffsets   = MeshMetadata::zoneDomainOffsets.data();
       ghostOffsets    = MeshMetadata::zoneGhostOffsets.data();
@@ -63,8 +52,6 @@ namespace vlsvplugin {
    }
 
    bool UCDAMRMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
-      debug2 << "VLSV\t\t UCDAMRMetadata::read called" << endl;
-      
       // Exit if mesh metadata has already been read:
       if (meshMetadataRead == true) return true;
       
@@ -80,15 +67,20 @@ namespace vlsvplugin {
       if (it != attribs.end()) {
          spatialDimension = atoi(it->second.c_str());
          if (spatialDimension < 2 || spatialDimension > 3) {
-            debug3 << "VLSV\t\t ERROR: Spatial dimension must be 2 or 3, value '" << it->second << "' given in XML attributes" << endl;
-            return false;
+            stringstream ss;
+            ss << "ERROR: Spatial dimension must be 2 or 3, value '" << it->second << "' given in XML attributes";
+            return MeshMetadata::exitWithError(ss);
          }
          topologicalDimension = spatialDimension;
       }
 
       // Figure out total number of cells in the mesh:
       it = attribs.find("arraysize");
-      if (it == attribs.end()) return false;
+      if (it == attribs.end()) {
+         stringstream ss;
+         ss << "ERROR: Array 'MESH' does not have an XML attribute called 'arraysize'";
+         return MeshMetadata::exitWithError(ss);
+      }
       MeshMetadata::N_totalZones = atoi(it->second.c_str());
 
       // Read XML tag 'MESH_ZONES' to figure out how many domains the mesh has:
@@ -96,15 +88,17 @@ namespace vlsvplugin {
       list<pair<string,string> > attribsIn;
       attribsIn.push_back(make_pair("mesh",getName()));
       if (vlsvReader->getArrayAttributes("MESH_DOMAIN_SIZES",attribsIn,attribsOut) == false) {
-         debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_DOMAIN_SIZES' attributes for mesh '" << getName() << "' from VLSV file" << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: Failed to read array 'MESH_DOMAIN_SIZES' attributes for mesh '" << getName() << "'. ";
+         ss << "vlsv::Reader says '" << vlsvReader->getLastError() << "'.";
+         return MeshMetadata::exitWithError(ss);
       }
       it = attribsOut.find("arraysize");
       if (it == attribsOut.end()) {
-         debug3 << "VLSV\t\t ERROR: Array 'MESH_DOMAIN_SIZES' XML tag does not have attribute 'arraysize'" << endl;
-         return false;
-      } else {
-         debug3 << "VLSV\t\t Mesh has " << it->second << " domains" << endl;
+         stringstream ss;
+         ss << "ERROR: Array 'MESH_DOMAIN_SIZES' XML tag does not have attribute 'arraysize'";
+         return MeshMetadata::exitWithError(ss);
+      } else {         
          MeshMetadata::N_domains = atoi(it->second.c_str());
       }
 
@@ -115,13 +109,13 @@ namespace vlsvplugin {
    bool UCDAMRMetadata::readDomains(vlsv::Reader* vlsvReader) {
       // Exit if domain metadata has already been read:
       if (domainMetadataRead == true) return true;
-      domainMetadataRead = false;
-      debug2 << "VLSV\t\t UCDAMRMetadata::readDomains called" << endl;
+      domainMetadataRead = false;      
       
       // Check that vlsv::Reader exists:
       if (vlsvReader == NULL) {
-         debug3 << "VLSV\t\t ERROR: vlsv::Reader is NULL" << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: vlsv::Reader is NULL";
+         return MeshMetadata::exitWithError(ss);
       }
       
       // Read mesh bounding box:
@@ -130,19 +124,21 @@ namespace vlsvplugin {
       meshBoundingBox.resize(6);
       uint64_t* ptr = meshBoundingBox.data();
       if (vlsvReader->read("MESH_BBOX",attribs,0,6,ptr,false) == false) {
-         debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: Failed to read array 'MESH_BBOX'. ";
+         ss << "vlsv::Reader says '" << vlsvReader->getLastError() << "'.";
+         return MeshMetadata::exitWithError(ss);
       }
       blockSize = meshBoundingBox[3]*meshBoundingBox[4]*meshBoundingBox[5];
-      debug4 << "VLSV\t\t Mesh size in blocks: " << meshBoundingBox[0] << ' ' << meshBoundingBox[1] << ' ' << meshBoundingBox[2];
-      debug4 << " block sizes: " << meshBoundingBox[3] << ' ' << meshBoundingBox[4] << ' ' << meshBoundingBox[5] << endl;
       
       // Read domain info:
       int64_t* domainInfo = NULL;
       if (vlsvReader->read("MESH_DOMAIN_SIZES",attribs,0,MeshMetadata::N_domains,domainInfo) == false) {
-         debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_ZONES'" << endl;
          delete [] domainInfo; domainInfo = NULL;
-         return false;
+         stringstream ss;
+         ss << "ERROR: Failed to read array 'MESH_ZONES'. " << endl;
+         ss << "vlsv::Reader says '" << vlsvReader->getLastError() << "'.";         
+         return MeshMetadata::exitWithError(ss);
       }
       
       // Calculate offsets where data for each domain begins:

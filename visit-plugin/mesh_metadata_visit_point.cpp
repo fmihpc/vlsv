@@ -19,7 +19,6 @@
 
 #include <mesh_metadata_visit_point.h>
 
-#include <DebugStream.h>
 #include <list>
 
 using namespace std;

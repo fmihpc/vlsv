@@ -19,8 +19,6 @@
 
 #include <mesh_metadata.h>
 
-#include <DebugStream.h>
-
 using namespace std;
 
 namespace vlsvplugin {
@@ -63,15 +61,17 @@ namespace vlsvplugin {
    MeshMetadata::~MeshMetadata() { }
    
    bool MeshMetadata::checkVlsvMeshType(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs) {
-      // Check that we are reading multi-domain unstructured mesh metadata:
+      // Check that we are reading correct mesh type:
       auto it = attribs.find("type");
       if (it == attribs.end()) {
-         debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: Could not determine vlsv mesh type in " << __FILE__ << ":" << __LINE__;
+         return exitWithError(ss);
       }
       if (it->second != getCorrectVlsvMeshType()) {
-         debug3 << "VLSV\t\t ERROR: Mesh type is '" << it->second << "', should be '" << getCorrectVlsvMeshType() << "'" << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: Mesh type is '" << it->second << "', should be '" << getCorrectVlsvMeshType() << "' in " << __FILE__ << ":" << __LINE__;
+         return exitWithError(ss);
       }
       return true;
    }
@@ -86,6 +86,18 @@ namespace vlsvplugin {
          blockWidthY = meshBoundingBox[4];
          blockWidthZ = meshBoundingBox[5];
       }
+   }
+
+   const std::string& MeshMetadata::getErrorString() const {return errorString;}
+
+   bool MeshMetadata::exitWithError(const std::string& s) const {
+      errorString = s;
+      return false;
+   }
+
+   bool MeshMetadata::exitWithError(const std::stringstream& ss) const {
+      errorString = ss.str();
+      return false;
    }
 
    uint64_t MeshMetadata::getMaximumRefinementLevel() const {return maxRefinementLevel;}
@@ -173,24 +185,26 @@ namespace vlsvplugin {
       // Get mesh name:
       auto it = attribs.find("name"); 
       if (it == attribs.end()) {
-         debug3 << "VLSV\t\t ERROR: XML tag does have attribute 'name'" << endl;
-         success = false; 
+         stringstream ss;
+         ss << "ERROR: XML tag does have attribute 'name'";
+         exitWithError(ss);
       } else {
          name = it->second;
       }
       // Get mesh type:
       it = attribs.find("type");
       if (it == attribs.end()) {
-         debug3 << "VLSV\t\t ERROR: XML tag does not have attribute 'type'" << endl;
-         success = false;
+         stringstream ss;
+         ss << "ERROR: XML tag does not have attribute 'type'";
+         return exitWithError(ss);
       } else {
          vlsvMeshType = vlsv::getMeshType(it->second);
       }
       // Get mesh geometry:
-      if (readMeshGeometry(vlsvReader,attribs) == false) success = false;
+      if (readMeshGeometry(vlsvReader,attribs) == false) return false;
 
       // Get variables that belong to this mesh:
-      if (readVariables(vlsvReader,attribs) == false) success = false;
+      if (readVariables(vlsvReader,attribs) == false) return false;
 
       // Get optional mesh parameters:
       transformName = "";
@@ -214,28 +228,32 @@ namespace vlsvplugin {
 
          attribsIn.push_back(make_pair("name",transformName));
          if (vlsvReader->getArrayAttributes("TRANSFORM",attribsIn,attribsOut) == false) {
-            debug3 << "VLSV\t\t ERROR: Failed to read array 'TRANSFORM' attributes for mesh '" << getName() << "' from VLSV file" << endl;
-            transformName = ""; return false;
+            stringstream ss;
+            ss << "ERROR: Failed to read array 'TRANSFORM' attributes for mesh '" << getName() << "' from VLSV file";
+            transformName = ""; return exitWithError(ss);
          }
 
          // Check arraysize and vectorsize for correctness:
          auto xml = attribsOut.find("arraysize");
          if (atoi(xml->second.c_str()) != 16) {
-            debug3 << "VLSV\t\t ERROR: Transform matrix has wrong arraysize '" << atoi(xml->second.c_str()) << "', should be 16" << endl;
-            transformName = ""; return false;
+            stringstream ss;
+            ss << "ERROR: Transform matrix has wrong arraysize '" << atoi(xml->second.c_str()) << "', should be 16";
+            transformName = ""; return exitWithError(ss);
          }
          
          xml = attribsOut.find("vectorsize");
          if (atoi(xml->second.c_str()) != 1) {
-            debug3 << "VLSV\t\t ERROR: Transform matrix has wrong vectorsize '" << atoi(xml->second.c_str()) << "', should be 1" << endl;
-            transformName = ""; return false;
+            stringstream ss;
+            ss << "ERROR: Transform matrix has wrong vectorsize '" << atoi(xml->second.c_str()) << "', should be 1";
+            transformName = ""; return exitWithError(ss);
          }
 
          // Read the matrix components:
          double* ptr = transform;
          if (vlsvReader->read("TRANSFORM",attribsIn,0,16,ptr,false) == false) {
-            debug3 << "VLSV\t\t ERROR: Failed to read the transform matrix for mesh '" << getName() << "'" << endl;
-            transformName = ""; return false;
+            stringstream ss;
+            ss << "ERROR: Failed to read the transform matrix for mesh '" << getName() << "'";
+            transformName = ""; return exitWithError(ss);
          }
       }
 
@@ -247,12 +265,12 @@ namespace vlsvplugin {
       // Exit if domain metadata has already been read:
       if (domainMetadataRead == true) return true;
       domainMetadataRead = false;
-      debug2 << "VLSV\t\t VisitMeshMetadata::readDomains called" << endl;
 
       // Check that vlsv::Reader exists:
       if (vlsvReader == NULL) {
-	     debug3 << "VLSV\t\t ERROR: vlsv::Reader is NULL" << endl;
-	     return false;
+         stringstream ss;
+	     ss << "ERROR: vlsv::Reader is NULL";
+	     return exitWithError(ss);
       }
 
       // Read mesh bounding box:
@@ -262,21 +280,19 @@ namespace vlsvplugin {
          meshBoundingBox.resize(6);   
          uint64_t* ptr = meshBoundingBox.data();
          if (vlsvReader->read("MESH_BBOX",attribs,0,6,ptr,false) == false) {
-		    debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
-		    return false;
+            stringstream ss;
+		    ss << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
+		    return exitWithError(ss);
          }
          blockSize = meshBoundingBox[3]*meshBoundingBox[4]*meshBoundingBox[5];
-         debug4 << "VLSV\t\t Mesh size in blocks: " << meshBoundingBox[0] << ' ' << meshBoundingBox[1] << ' ' << meshBoundingBox[2];
-         debug4 << " block sizes: " << meshBoundingBox[3] << ' ' << meshBoundingBox[4] << ' ' << meshBoundingBox[5] << endl;
       } else if (vlsvMeshType == vlsv::mesh::QUAD_MULTI) {
          meshCoordinates.resize(6);
          float* ptr = meshCoordinates.data();
          if (vlsvReader->read("MESH_BBOX",attribs,0,6,ptr,false) == false) {
-	        debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_BBOX'" << endl;
-	        return false;
+            stringstream ss;
+	        ss << "ERROR: Failed to read array 'MESH_BBOX'";
+	        return exitWithError(ss);
          }
-         debug4 << "VLSV\t\t Mesh corner coordinates: " << meshCoordinates[0] << ' ' << meshCoordinates[1] << ' ' << meshCoordinates[2];
-         debug4 << " cell sizes: " << meshCoordinates[3] << ' ' << meshCoordinates[4] << ' ' << meshCoordinates[5] << endl;
       }
 
       // Read domain sizes:
@@ -285,14 +301,16 @@ namespace vlsvplugin {
       if (vlsvMeshType == vlsv::mesh::QUAD_MULTI) domainArrayName = "MESH_ZONES";
       else if (vlsvMeshType == vlsv::mesh::UCD_MULTI) domainArrayName = "MESH_DOMAIN_SIZES";
       else {
-         debug3 << "VLSV\t\t ERROR: Unsupported mesh type '" << vlsvMeshType << "' in " << __FILE__ << ":" << __LINE__ << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: Unsupported mesh type '" << vlsvMeshType << "' in " << __FILE__ << ":" << __LINE__;
+         return exitWithError(ss);
       }
       if (vlsvReader->read(domainArrayName,attribs,0,MeshMetadata::N_domains,domainInfo) == false) {
-		debug3 << "VLSV\t\t ERROR: Failed to read array '" << domainArrayName << "' in " << __FILE__ << ":" << __LINE__ << endl;
-		debug3 << "VLSV\t\t Message from VLSV Reader '" << vlsvReader->getLastError() << "'" << endl;
-		delete [] domainInfo; domainInfo = NULL;
-		return false;
+         stringstream ss;
+		 ss << "ERROR: Failed to read array '" << domainArrayName << "' in " << __FILE__ << ":" << __LINE__ << ". ";
+		 ss << "vlsv::Reader says '" << vlsvReader->getLastError() << "'.";
+		 delete [] domainInfo; domainInfo = NULL;
+		 return exitWithError(ss);
       }
 
       zoneDomainOffsets.resize(MeshMetadata::N_domains+1); zoneDomainOffsets.shrink_to_fit();
@@ -341,31 +359,28 @@ namespace vlsvplugin {
       // Read 'VARIABLE' XML tags to parse names of variables in this mesh:
       set<string> variableNames;
       if (vlsvReader->getUniqueAttributeValues("VARIABLE","name",variableNames) == false) {
-         debug3 << "VLSV\t\t ERROR: Failed to read variable names" << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: Failed to read variable names";
+         return exitWithError(ss);
       }
 
       // Remove variables that do not belong to this mesh:
-      debug4 << "VLSV\t\t Found variables:" << endl;
       for (auto& it : variableNames) {
          map<string,string> attribsOut;
-         map<string,string>::const_iterator mapIt;
          list<pair<string,string> > attribsIn;
          attribsIn.push_back(make_pair("mesh",getName()));
          attribsIn.push_back(make_pair("name",it));
 	 
          // Skip variables belonging to other meshes:
          if (vlsvReader->getArrayAttributes("VARIABLE",attribsIn,attribsOut) == false) continue;
-         debug4 << "VLSV\t\t\t '" << it << "' vectorsize: " << attribsOut["vectorsize"] << endl;
-	 
-         bool success = true;
 	 
          // Parse variable vector size:
          uint64_t vectorSize = 1;
-         mapIt = attribsOut.find("vectorsize");
+         auto mapIt = attribsOut.find("vectorsize");
          if (mapIt == attribsOut.end()) {
-            debug3 << "VLSV\t\t ERROR: Variable '" << it << "' XML tag does not contain attribute 'vectorsize'" << endl;
-            success = false;
+            stringstream ss;
+            ss << "ERROR: Variable '" << it << "' XML tag does not contain attribute 'vectorsize'";
+            return exitWithError(ss);
          } else {
             vectorSize = atoi(mapIt->second.c_str());
          }
@@ -377,12 +392,11 @@ namespace vlsvplugin {
             if (mapIt->second == "zone") centering = vlsvplugin::ZONE_CENTERED;
             else if (mapIt->second == "node") centering = vlsvplugin::NODE_CENTERED;
             else {
-               debug3 << "VLSV\t\t ERROR: Variable '" << it << "' has unsupported centering!" << endl;
-               success = false;
+               stringstream ss;
+               ss << "ERROR: Variable '" << it << "' has unsupported centering!";
+               return exitWithError(ss);
             }
          }
-      
-         if (success == false) continue;
 	 
          variableMetadata.push_back(vlsvplugin::VariableMetadata(centering,it,vectorSize));
       }

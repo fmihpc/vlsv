@@ -40,10 +40,11 @@ namespace vlsvplugin {
       virtual std::string getAvtMeshTypeString() const =0;
       
     protected:
+      virtual bool checkVlsvMeshType(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
+      virtual bool readDomainMetadata(vlsv::Reader* vlsvReader);
+      virtual bool readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
 
       int blockOrigin;
-      //avtMeshType meshType;       /**< Mesh type, one of Visit/VTK mesh types such as AVT_POINT_MESH, ... */
-      //std::string meshTypeString; /**< String representation of Visit/VTK mesh type.*/      
    };
 } // namespace vlsvplugin
 

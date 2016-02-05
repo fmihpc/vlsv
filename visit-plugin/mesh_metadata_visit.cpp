@@ -30,15 +30,48 @@ namespace vlsvplugin {
    
    VisitMeshMetadata::~VisitMeshMetadata() { }
 
+   bool VisitMeshMetadata::checkVlsvMeshType(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs) {
+      const bool rvalue = MeshMetadata::checkVlsvMeshType(vlsv,attribs);
+      if (rvalue == false) {
+         debug3 << "VLSV\t\t " << MeshMetadata::getErrorString() << endl;
+      }
+      return rvalue;
+   }
+
    int VisitMeshMetadata::getBlockOrigin() const {return blockOrigin;}
 
-   /** Get VisIt / VTK mesh type that corresponds to the VLSV mesh.
-    * Type of VisIt / VTK mesh stored in the VLSV mesh.*/
-   //avtMeshType VisitMeshMetadata::getAvtMeshType() const {return meshType;}
-   
-   /** Get string representation of VisIt / VTK mesh type that corresponds to the VLSV mesh.
-    * @return String representation of VisIt / VTK mesh.*/
-   //std::string VisitMeshMetadata::getAvtMeshTypeString() const {return meshTypeString;}
+   bool VisitMeshMetadata::readDomainMetadata(vlsv::Reader* vlsvReader) {
+      debug2 << "VLSV\t\t VisitMeshMetadata::readDomains called" << endl;
+
+      const bool rvalue = MeshMetadata::readDomainMetadata(vlsvReader);
+
+      if (rvalue == true) {
+         if (vlsvMeshType == vlsv::mesh::UCD_MULTI) {
+            debug4 << "VLSV\t\t Mesh size in blocks: " << meshBoundingBox[0] << ' ' << meshBoundingBox[1] << ' ' << meshBoundingBox[2];
+            debug4 << " block sizes: " << meshBoundingBox[3] << ' ' << meshBoundingBox[4] << ' ' << meshBoundingBox[5] << endl;
+         } else if (vlsvMeshType == vlsv::mesh::QUAD_MULTI) {
+            debug4 << "VLSV\t\t Mesh corner coordinates: " << meshCoordinates[0] << ' ' << meshCoordinates[1] << ' ' << meshCoordinates[2];
+            debug4 << " cell sizes: " << meshCoordinates[3] << ' ' << meshCoordinates[4] << ' ' << meshCoordinates[5] << endl;
+         }
+      } else {
+         debug3 << "VLSV\t\t " << MeshMetadata::getErrorString() << endl;
+      }
+
+      return rvalue;
+   }
+
+   bool VisitMeshMetadata::readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs) {
+      const bool rvalue = MeshMetadata::readVariables(vlsv,attribs);
+
+      if (rvalue == true) {
+         debug4 << "VLSV\t\t Found variables:" << endl;
+         for (auto& it: variableMetadata) {
+            debug4 << "\t\t\t '" << it.name << "' vectorsize = " << it.vectorSize << endl;
+         }
+      }
+
+      return rvalue;
+   }
    
 } // namespace vlsvplugin
 

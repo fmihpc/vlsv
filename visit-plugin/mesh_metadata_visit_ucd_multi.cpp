@@ -19,7 +19,6 @@
 
 #include <mesh_metadata_visit_ucd_multi.h>
 
-#include <DebugStream.h>
 #include <list>
 
 using namespace std;
@@ -35,36 +34,28 @@ namespace vlsvplugin {
    }
 
    bool UCDMultiMeshMetadata::getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
-						                         const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
-      debug2 << "VLSV\t\t UCDMultiMeshMetadata::getDomainInfo called, domain: " << domain << endl;
-      
+						                    const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets) {
       // Check that vlsv::Reader exists:
       if (vlsvReader == NULL) {
-         debug3 << "VLSV\t\t ERROR: vlsv::Reader is NULL" << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: vlsv::Reader is NULL";
+         return MeshMetadata::exitWithError(ss);
       }
 	     
       // Read domain info:
       if (readDomains(vlsvReader) == false) {
-         debug3 << "VLSV\t\t ERROR: Failed to read quad multimesh domains" << endl;
+         stringstream ss;
+         ss << "ERROR: Failed to read UCD multi-mesh domains";
          return false;
       }
-      
-      debug4 << "VLSV\t\t Domain: " << domain << " cell offsets: ";
-      debug4 << (this->zoneDomainOffsets)[domain] << ' ' << (this->zoneDomainOffsets)[domain+1];
-      debug4 << " ghost offsets: " << (this->zoneGhostOffsets)[domain] << ' ' << (this->zoneGhostOffsets)[domain+1];
-      debug4 << " variable offsets: " << (this->zoneVariableOffsets)[domain] << ' ' << (this->zoneVariableOffsets)[domain+1];
-      debug4 << endl;
 
-      domainOffsets = this->zoneDomainOffsets.data();
-      ghostOffsets = this->zoneGhostOffsets.data();
-      variableOffsets = this->zoneVariableOffsets.data();
+      domainOffsets = MeshMetadata::zoneDomainOffsets.data();
+      ghostOffsets = MeshMetadata::zoneGhostOffsets.data();
+      variableOffsets = MeshMetadata::zoneVariableOffsets.data();
       return true;
    }
 
    bool UCDMultiMeshMetadata::read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
-      debug2 << "VLSV\t\t UCDMultiMeshMetadata::read called" << endl;
-      
       // Exit if mesh metadata has already been read:
       if (meshMetadataRead == true) return true;
       
@@ -80,15 +71,20 @@ namespace vlsvplugin {
       if (it != attribs.end()) {
          spatialDimension = atoi(it->second.c_str());
          if (spatialDimension < 2 || spatialDimension > 3) {
-            debug3 << "VLSV\t\t ERROR: Spatial dimension must be 2 or 3, value '" << it->second << "' given in XML attributes" << endl;
-            return false;
+            stringstream ss;
+            ss << "ERROR: Spatial dimension must be 2 or 3, value '" << it->second << "' was given in XML attributes";
+            return MeshMetadata::exitWithError(ss);
          }
          topologicalDimension = spatialDimension;
       }
 
       // Figure out total number of cells in the mesh:
       it = attribs.find("arraysize");
-      if (it == attribs.end()) return false;
+      if (it == attribs.end()) {
+         stringstream ss;
+         ss << "ERROR: Array 'MESH' XML tag does not have an attribute 'arraysize'";
+         return MeshMetadata::exitWithError(ss);
+      }
       MeshMetadata::N_totalZones = atoi(it->second.c_str());
 
       // Read XML tag 'MESH_ZONES' to figure out how many domains the mesh has:
@@ -96,15 +92,16 @@ namespace vlsvplugin {
       list<pair<string,string> > attribsIn;
       attribsIn.push_back(make_pair("mesh",getName()));
       if (vlsvReader->getArrayAttributes("MESH_DOMAIN_SIZES",attribsIn,attribsOut) == false) {
-         debug3 << "VLSV\t\t ERROR: Failed to read array 'MESH_DOMAIN_SIZES' attributes for mesh '" << getName() << "' from VLSV file" << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: Failed to read array 'MESH_DOMAIN_SIZES' attributes for mesh '" << getName() << "' from VLSV file";
+         return MeshMetadata::exitWithError(ss);
       }
       it = attribsOut.find("arraysize");
       if (it == attribsOut.end()) {
-         debug3 << "VLSV\t\t ERROR: Array 'MESH_DOMAIN_SIZES' XML tag does not have attribute 'arraysize'" << endl;
-         return false;
+         stringstream ss;
+         ss << "ERROR: Array 'MESH_DOMAIN_SIZES' XML tag does not have attribute 'arraysize'";
+         return MeshMetadata::exitWithError(ss);
       } else {
-         debug3 << "VLSV\t\t Mesh has " << it->second << " domains" << endl;
          MeshMetadata::N_domains = atoi(it->second.c_str());
       }
       

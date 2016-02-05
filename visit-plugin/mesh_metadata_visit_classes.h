@@ -21,7 +21,6 @@
 #ifndef MESH_METADATA_VISIT_CLASSES_H
 #define MESH_METADATA_VISIT_CLASSES_H
 
-//#include <mesh_metadata.h>
 #include <mesh_metadata_visit.h>
 #include <mesh_metadata_visit_point.h>
 #include <mesh_metadata_visit_ucd_multi.h>
@@ -41,6 +40,7 @@ namespace vlsvplugin {
 
    protected:
       virtual const std::string& getCorrectVlsvMeshType() const;
+      virtual bool readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
    };
 
    class VisitUCDMultiMeshMetadata: public UCDMultiMeshMetadata,public VisitMeshMetadata {
@@ -53,6 +53,8 @@ namespace vlsvplugin {
 
    protected:
       virtual const std::string& getCorrectVlsvMeshType() const;
+      virtual bool readDomains(vlsv::Reader* vlsvReader);
+      virtual bool readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
    };
 
    class VisitQuadMultiMeshMetadata: public QuadMultiMeshMetadata,public VisitMeshMetadata {
@@ -62,9 +64,14 @@ namespace vlsvplugin {
 
       virtual avtMeshType getAvtMeshType() const;
       virtual std::string getAvtMeshTypeString() const;
+      virtual bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+			                     const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
+      virtual bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
 
    protected:
       virtual const std::string& getCorrectVlsvMeshType() const;
+      virtual bool readDomains(vlsv::Reader* vlsvReader);
+      virtual bool readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
    };
 
    class VisitUCDAMRMetadata: public UCDAMRMetadata,public VisitMeshMetadata {
@@ -74,9 +81,14 @@ namespace vlsvplugin {
 
       virtual avtMeshType getAvtMeshType() const;
       virtual std::string getAvtMeshTypeString() const;
+      virtual bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+			                     const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
+      virtual bool read(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
 
    protected:
       virtual const std::string& getCorrectVlsvMeshType() const;
+      virtual bool readDomains(vlsv::Reader* vlsvReader);
+      virtual bool readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
    };
 
    class VisitUCDGenericMultiMeshMetadata: public UCDGenericMultiMeshMetadata,public VisitMeshMetadata {
@@ -86,11 +98,21 @@ namespace vlsvplugin {
 
       virtual avtMeshType getAvtMeshType() const;
       virtual std::string getAvtMeshTypeString() const;
-
+      virtual const uint64_t getCellConnectivitySize(int domain) const;
+      virtual bool getDomainInfo(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+					             const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
+      virtual bool getDomainInfoNodes(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+			                          const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
+      virtual bool getDomainInfoZones(vlsv::Reader* vlsvReader,int domain,const uint64_t*& domainOffsets,
+			                          const uint64_t*& ghostOffsets,const uint64_t*& variableOffsets);
+      virtual int getNodeDataSize() const;
+      virtual vlsv::datatype::type getNodeDatatype() const;
       virtual bool read(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
 
    protected:
       virtual const std::string& getCorrectVlsvMeshType() const;
+      virtual bool readDomains(vlsv::Reader* vlsvReader);
+      virtual bool readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
    };
 
 } // namespace vlsvplugin

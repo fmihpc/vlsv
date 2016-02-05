@@ -48,6 +48,8 @@ namespace vlsvplugin {
       MeshMetadata();      
       virtual ~MeshMetadata();
 
+      const std::string& getErrorString() const;
+
       virtual void getBlockWidths(uint64_t& blockWidthX,uint64_t& blockWidthY,uint64_t& blockWidthZ) const;
       virtual uint64_t getMaximumRefinementLevel() const;
       virtual const vlsv::geometry::type& getMeshGeometry() const;
@@ -82,11 +84,16 @@ namespace vlsvplugin {
 
     protected:
 
+      bool exitWithError(const std::string& s) const;
+      bool exitWithError(const std::stringstream& ss) const;
+
       virtual const std::string& getCorrectVlsvMeshType() const = 0;
       virtual bool checkVlsvMeshType(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
       virtual bool readDomainMetadata(vlsv::Reader* vlsvReader);
       virtual bool readMeshGeometry(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
       virtual bool readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
+
+      mutable std::string errorString;        /**< Description of the most recent error that has occurred, if any.*/
 
       bool domainMetadataRead;                /**< If true, domain metadata has been read.*/
       bool meshMetadataRead;                  /**< If true, mesh metadata has been read.*/
