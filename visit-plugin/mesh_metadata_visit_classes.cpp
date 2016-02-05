@@ -28,6 +28,8 @@ namespace vlsvplugin {
    avtMeshType VisitPointMeshMetadata::getAvtMeshType() const {return AVT_POINT_MESH;}
    
    std::string VisitPointMeshMetadata::getAvtMeshTypeString() const {return "AVT_POINT_MESH";}
+   
+   const std::string& VisitPointMeshMetadata::getCorrectVlsvMeshType() const {return PointMeshMetadata::getCorrectVlsvMeshType();}
 
    
 
@@ -39,7 +41,9 @@ namespace vlsvplugin {
 
    std::string VisitUCDMultiMeshMetadata::getAvtMeshTypeString() const {return "AVT_UNSTRUCTURED_MESH";}
 
-
+   const std::string& VisitUCDMultiMeshMetadata::getCorrectVlsvMeshType() const {return UCDMultiMeshMetadata::getCorrectVlsvMeshType();}
+   
+   
 
    VisitQuadMultiMeshMetadata::VisitQuadMultiMeshMetadata(): QuadMultiMeshMetadata(),VisitMeshMetadata() { }
 
@@ -49,7 +53,9 @@ namespace vlsvplugin {
 
    std::string VisitQuadMultiMeshMetadata::getAvtMeshTypeString() const {return "AVT_UNSTRUCTURED_MESH";}
 
+   const std::string& VisitQuadMultiMeshMetadata::getCorrectVlsvMeshType() const {return QuadMultiMeshMetadata::getCorrectVlsvMeshType();}
 
+   
 
    VisitUCDAMRMetadata::VisitUCDAMRMetadata(): UCDAMRMetadata(),VisitMeshMetadata() { }
 
@@ -59,6 +65,8 @@ namespace vlsvplugin {
 
    std::string VisitUCDAMRMetadata::getAvtMeshTypeString() const {return "AVT_UNSTRUCTURED_MESH";}
 
+   const std::string& VisitUCDAMRMetadata::getCorrectVlsvMeshType() const {return UCDAMRMetadata::getCorrectVlsvMeshType();}
+   
 
 
    VisitUCDGenericMultiMeshMetadata::VisitUCDGenericMultiMeshMetadata(): UCDGenericMultiMeshMetadata(),VisitMeshMetadata() { }
@@ -69,4 +77,5 @@ namespace vlsvplugin {
 
    std::string VisitUCDGenericMultiMeshMetadata::getAvtMeshTypeString() const {return "AVT_UNSTRUCTURED_MESH";}
    
+   const std::string& VisitUCDGenericMultiMeshMetadata::getCorrectVlsvMeshType() const {return UCDGenericMultiMeshMetadata::getCorrectVlsvMeshType();}
 }

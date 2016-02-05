@@ -433,7 +433,7 @@ namespace vlsvplugin {
       }
       
       // Check that given metadata is of correct type:
-      VisitUCDMultiMeshMetadata* const metadata = dynamic_cast<VisitUCDMultiMeshMetadata*>(md);
+      UCDMultiMeshMetadata* const metadata = dynamic_cast<UCDMultiMeshMetadata*>(md);
       if (typeid(*md) != typeid(*metadata)) {
          debug2 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitUCDMultiMeshMedata" << endl;
          return false;
@@ -711,9 +711,9 @@ namespace vlsvplugin {
          debug3 << "VLSV\t\t ERROR: MeshMetadata object is NULL" << endl;
          return false;
       }
-       
+
       // Check that given mesh metadata is of correct type: FIXME
-      VisitUCDMultiMeshMetadata* const metadata = dynamic_cast<VisitUCDMultiMeshMetadata*>(md);
+      UCDMultiMeshMetadata* const metadata = dynamic_cast<UCDMultiMeshMetadata*>(md);
       if (typeid(*md) != typeid(*metadata)) {
          debug3 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitUCDMultiMeshMedata" << endl;
          return false;

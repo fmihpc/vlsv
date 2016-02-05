@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -58,7 +59,7 @@ namespace vlsvplugin {
       }
       
       // Check that given metadata is of correct type:
-      VisitQuadMultiMeshMetadata* const metadata = dynamic_cast<VisitQuadMultiMeshMetadata*>(md);
+      QuadMultiMeshMetadata* const metadata = dynamic_cast<QuadMultiMeshMetadata*>(md);
       if (typeid(*md) != typeid(*metadata)) {
          debug2 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitQuadMultiMeshMedata" << endl;
          return false;
@@ -230,7 +231,7 @@ namespace vlsvplugin {
       }
       
       // Check that given mesh metadata is of correct type:
-      VisitQuadMultiMeshMetadata* const metadata = dynamic_cast<VisitQuadMultiMeshMetadata*>(md);
+      QuadMultiMeshMetadata* const metadata = dynamic_cast<QuadMultiMeshMetadata*>(md);
       if (typeid(*md) != typeid(*metadata)) {
          debug2 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitQuadMultiMeshMedata" << endl;
          return false;

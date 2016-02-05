@@ -16,6 +16,7 @@
       *.vlsv
     </FilePatterns>
     <Files components="M">
+      mesh_metadata_visit_classes.cpp
       duplicate_node_elimination.cpp
       avtVlsvFileFormat.C
       mesh_metadata.cpp

@@ -40,7 +40,7 @@ namespace vlsvplugin {
       virtual std::string getAvtMeshTypeString() const;
 
    protected:
-
+      virtual const std::string& getCorrectVlsvMeshType() const;
    };
 
    class VisitUCDMultiMeshMetadata: public UCDMultiMeshMetadata,public VisitMeshMetadata {
@@ -52,7 +52,7 @@ namespace vlsvplugin {
       virtual std::string getAvtMeshTypeString() const;
 
    protected:
-
+      virtual const std::string& getCorrectVlsvMeshType() const;
    };
 
    class VisitQuadMultiMeshMetadata: public QuadMultiMeshMetadata,public VisitMeshMetadata {
@@ -64,7 +64,7 @@ namespace vlsvplugin {
       virtual std::string getAvtMeshTypeString() const;
 
    protected:
-
+      virtual const std::string& getCorrectVlsvMeshType() const;
    };
 
    class VisitUCDAMRMetadata: public UCDAMRMetadata,public VisitMeshMetadata {
@@ -76,7 +76,7 @@ namespace vlsvplugin {
       virtual std::string getAvtMeshTypeString() const;
 
    protected:
-
+      virtual const std::string& getCorrectVlsvMeshType() const;
    };
 
    class VisitUCDGenericMultiMeshMetadata: public UCDGenericMultiMeshMetadata,public VisitMeshMetadata {
@@ -88,7 +88,7 @@ namespace vlsvplugin {
       virtual std::string getAvtMeshTypeString() const;
 
    protected:
-
+      virtual const std::string& getCorrectVlsvMeshType() const;
    };
 
 } // namespace vlsvplugin

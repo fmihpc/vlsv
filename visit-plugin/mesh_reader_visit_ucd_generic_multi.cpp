@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -18,6 +19,7 @@
 
 #include <mesh_reader_visit_ucd_generic_multi.h>
 #include <mesh_metadata_visit_ucd_generic_multi.h>
+#include <mesh_vtk.h>
 
 #include <typeinfo>
 #include <cmath>
@@ -42,7 +44,7 @@ namespace vlsvplugin {
    
    VisitUCDGenericMultiMeshReader::~VisitUCDGenericMultiMeshReader() { }
 
-   bool VisitUCDGenericMultiMeshReader::readCellVariable(vlsv::Reader* vlsvReader,VisitUCDGenericMultiMeshMetadata*  metadata,
+   bool VisitUCDGenericMultiMeshReader::readCellVariable(vlsv::Reader* vlsvReader,UCDGenericMultiMeshMetadata*  metadata,
 							 const VariableMetadata& vmd,int domain,void*& output) {
       // Get mesh bounding box:
       const vector<uint64_t>& bbox = metadata->getMeshBoundingBox();
@@ -152,7 +154,7 @@ namespace vlsvplugin {
       }
       
       // Check that given metadata is of correct type:
-      VisitUCDGenericMultiMeshMetadata* const metadata = dynamic_cast<VisitUCDGenericMultiMeshMetadata*>(md);
+      UCDGenericMultiMeshMetadata* const metadata = dynamic_cast<UCDGenericMultiMeshMetadata*>(md);
       if (typeid(*md) != typeid(*metadata)) {
          debug2 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitUCDGenericMultiMeshMedata" << endl;
          return false;
@@ -293,7 +295,7 @@ namespace vlsvplugin {
       return nodeCoordinateArraysRead;
    }
    
-   bool VisitUCDGenericMultiMeshReader::readNodeVariable(vlsv::Reader* vlsvReader,VisitUCDGenericMultiMeshMetadata*  metadata,
+   bool VisitUCDGenericMultiMeshReader::readNodeVariable(vlsv::Reader* vlsvReader,UCDGenericMultiMeshMetadata* metadata,
                                                          const VariableMetadata& vmd,int domain,void*& output) {
        return false;
    }
@@ -314,8 +316,8 @@ namespace vlsvplugin {
          return false;
       }
        
-      // Check that given mesh metadata is of correct type: FIXME
-      VisitUCDGenericMultiMeshMetadata* const metadata = dynamic_cast<VisitUCDGenericMultiMeshMetadata*>(md);
+      // Check that given mesh metadata is of correct type:
+      UCDGenericMultiMeshMetadata* const metadata = dynamic_cast<UCDGenericMultiMeshMetadata*>(md);
       if (typeid(*md) != typeid(*metadata)) {
          debug3 << "VLSV\t\t ERROR: Given mesh metadata object is not of type VisitUCDGenericMultiMeshMedata" << endl;
          return false;

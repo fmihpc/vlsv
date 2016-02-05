@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2013 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -43,8 +44,8 @@ namespace vlsvplugin {
       bool zPeriodic;
       bool nodeCoordinateArraysRead;
 
-      virtual bool readCellVariable(vlsv::Reader* vlsvReader,VisitUCDGenericMultiMeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output);
-      virtual bool readNodeVariable(vlsv::Reader* vlsvReader,VisitUCDGenericMultiMeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output);
+      virtual bool readCellVariable(vlsv::Reader* vlsvReader,UCDGenericMultiMeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output);
+      virtual bool readNodeVariable(vlsv::Reader* vlsvReader,UCDGenericMultiMeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output);
       virtual bool readNodeCoordinateArrays(vlsv::Reader* vlsvReader,const std::string& meshName,uint64_t offset,uint64_t amount,vtkPoints* points);
    };
 
