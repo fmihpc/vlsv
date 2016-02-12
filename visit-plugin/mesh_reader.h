@@ -29,11 +29,13 @@ namespace vlsvplugin {
       MeshReader();
       virtual ~MeshReader();
 
+      const std::string& getErrorString() const;
+
       virtual bool readMesh(vlsv::Reader* vlsvReader,MeshMetadata* md,int domain,void*& output) =0;
       virtual bool readVariable(vlsv::Reader* vlsvReader,MeshMetadata* md,const VariableMetadata& vmd,int domain,void*& output) =0;
       
     protected:
-	
+	  mutable std::string errorString;        /**< Description of the most recent error that has occurred, if any.*/
    };
 } // namespace vlsvplugin
 

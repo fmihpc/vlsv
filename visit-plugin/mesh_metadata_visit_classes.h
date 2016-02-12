@@ -16,6 +16,11 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+/** This file provides VisIt wrappers for MeshMetadata classes. 
+ *  Typically the wrapper functions call the same function in MeshMetadata 
+ *  or in one of its subclasses, and optionally write additional debugging 
+ *  information to VisIt log files.*/
+
 #pragma once
 
 #ifndef MESH_METADATA_VISIT_CLASSES_H
