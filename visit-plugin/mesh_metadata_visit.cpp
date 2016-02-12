@@ -24,14 +24,20 @@
 using namespace std;
 
 namespace vlsvplugin {
+   /** Default constructor.*/
    VisitMeshMetadata::VisitMeshMetadata(): MeshMetadata() {
       blockOrigin = 0;
    }
    
+   /** Default virtual constructor.*/
    VisitMeshMetadata::~VisitMeshMetadata() { }
 
-   bool VisitMeshMetadata::checkVlsvMeshType(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs) {
-      const bool rvalue = MeshMetadata::checkVlsvMeshType(vlsv,attribs);
+   /** Checks that the specified mesh in VLSV file is of the type the derived class reads.
+    *  @param vlsv vlsv::Reader that has the input file open.
+    *  @param attribs Attributes for the XML tag 'MESH'.
+    *  @return If true, this metadata reader understands the mesh in attribs.*/
+   bool VisitMeshMetadata::checkVlsvMeshType(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
+      const bool rvalue = MeshMetadata::checkVlsvMeshType(vlsvReader,attribs);
       if (rvalue == false) {
          debug3 << "VLSV\t\t " << MeshMetadata::getErrorString() << endl;
       }
@@ -40,6 +46,11 @@ namespace vlsvplugin {
 
    int VisitMeshMetadata::getBlockOrigin() const {return blockOrigin;}
 
+   /** Read domain metadata for this mesh.
+    *  This function calls readDomainMetadata in MeshMetadata (or in one of its subclasses)
+    *  and writes additional debugging information to VisIt log files.
+    *  @param vlsvReader vlsv::Reader that has the input file open.
+    *  @return If true, domain metadata was successfully read.*/
    bool VisitMeshMetadata::readDomainMetadata(vlsv::Reader* vlsvReader) {
       debug2 << "VLSV\t\t VisitMeshMetadata::readDomains called" << endl;
 
@@ -60,8 +71,14 @@ namespace vlsvplugin {
       return rvalue;
    }
 
-   bool VisitMeshMetadata::readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs) {
-      const bool rvalue = MeshMetadata::readVariables(vlsv,attribs);
+   /** Read names and types of the variables that belong to this mesh.
+    *  This function calls readVariables function in MeshMetadata 
+    *  (or in one of its subclasses) and writes additional debugging information to VisIt log files.
+    *  @param vlsv vlsv::Reader that has the input file open.
+    *  @param attribs Attributes for the XML tag 'MESH'.
+    *  @return If true, variable metadata was read successfully.*/
+   bool VisitMeshMetadata::readVariables(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs) {
+      const bool rvalue = MeshMetadata::readVariables(vlsvReader,attribs);
 
       if (rvalue == true) {
          debug4 << "VLSV\t\t Found variables:" << endl;

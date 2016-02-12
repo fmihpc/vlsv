@@ -1,6 +1,6 @@
 /** This file is part of VLSV file format.
  * 
- *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2011-2015 Finnish Meteorological Institute
  *  Copyright 2016 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -29,6 +29,14 @@
 #include <mesh_vtk.h>
 #include <mesh_metadata.h>
 
+/** Class VisitMeshMetadata is an interface class which provide
+ *  additional information about VLSV mesh(es) to VisIt. 
+ *  Member functions are typically called in avtVlsvFileFormat.C file.
+ *  
+ *  VisIt plugin only uses mesh metadata pointers that are of type VisitMeshMetadata.
+ *  Wrapper classes for all existing metadata classes are provided 
+ *  in mesh_metadata_visit_classes.* files.
+ */
 namespace vlsvplugin {
    class VisitMeshMetadata: public virtual MeshMetadata {
     public:
@@ -40,9 +48,9 @@ namespace vlsvplugin {
       virtual std::string getAvtMeshTypeString() const =0;
       
     protected:
-      virtual bool checkVlsvMeshType(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
+      virtual bool checkVlsvMeshType(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
       virtual bool readDomainMetadata(vlsv::Reader* vlsvReader);
-      virtual bool readVariables(vlsv::Reader* vlsv,const std::map<std::string,std::string>& attribs);
+      virtual bool readVariables(vlsv::Reader* vlsvReader,const std::map<std::string,std::string>& attribs);
 
       int blockOrigin;
    };
