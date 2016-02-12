@@ -15,6 +15,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *  @copyright Copyright 2011-2015 Finnish Meteorological Institute.
+ *  @copyright Copyright 2016 Arto Sandroos
  *  @author Arto Sandroos
  */
 
@@ -28,6 +29,13 @@
 #include <stdint.h>
 
 namespace vlsv {
+
+   namespace status {
+      enum type {
+         SUCCESS,
+         UNSPECIFIED_ERROR
+      };
+   }
 
    namespace celltype {
       enum type {
