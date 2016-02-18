@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <functional>
 #include <tuple>
+#include <cmath>
 
 namespace vlsvplugin {
    
