@@ -17,12 +17,15 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #ifndef MESH_READER_VISIT_UCD_MULTI_H
 #define MESH_READER_VISIT_UCD_MULTI_H
 
 #include <unordered_map>
 #include <mesh_reader.h>
 #include <duplicate_node_elimination.h>
+#include <mesh_metadata_visit.h>
 
 #include <vtkCellData.h>
 #include <vtkUnstructuredGrid.h>
@@ -49,35 +52,9 @@ namespace vlsvplugin {
       uint64_t N_nodes_y;
       uint64_t N_nodes_z;
 
-      virtual void cartesianNodeLookup2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					 uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
-					 vtkUnstructuredGrid* ugrid);
-      virtual void cartesianNodeLookup3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-				       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
-				       vtkUnstructuredGrid* ugrid);
-      virtual void cylindricalNodeLookup2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					   uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
-					   vtkUnstructuredGrid* ugrid);
-      virtual void cylindricalNodeLookup3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					   uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
-					   vtkUnstructuredGrid* ugrid);
-      virtual void sphericalNodeLookup(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-				       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
-				       vtkUnstructuredGrid* ugrid);
-      
-      virtual void insertCartesianNodes2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox);
-      virtual void insertCartesianNodes3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					  uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox);
-      virtual void insertCylindricalNodes2D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					    uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox);
-      virtual void insertCylindricalNodes3D(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					    uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox);
-      virtual void insertSphericalNodes(std::unordered_map<NodeIndices,vtkIdType,NodeHash,NodesAreEqual>& nodeIndices,
-					uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox);
-      virtual bool readNodeCoordinateArrays(vlsv::Reader* vlsvReader,const std::string& meshName);
+      virtual bool readNodeCoordinateArrays(vlsv::Reader* vlsvReader,vlsvplugin::MeshMetadata* md);
    };
 
-} // namespace plugin
+} // namespace vlsvplugin
 
 #endif

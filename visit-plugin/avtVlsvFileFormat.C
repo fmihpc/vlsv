@@ -68,6 +68,7 @@
 #include <list>
 #include <set>
 #include <limits>
+#include <chrono>
 
 //#include <mesh_metadata_visit_point.h>
 //#include <mesh_metadata_visit_quad_multi.h>
@@ -211,6 +212,10 @@ void avtVlsvFileFormat::FreeUpResources(void) {
 }
 
 void avtVlsvFileFormat::addMesh(avtDatabaseMetaData* md,const vlsvplugin::VisitMeshMetadata* const meshMetadata) {
+   debug1 << "VLSV\t\t addMesh called for mesh " << meshMetadata->getName() << endl;
+   debug2 << "VLSV\t\t spatial dim: " << meshMetadata->getSpatialDimension() << " topolog dim: " << meshMetadata->getTopologicalDimension() << endl;
+   debug2 << "VLSV\t\t total zones: " << meshMetadata->getNumberOfTotalZones() << endl;
+
    avtMeshMetaData* mesh = new avtMeshMetaData;
    mesh->name = meshMetadata->getName();
    mesh->meshType = meshMetadata->getAvtMeshType();
@@ -222,8 +227,14 @@ void avtVlsvFileFormat::addMesh(avtDatabaseMetaData* md,const vlsvplugin::VisitM
    mesh->blockTitle = "blocks";
    mesh->blockPieceName = "block";
 
-   meshMetadata->getAxisLabels(mesh->xLabel,mesh->yLabel,mesh->zLabel);
-   meshMetadata->getAxisUnits(mesh->xUnits,mesh->yUnits,mesh->zUnits);
+   if (meshMetadata->getSpatialDimension() == 2) {
+      string dum1,dum2;
+      meshMetadata->getAxisLabels(mesh->xLabel,mesh->yLabel,dum1);
+      meshMetadata->getAxisUnits(mesh->xUnits,mesh->yUnits,dum2);
+   } else {
+      meshMetadata->getAxisLabels(mesh->xLabel,mesh->yLabel,mesh->zLabel);
+      meshMetadata->getAxisUnits(mesh->xUnits,mesh->yUnits,mesh->zUnits);
+   }
 
    mesh->SetNumberCells( meshMetadata->getNumberOfTotalZones() );
    mesh->hasLogicalBounds = false;
@@ -502,11 +513,18 @@ vtkDataSet* avtVlsvFileFormat::GetMesh(int domain,const char *meshname) {
       return NULL;
    }
 
-   // Read mesh coordinates:
+   // Read mesh from file and add it to VisIt, also measure the execution time:
+   std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end;
+   t_start = std::chrono::high_resolution_clock::now();
+   
    void* meshOut = NULL;
    if (reader->second->readMesh(vlsvReader,metadata->second,domain,meshOut) == false) {
       debug2 << "VLSV\t ERROR: Mesh reader failed to generate mesh" << endl;
    }
+
+   t_end = std::chrono::high_resolution_clock::now();
+   std::chrono::duration<double> elapsed_seconds = t_end-t_start;
+   debug1 << "VLSV\t\t GetMesh took " << elapsed_seconds.count() << " s" << endl;
    
    previousMesh = meshname;
    return reinterpret_cast<vtkDataSet*>(meshOut);
@@ -705,6 +723,8 @@ std::string avtVlsvFileFormat::printProcessInfo() const {
 }
 
 bool avtVlsvFileFormat::readMetadata() {
+   debug1 << "VLSV\t\t readMetadata called" << endl;
+
    bool success = true;
    metadataRead = false;
 
@@ -729,7 +749,7 @@ bool avtVlsvFileFormat::readMetadata() {
       attribsIn.push_back(make_pair("name", it));
       vlsvReader->getArrayAttributes("MESH", attribsIn, attribsOut);
       if (attribsOut.find("type") == attribsOut.end()) {
-         debug4 << "VLSV\t skipping it because its type is unspecified" << endl;
+         debug4 << "VLSV\t\t skipping it because its type is unspecified" << endl;
          continue;
       }
 
