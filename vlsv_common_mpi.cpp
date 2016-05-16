@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <cstring>
 
 #include "mpiconversion.h"
 #include "vlsv_common.h"
