@@ -263,7 +263,9 @@ namespace vlsv {
                case sizeof(double):
                   value = convertFloat<double>(buffer);
                   break;
+#ifndef _WINDOWS
                case sizeof(long double):
+#endif
                   value = convertFloat<long double>(buffer);
                   break;
                default:

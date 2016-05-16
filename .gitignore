@@ -11,3 +11,4 @@ visit-plugin/Makefile
 *.png
 *.html
 *.o
+*vcxproj*

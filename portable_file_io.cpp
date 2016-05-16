@@ -2,7 +2,8 @@
 * for some of the functions defined in Linux header unistd.h. In Windows 
 * systems define preprocessor macro "WINDOWS".
 *
-*  Copyright 2015 Arto Sandroos
+*  Copyright 2015-2016 Arto Sandroos
+*  Copyright 2016 Finnish Meteorological Institute
 *
 *  This program is free software: you can redistribute it and/or modify
 *  it under the terms of the GNU Lesser General Public License as published by

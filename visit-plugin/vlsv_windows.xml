@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+  <Plugin name="Vlsv" type="database" label="VLSV parallel file format" version="1.0" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" dbtype="STMD" haswriter="false" hasoptions="false" filePatternsStrict="false" opensWholeDirectory="false">
+    <CXXFLAGS>
+      -std=c++0x
+      -I/home/sandroos/codes/vlsv
+      -DNEW_VTK_API
+    </CXXFLAGS>
+    <LDFLAGS>
+      -L/home/sandroos/codes/vlsv
+    </LDFLAGS>
+    <LIBS>
+      -lvlsv
+      -lmpi
+    </LIBS>
+    <FilePatterns>
+      *.vlsv
+    </FilePatterns>
+    <Files components="M">
+      duplicate_node_elimination.cpp
+      avtVlsvFileFormat.C
+      mesh_metadata.cpp
+      mesh_reader.cpp
+      mesh_metadata_visit.cpp
+      mesh_metadata_visit_point.cpp
+      mesh_reader_visit_point.cpp
+      mesh_vtk.cpp
+      mesh_metadata_visit_quad_multi.cpp
+      mesh_metadata_visit_ucd_multi.cpp
+      mesh_metadata_visit_ucd_generic_multi.cpp
+      mesh_reader_visit_quad_multi.cpp
+      mesh_reader_visit_ucd_multi.cpp
+      mesh_reader_visit_ucd_generic_multi.cpp
+      mesh_metadata_visit_ucd_amr.cpp
+      mesh_reader_visit_ucd_amr.cpp
+    </Files>
+    <Files components="E">
+      duplicate_node_elimination.cpp
+      avtVlsvFileFormat.C
+      mesh_metadata.cpp
+      mesh_reader.cpp
+      mesh_metadata_visit.cpp
+      mesh_metadata_visit_point.cpp
+      mesh_reader_visit_point.cpp
+      mesh_vtk.cpp
+      mesh_metadata_visit_quad_multi.cpp
+      mesh_metadata_visit_ucd_multi.cpp
+      mesh_metadata_visit_ucd_generic_multi.cpp
+      mesh_reader_visit_quad_multi.cpp
+      mesh_reader_visit_ucd_multi.cpp
+      mesh_reader_visit_ucd_generic_multi.cpp
+      mesh_metadata_visit_ucd_amr.cpp
+      mesh_reader_visit_ucd_amr.cpp
+    </Files>
+    <LIBS components="ESer">
+    </LIBS>
+    <LIBS components="EPar">
+    </LIBS>
+    <Attribute name="" purpose="" persistent="true" keyframe="true" exportAPI="" exportInclude="">
+    </Attribute>
+  </Plugin>
