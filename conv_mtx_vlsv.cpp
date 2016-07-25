@@ -1,3 +1,22 @@
+/** This file is part of VLSV file format.
+ * 
+ *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2016 Arto Sandroos
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
@@ -13,21 +32,26 @@
 
 using namespace std;
 
+/** Struct for storing data read from a matrix market input file.*/
 struct Data {
-   uint64_t N_rows;
-   uint64_t N_cols;
-   uint64_t N_nz;
-   uint64_t N_values;
+   uint64_t N_rows;                /**< Number of rows in matrix.*/
+   uint64_t N_cols;                /**< Number of columns in matrix.*/
+   uint64_t N_nz;                  /**< Number of non-zeroes in (sparse) matrix.*/
+   uint64_t N_values;              /**< Number of variables.*/
 
-   vector<uint64_t> rows;      // y-coordinates
-   vector<uint64_t> cols;      // x-coordinates
-   vector<uint64_t> globalIDs; 
-   vector<vector<float> > values;
+   vector<uint64_t> rows;          /**< Row (y) node coordinates.*/
+   vector<uint64_t> cols;          /**< Column (x) node coordinates.*/
+   vector<uint64_t> globalIDs;     /**< Global IDs of matrix elements.*/
+   vector<vector<float> > values;  /**< Variable data.*/
 
    Data(): N_rows(0),N_cols(0),N_nz(0),N_values(0) { }
 
 };
 
+/** Split a string into one or mode substrings based on the given delimiter.
+ * @param s String to be split.
+ * @param delim Delimiter, e.g., ' ' (whitespace).
+ * @return Vector of found substrings.*/
 vector<string> splitString(const string& s,const char& delim) {
    vector<string> elems;
    istringstream ss(s);
@@ -38,6 +62,10 @@ vector<string> splitString(const string& s,const char& delim) {
    return elems;
 }
 
+/** Read the given file and store sparse matrix data to matrixData.
+ * @param fname Name of the input file that contains matrix data in Matrix Market format.
+ * @param matrixData Struct where read data is stored.
+ * @return If true, input file was read successfully and values in matrixData are valid.*/
 bool readMatrixMarket(const string& fname,Data& matrixData) {
    bool success = true;
    
@@ -171,6 +199,12 @@ bool readMatrixMarket(const string& fname,Data& matrixData) {
    return success;
 }
 
+/** Write sparse matrix data from matrixData to output VLSV file. The output file 
+ * name will be the same as the input file name, except that the suffix is replaced 
+ * by ".vlsv".
+ * @param fname Input file name.
+ * @param matrixData Struct containing the matrix data.
+ * @return If true, a VLSV file containing matrix data was successfully written.*/
 bool writeVlsv(const string& fname,Data& matrixData) {
    bool success = true;
 
