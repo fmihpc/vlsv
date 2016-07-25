@@ -51,8 +51,6 @@
 
 namespace vlsv {
 
-   bool checkSuccess(const bool& myStatus,MPI_Comm comm);
-   
    class Writer {
     public:
       Writer();
@@ -69,7 +67,7 @@ namespace vlsv {
       void startDryRun();
       bool startMultiwrite(const std::string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize);      
       bool writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
-		      const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array);
+                      const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array);
    
       // ***** TEMPLATE WRAPPER FUNCTIONS ***** //
 
@@ -169,10 +167,10 @@ namespace vlsv {
 
    /** Write an array to the output file. This function is simply a wrapper to 
     * multiwrite functions, i.e. array is written to file with a single multiwrite unit.
-    * @param tagName Name of the array, same as the XML tag name in output file.
-    * @param attribs Other attributes for the output XML tag, given in [tag name,tag value] pairs.
-    * @param arraySize Number of elements in array.
-    * @param vectorSize Number of elements in vectors that comprise the array elements.
+    * @param tagName Name of the array, same as the XML tag name in output file. Only significant at master process.
+    * @param attribs Other attributes for the output XML tag, given in [tag name,tag value] pairs. Only significant at master process.
+    * @param arraySize Number of elements in array on this process.
+    * @param vectorSize Number of elements in vectors that comprise the array elements. Only significant at master process.
     * @param array Pointer to the output array.
     * @return If true, the array was successfully written to file.*/
    template<typename T> inline
@@ -183,6 +181,10 @@ namespace vlsv {
       return writeArray(tagName,attribs,getStringDatatype<T>(),arraySize,vectorSize,sizeof(T),reinterpret_cast<char*>(arrayPtr));
    }
 
+   /** Write the value of a parameter to output file.
+    * @param parameterName Name of the parameter. Only significant at master process.
+    * @param array Pointer to array containing the parameter value. Only significant at master process.
+    * @return If true, parameter was written successfully.*/
    template<typename T> inline
    bool Writer::writeParameter(const std::string& parameterName,const T* const array) {
       std::map<std::string,std::string> attributes;

@@ -15,10 +15,10 @@ DIST=vlsv_v01_001.tar
 
 # Build targets
 
-default: lib
+default: lib conv_mtx_vlsv
 
 clean:
-	rm -rf *~ *.o *.a *.tar *.tar.gz vlsv2silo
+	rm -rf *~ *.o *.a *.tar *.tar.gz vlsv2silo conv_mtx_vlsv
 
 dist:
 	ln -s ${CURDIR} ${DIR}
@@ -77,3 +77,6 @@ vlsv_writer.o: ${DEPS_WRITER}
 
 vlsv2silo: ${DEPS_VLSV2SILO}
 	${CMP} ${CXXFLAGS} ${FLAGS} -o vlsv2silo vlsv2silo.cpp ${INC_SILO} -L${CURDIR} -lvlsv ${LIB_SILO}
+
+conv_mtx_vlsv: conv_mtx_vlsv.cpp $(lib)
+	${CMP} ${CXXFLAGS} ${FLAGS} -o conv_mtx_vlsv conv_mtx_vlsv.cpp -L${CURDIR} -lvlsv
