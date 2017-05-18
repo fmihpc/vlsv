@@ -669,9 +669,11 @@ namespace vlsv {
       // Write data at master
       if (myrank == masterRank) {
          MPI_Status status;
+         const double t_start = MPI_Wtime();
          MPI_File_write_at(fileptr, offset, buffer.data(), totalBytes, MPI_Type<char>(), &status);
+         writeTime += (MPI_Wtime() - t_start);
       }
-      
+
       // Add footer entry
       if (multiwriteFooter(arrayName, attribs) == false) success = false;
 
