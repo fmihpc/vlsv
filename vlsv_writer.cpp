@@ -1,7 +1,7 @@
 /** This file is part of VLSV file format.
  * 
  *  Copyright 2011-2015 Finnish Meteorological Institute
- *  Copyright 2016 Arto Sandroos
+ *  Copyright 2016-2017 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -47,6 +47,7 @@ namespace vlsv {
       types = NULL;
       xmlWriter = NULL;
       comm = MPI_COMM_NULL;
+      writeUsingMasterOnly = false;
    }
 
    /** Destructor for Writer. Deallocates XML writer.*/
@@ -372,7 +373,7 @@ namespace vlsv {
            multiwriteUnits.swap(dummy);
         }
       multiwriteOffsets[0] = numeric_limits<unsigned int>::max();
-
+      
       // Broadcast vectorsize,datatype,and dataSize to all processes:
       this->vectorSize = vectorSize;
       MPI_Bcast(&(this->vectorSize),1,MPI_Type<uint64_t>(),masterRank,comm);
@@ -573,6 +574,15 @@ namespace vlsv {
       return success;
    }
 
+   /** Set if file i/o is done on master process only.
+    *  @param writeUsingMasterOnly If true, only master writes data to file. Otherwise data
+    *  is written using collective MPI.
+    *  @return True if master is only process writing to file.*/
+   bool Writer::setWriteOnMasterOnly(const bool& writeUsingMasterOnly) {
+      this->writeUsingMasterOnly = writeUsingMasterOnly;
+      return this->writeUsingMasterOnly;
+   }
+   
    /** Write an array to output file.
     * @param arrayName Name of the array. Only significant on master process.
     * @param attribs XML attributes for the array. Only significant on master process.
@@ -584,6 +594,10 @@ namespace vlsv {
     * @return If true, array was successfully written to the output file. Same value is returned on every process.*/
    bool Writer::writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
                            const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array) {
+      
+      if (writeUsingMasterOnly == true)
+        return writeArrayMaster(arrayName,attribs,dataType,arraySize,vectorSize,dataSize,array);
+      
       // Check that everything is OK before continuing:
       bool success = true;
       if (initialized == false) success = false;
@@ -602,6 +616,66 @@ namespace vlsv {
 
       if (endMultiwrite(arrayName,attribs) == false) success = false;
       return success;
+   }
+   
+   /** Write an array to file so that file I/O is done on master only. Before writing to file all data is gathered to master.
+    * @param arrayName Name of the array. Only significant on master process.
+    * @param attribs XML attributes for the array. Only significant on master process.
+    * @param dataType String representation of the datatype. Only significant on master process.
+    * @param arraySize Number of array elements written by this process.
+    * @param vectorSize Size of the data vector stored in each array element. Only significant on master process.
+    * @param dataSize Byte size of vector element. Only significant on master process.
+    * @param array Pointer to data.
+    * @return If true, array was successfully written to the output file. Same value is returned on every process.*/
+   bool Writer::writeArrayMaster(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
+                                 const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array) {
+
+      // Check that everything is OK before continuing:
+      bool success = true;
+      if (initialized == false) success = false;
+      if (fileOpen == false) success = false;
+      if (checkSuccess(success,comm) == false) return false;
+
+      this->vectorSize = vectorSize;
+      this->dataSize   = dataSize;
+      this->dataType   = dataType;
+      this->vlsvType   = getVLSVDatatype(dataType);
+      
+      // Count amount of output data
+      myBytes = arraySize * vectorSize * dataSize;
+      MPI_Gather(&myBytes,1,MPI_Type<uint64_t>(),bytesPerProcess,1,MPI_Type<uint64_t>(),masterRank,comm);
+
+      // Gather data to master
+      uint64_t totalBytes = 0;
+      vector<int> byteCounts(N_processes);
+      vector<int> byteOffsets(N_processes);
+      if (myrank == masterRank) {
+         for (int i=0; i<N_processes; ++i) totalBytes += bytesPerProcess[i];
+         
+         byteOffsets[0] = 0;
+         for (size_t p=0; p<byteCounts.size(); ++p) {
+            byteCounts[p]  = bytesPerProcess[p];
+            if (p > 0 ) byteOffsets[p] = byteOffsets[p-1] + bytesPerProcess[p-1];
+         }
+      }
+      char* ptr = reinterpret_cast<char*>(this);
+      if (arraySize > 0) ptr = const_cast<char*>(array);
+      vector<char> buffer;
+      if (myrank == masterRank) buffer.resize(totalBytes);
+      MPI_Gatherv(ptr, myBytes, MPI_BYTE, 
+                  buffer.data(), byteCounts.data(), byteOffsets.data(),
+                  MPI_BYTE, masterRank, comm);
+
+      // Write data at master
+      if (myrank == masterRank) {
+         MPI_Status status;
+         MPI_File_write_at(fileptr, offset, buffer.data(), totalBytes, MPI_Type<char>(), &status);
+      }
+      
+      // Add footer entry
+      if (multiwriteFooter(arrayName, attribs) == false) success = false;
+
+      return checkSuccess(success,comm);
    }
 
 } // namespace vlsv

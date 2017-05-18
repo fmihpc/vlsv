@@ -1,6 +1,7 @@
 /** This file is part of VLSV file format.
  * 
  *  Copyright 2011-2016 Finnish Meteorological Institute
+ *  Copyright 2017 Arto Sandroos
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Lesser General Public License as published by
@@ -64,10 +65,13 @@ namespace vlsv {
       bool endMultiwrite(const std::string& tagName,const std::map<std::string,std::string>& attribs);
       bool open(const std::string& fname,MPI_Comm comm,const int& masterProcessID,MPI_Info mpiInfo=MPI_INFO_NULL,bool append=false);
       bool setSize(MPI_Offset newSize);
+      bool setWriteOnMasterOnly(const bool& writeUsingMasterOnly);
       void startDryRun();
       bool startMultiwrite(const std::string& datatype,const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize);      
       bool writeArray(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
                       const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array);
+      bool writeArrayMaster(const std::string& arrayName,const std::map<std::string,std::string>& attribs,const std::string& dataType,
+                            const uint64_t& arraySize,const uint64_t& vectorSize,const uint64_t& dataSize,const char* array);
    
       // ***** TEMPLATE WRAPPER FUNCTIONS ***** //
 
@@ -112,6 +116,7 @@ namespace vlsv {
                                                * This variable is used to synchronize threads in endMultiwrite function..*/
       bool multiwriteInitialized;             /**< If true, multiwrite array writing mode has initialized correctly. 
                                                * This variable is used to synchronize threads in startMultiwrite function.*/
+      bool writeUsingMasterOnly;              /**< If true, only master process does file i/o.*/
       
       std::vector<unsigned int> multiwriteOffsets; /**< Offset for each thread using VLSVWriter, used to load 
                                                     * data into an MPI struct in endMultiwrite.*/
