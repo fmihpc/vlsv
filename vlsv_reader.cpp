@@ -87,6 +87,10 @@ namespace vlsv {
       return true;
    }
 
+   const std::string Reader::getErrorString() const {
+      return vlsv::getErrorString(lastErrorCode);
+   }
+   
    bool Reader::getFileName(std::string& openFile) const {
       if (fileOpen == false) {
          openFile = "";
@@ -149,11 +153,9 @@ namespace vlsv {
     * @return If true, file was successfully opened.*/
    bool Reader::open(const std::string& fname) {
       bool success = true;
+      lastErrorCode = error::NONE;
       if (fileOpen == true) {
-         #ifndef NDEBUG
-            cerr << "vlsv::Reader ERROR: File '" << fname << "' should be opened, but file '";
-            cerr << fileName << "' is currently open." << endl;
-         #endif
+         lastErrorCode = error::READ_FILE_ALREADY_OPEN;
          return false;
       }
 
@@ -173,7 +175,10 @@ namespace vlsv {
             // then chdir back to current working directory. 
             // Chdir returns zero value if it succeeds
             // Not done if the string is empty as chdir fials in that case.
-            if (fileio::chdir(pathName.c_str()) != 0) success = false;
+            if (fileio::chdir(pathName.c_str()) != 0) {
+               lastErrorCode = error::READ_CWD_FAIL;
+               success = false;
+            }
          }
       }
 
@@ -186,18 +191,19 @@ namespace vlsv {
       } else {
          filein.close();
          success = false;
+         lastErrorCode = error::READ_FILE_BAD;
       }
 
-      if (success == false) {
-         #ifndef NDEBUG
-            cerr << "vlsv::Reader ERROR: File '" << fnameWithoutPath << "' could not be opened!" << endl;
-         #endif
-         return success;
-      }
-   
+      if (success == false) return success;
+
       // Detect file endianness:
       char* ptr = reinterpret_cast<char*>(&endiannessFile);
       filein.read(ptr,1);
+      if (filein.good() == false) {
+         success = false;
+         lastErrorCode = error::READ_FILE_ENDIANNESS;
+         return success;
+      }
       if (endiannessFile != endiannessReader) swapIntEndianness = true;
 
       // Read footer offset:
@@ -205,14 +211,27 @@ namespace vlsv {
       char buffer[16];
       filein.seekg(8);
       filein.read(buffer,8);
+      if (filein.good() == false) {
+         lastErrorCode = error::READ_FOOTER_OFFSET;
+         success = false;
+         return success;
+      }
       footerOffset = convUInt64(buffer,swapIntEndianness);
-   
+
       // Read footer XML tree:
       filein.seekg(footerOffset);
-      xmlReader.read(filein);
+      if (filein.tellg() != footerOffset) {
+         lastErrorCode = error::READ_NO_FOOTER;
+         success = false;
+      }
+      
+      if (success == true && xmlReader.read(filein) == false) {
+         lastErrorCode = error::READ_FOOTER;
+         success = false;
+      }
       filein.clear();
       filein.seekg(16);
-      
+
       return success;
    }
 

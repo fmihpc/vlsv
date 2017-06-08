@@ -39,6 +39,7 @@ namespace vlsv {
                                       std::map<std::string,std::string>& attribsOut) const;
       virtual bool getArrayInfo(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                                 uint64_t& arraySize,uint64_t& vectorSize,datatype::type& dataType,uint64_t& byteSize);
+      virtual const std::string getErrorString() const;
       virtual bool getFileName(std::string& openFile) const;
       virtual bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output) const;
       virtual bool loadArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
@@ -55,6 +56,7 @@ namespace vlsv {
     protected:
       unsigned char endiannessFile;   /**< Endianness in VLSV file.*/
       unsigned char endiannessReader; /**< Endianness of computer which reads the data.*/
+      error::type lastErrorCode;      /**< Code indicating last error that has occurred, if any.*/
       std::fstream filein;            /**< Input file stream.*/
       std::string fileName;           /**< Name of the input file.*/
       bool fileOpen;                  /**< If true, a file is currently open.*/
