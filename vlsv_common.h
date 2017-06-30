@@ -42,6 +42,22 @@ namespace vlsv {
       };
    }
    
+   /** Enumeration of all supported error codes.*/
+   namespace error {
+      enum type {
+         NONE,                                           /**< No errors.*/
+         UNKNOWN,                                        /**< Unknown or unsupported error.*/
+         READ_CWD_FAIL,                                  /**< Reader failed to cwd to directory containing input file.*/
+         READ_FILE_BAD,                                  /**< Reader failed to open input file.*/
+         READ_FILE_ALREADY_OPEN,                         /**< Reader failed to open file because a file is alread open.*/
+         READ_FILE_ENDIANNESS,                           /**< Reader failed to read file endianness.*/
+         READ_NO_FOOTER,                                 /**< Input file has no footer.*/
+         READ_FOOTER_OFFSET,                             /**< Reader failed to read footer offset.*/
+         READ_FOOTER,                                    /**< Reader failed to read footer.*/
+         SIZE
+      };
+   }
+   
     /** Tells whether a datatype stored in a buffer or a file is a signed or unsigned integer, or a floating point number.
     * @brief Datatype description.*/
    namespace datatype {
@@ -134,6 +150,8 @@ namespace vlsv {
          };
       }
    }
+
+   const std::string getErrorString(const vlsv::error::type& errorCode);
    
    template<typename T> T convertFloat(const char* const ptr);
    template<typename T> T convertInteger(const char* const ptr,const bool& swapEndianness=false);

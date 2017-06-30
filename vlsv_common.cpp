@@ -117,5 +117,40 @@ namespace vlsv {
       else s << bytes/t << " B/s";
       return s.str();
    }
+
+   const std::string getErrorString(const vlsv::error::type& errorCode) {
+      switch (errorCode) {
+       case error::NONE:
+         return "No errors";
+         break;
+       case error::UNKNOWN:
+         return "Unknown or unsupported error code";
+         break;
+       case error::READ_CWD_FAIL:
+         return "Failed to cwd to input file dir";
+         break;
+       case error::READ_FILE_BAD:
+         return "Failed to open input file";
+         break;
+       case error::READ_FILE_ALREADY_OPEN:
+         return "vlsv::Reader already has an open input file";
+         break;
+       case error::READ_FILE_ENDIANNESS:
+         return "Failed to read file endianness";
+         break;
+       case error::READ_NO_FOOTER:
+         return "Input file broken, footer not found";
+         break;
+       case error::READ_FOOTER_OFFSET:
+         return "Failed to read footer position";
+         break;
+       case error::READ_FOOTER:
+         return "Failed to read footer";
+         break;
+       default:
+         return "Unknown or unsupported error code";
+         break;
+      }
+   }
    
 } // namespace vlsv
