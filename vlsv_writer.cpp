@@ -24,6 +24,7 @@
 #include "mpiconversion.h"
 #include "vlsv_common_mpi.h"
 #include "vlsv_writer.h"
+#include <cstring>
 
 using namespace std;
 
@@ -48,6 +49,8 @@ namespace vlsv {
       xmlWriter = NULL;
       comm = MPI_COMM_NULL;
       writeUsingMasterOnly = false;
+      bufferSize = 0;
+      bufferTop = 0;
    }
 
    /** Destructor for Writer. Deallocates XML writer.*/
@@ -118,7 +121,10 @@ namespace vlsv {
    bool Writer::close() {
       // If a file was never opened, exit immediately:
       if (fileOpen == false) return false;
-
+      
+      // empty the buffer if there is still data in it
+      emptyBuffer(comm);
+      
       // Wait until all processes have finished writing data to file.
       // This is important to ensure that MPI_File_seek below will 
       // read the correct file size.
@@ -516,23 +522,48 @@ namespace vlsv {
 
       // Write data to file:
       if (dryRunning == false) {
+         // if size > buffer size
+         // empty buffer 
+         // write normally
+         int writeSize = 0;
+         MPI_Datatype outputType;
+         
          if (N_multiwriteUnits > 0) {
             // Create an MPI struct containing the multiwrite units:
-            MPI_Datatype outputType;
             MPI_Type_create_struct(N_multiwriteUnits,blockLengths,displacements,types,&outputType);
             MPI_Type_commit(&outputType);
-
-            // Write data to output file with a single collective call:
-            const double t_start = MPI_Wtime();
-            MPI_File_write_at_all(fileptr,offset+unitOffset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
-            writeTime += (MPI_Wtime() - t_start);
-            MPI_Type_free(&outputType);
-         } else {
-            // Process has no data to write but needs to participate in the collective call to prevent deadlock:
-            const double t_start = MPI_Wtime();
-            MPI_File_write_at_all(fileptr,offset+unitOffset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
-            writeTime += (MPI_Wtime() - t_start);
+            MPI_Type_size(outputType, &writeSize);
          }
+
+         //
+         if(writeSize > bufferSize)
+         {
+            emptyBuffer(comm);         
+            if (N_multiwriteUnits > 0) {
+
+               // Write data to output file with a single collective call:
+               const double t_start = MPI_Wtime();
+               std::cout << "normal write" << std::endl;
+               MPI_File_write_at_all(fileptr,offset+unitOffset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
+               writeTime += (MPI_Wtime() - t_start);
+               MPI_Type_free(&outputType);
+
+            } else {
+               // Process has no data to write but needs to participate in the collective call to prevent deadlock:
+               const double t_start = MPI_Wtime();
+               MPI_File_write_at_all(fileptr,offset+unitOffset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
+               writeTime += (MPI_Wtime() - t_start);
+            }
+         }
+         else{
+            // buffer the write
+            addToBuffer(multiwriteOffsetPointer, writeSize, offset+unitOffset,outputType,comm);
+            
+         }
+         
+
+         // else buffer this
+         
       }
 
       // Deallocate memory:
@@ -678,6 +709,77 @@ namespace vlsv {
       if (multiwriteFooter(arrayName, attribs) == false) success = false;
 
       return checkSuccess(success,comm);
+   }
+
+
+   void Writer::emptyBuffer(MPI_Comm comm)
+   {
+      // save old view
+      MPI_Datatype originalView;
+      MPI_Datatype originalEType;
+      MPI_Offset originalOffset;
+      char rep[128];
+    
+      // get view fails
+      MPI_File_get_view(fileptr, &originalOffset, &originalEType, &originalView, rep);
+      // write out contents of buffer
+      // make a datatype for the output view
+    
+
+      if(bufferTop!= 0)
+      {
+        std::cout << "emptying buffer" << std::endl;
+         MPI_Datatype viewType;
+         int *len = new int[fileOffsets.size()];
+         MPI_Aint *disp = new MPI_Aint[fileOffsets.size()];
+         MPI_Offset fieldLenght = 0;
+         MPI_Datatype *typs = new MPI_Datatype[fileOffsets.size()];
+         // allreduce to get total lenght of field
+        
+
+         for(int i = 0; i < fileOffsets.size(); i++)
+         {
+            len[i] = startSize[i].second;
+            MPI_Offset temp = len[i];
+            /*
+            MPI_Offset placeInRow = 0;
+
+            MPI_Exscan( &temp, &placeInRow, 1, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD );
+*/
+            disp[i] = fileOffsets[i];
+            MPI_Allreduce(&temp, &fieldLenght, 1, MPI_LONG_LONG_INT, MPI_SUM, comm);
+            typs[i] = MPI_BYTE;
+            
+         }      
+         MPI_Type_create_struct(fileOffsets.size(),len,disp,typs,&viewType);
+         MPI_Type_commit(&viewType);
+    
+         MPI_File_set_view(fileptr, 0, MPI_BYTE, viewType, "native", MPI_INFO_NULL );
+
+         // write out buffer
+         MPI_File_write_at(fileptr, 0, outputBuffer, bufferTop, MPI_BYTE, MPI_STATUS_IGNORE);
+        
+      }
+
+      bufferTop = 0;
+      startSize.clear();
+      fileOffsets.clear();
+      // put old view back
+      MPI_File_set_view(fileptr, originalOffset, originalEType, originalView, "native", MPI_INFO_NULL );
+      
+   }
+
+   void Writer::addToBuffer(char * data, int size,  MPI_Offset fileOffset, MPI_Datatype datatype, MPI_Comm comm)
+   {
+      
+      std::cout << "adding to buffer" << std::endl;
+      if(bufferTop + size >= bufferSize)
+         emptyBuffer(comm);
+      startSize.push_back(std::pair<int,int>(bufferTop, size));
+      fileOffsets.push_back(fileOffset);
+      //int temp = 0;
+      MPI_Pack(data, 1, datatype,outputBuffer,bufferSize,&bufferTop, comm);
+      //MPI_File_write_at(fileptr, offset, outputBuffer, size, MPI_BYTE, MPI_STATUS_IGNORE);
    }
 
 } // namespace vlsv
