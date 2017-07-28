@@ -57,6 +57,8 @@ namespace vlsv {
    Writer::~Writer() {
       if (fileOpen == true) close();
       if (comm != MPI_COMM_NULL) MPI_Comm_free(&comm);
+      if (bufferSize != 0)
+      delete [] outputBuffer; outputBuffer = NULL; 
       delete [] blockLengths; blockLengths = NULL;
       delete [] bytesPerProcess; bytesPerProcess = NULL;
       delete [] displacements; displacements = NULL;
@@ -535,8 +537,11 @@ namespace vlsv {
             MPI_Type_size(outputType, &writeSize);
          }
 
+         int notBuffer = writeSize > bufferSize;
+         int notBufferGlobal = 0;
+         MPI_Allreduce(&notBuffer, &notBufferGlobal, 1, MPI_INT, MPI_SUM, comm);
          //
-         if(writeSize > bufferSize)
+         if(notBufferGlobal)
          {
             emptyBuffer(comm);         
             if (N_multiwriteUnits > 0) {
@@ -559,11 +564,7 @@ namespace vlsv {
             // buffer the write
             addToBuffer(multiwriteOffsetPointer, writeSize, offset+unitOffset,outputType,comm);
             
-         }
-         
-
-         // else buffer this
-         
+         }         
       }
 
       // Deallocate memory:
@@ -772,13 +773,24 @@ namespace vlsv {
    void Writer::addToBuffer(char * data, int size,  MPI_Offset fileOffset, MPI_Datatype datatype, MPI_Comm comm)
    {
       
-      std::cout << "adding to buffer" << std::endl;
+      std::cout << "adding to buffer " << myrank << std::endl;
+      int bufferFull = 0;
       if(bufferTop + size >= bufferSize)
-         emptyBuffer(comm);
+      {
+        bufferFull = 1;
+        std::cout << "buffer full @ " << myrank << std::endl;
+      }
+      int bufferFullGlobal = 0;
+      MPI_Allreduce(&bufferFull, &bufferFullGlobal, 1, MPI_INT, MPI_SUM, comm);
+      if (bufferFullGlobal>0)
+      {
+         emptyBuffer(comm);      
+      }
       startSize.push_back(std::pair<int,int>(bufferTop, size));
       fileOffsets.push_back(fileOffset);
       //int temp = 0;
-      MPI_Pack(data, 1, datatype,outputBuffer,bufferSize,&bufferTop, comm);
+      int err = MPI_Pack(data, 1, datatype,outputBuffer,bufferSize,&bufferTop, comm);
+      std::cout << err << std::endl;
       //MPI_File_write_at(fileptr, offset, outputBuffer, size, MPI_BYTE, MPI_STATUS_IGNORE);
    }
 
