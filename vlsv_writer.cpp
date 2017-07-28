@@ -537,12 +537,15 @@ namespace vlsv {
             MPI_Type_size(outputType, &writeSize);
          }
 
+         // is the current write to big to ever fit into the buffer?
          int notBuffer = writeSize > bufferSize;
          int notBufferGlobal = 0;
+         // is everyones write small enough to fit their buffers
          MPI_Allreduce(&notBuffer, &notBufferGlobal, 1, MPI_INT, MPI_SUM, comm);
          //
          if(notBufferGlobal)
          {
+            // empty the buffer before, might not be needed but lets be safe
             emptyBuffer(comm);         
             if (N_multiwriteUnits > 0) {
 
@@ -715,46 +718,35 @@ namespace vlsv {
 
    void Writer::emptyBuffer(MPI_Comm comm)
    {
-      // save old view
+      // parameters for original file view
       MPI_Datatype originalView;
       MPI_Datatype originalEType;
       MPI_Offset originalOffset;
       char rep[128];
     
-      // get view fails
+      // save original view
       MPI_File_get_view(fileptr, &originalOffset, &originalEType, &originalView, rep);
       // write out contents of buffer
-      // make a datatype for the output view
-    
-
       if(bufferTop!= 0)
       {
-        std::cout << "emptying buffer" << std::endl;
+         std::cout << "emptying buffer" << std::endl;
          MPI_Datatype viewType;
          int *len = new int[fileOffsets.size()];
          MPI_Aint *disp = new MPI_Aint[fileOffsets.size()];
-         MPI_Offset fieldLenght = 0;
          MPI_Datatype *typs = new MPI_Datatype[fileOffsets.size()];
-         // allreduce to get total lenght of field
-        
-
+         
          for(int i = 0; i < fileOffsets.size(); i++)
          {
             len[i] = startSize[i].second;
-            MPI_Offset temp = len[i];
-            /*
-            MPI_Offset placeInRow = 0;
-
-            MPI_Exscan( &temp, &placeInRow, 1, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD );
-*/
+            // assuming file offsets are given from current view start
             disp[i] = fileOffsets[i];
-            MPI_Allreduce(&temp, &fieldLenght, 1, MPI_LONG_LONG_INT, MPI_SUM, comm);
             typs[i] = MPI_BYTE;
             
          }      
+         // create datatype based on what is in the buffer
          MPI_Type_create_struct(fileOffsets.size(),len,disp,typs,&viewType);
          MPI_Type_commit(&viewType);
-    
+         // set view to the data contained in the buffer
          MPI_File_set_view(fileptr, 0, MPI_BYTE, viewType, "native", MPI_INFO_NULL );
 
          // write out buffer
@@ -775,23 +767,25 @@ namespace vlsv {
       
       std::cout << "adding to buffer " << myrank << std::endl;
       int bufferFull = 0;
+      // would the new write fill the buffer
       if(bufferTop + size >= bufferSize)
       {
         bufferFull = 1;
         std::cout << "buffer full @ " << myrank << std::endl;
       }
       int bufferFullGlobal = 0;
+      // see if anyone else has a full buffer
       MPI_Allreduce(&bufferFull, &bufferFullGlobal, 1, MPI_INT, MPI_SUM, comm);
       if (bufferFullGlobal>0)
       {
+         // if any buffer is full everyone empties theirs
          emptyBuffer(comm);      
       }
+      // store where the write would have gone to
       startSize.push_back(std::pair<int,int>(bufferTop, size));
       fileOffsets.push_back(fileOffset);
-      //int temp = 0;
+      // pack the data for the write into the buffer
       int err = MPI_Pack(data, 1, datatype,outputBuffer,bufferSize,&bufferTop, comm);
-      std::cout << err << std::endl;
-      //MPI_File_write_at(fileptr, offset, outputBuffer, size, MPI_BYTE, MPI_STATUS_IGNORE);
    }
 
 } // namespace vlsv
