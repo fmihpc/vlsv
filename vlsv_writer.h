@@ -99,7 +99,7 @@ namespace vlsv {
       {
         return bufferSize;
       }
-      void setBuffer(int bSize)
+      void setBuffer(uint64_t bSize)
       {
         if(bufferSize > 0)
         {

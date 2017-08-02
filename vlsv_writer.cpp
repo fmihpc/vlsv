@@ -530,12 +530,12 @@ namespace vlsv {
          int writeSize = 0;
          MPI_Datatype outputType;
          
-         if (N_multiwriteUnits > 0) {
+//         if (N_multiwriteUnits > 0) {
             // Create an MPI struct containing the multiwrite units:
             MPI_Type_create_struct(N_multiwriteUnits,blockLengths,displacements,types,&outputType);
             MPI_Type_commit(&outputType);
             MPI_Type_size(outputType, &writeSize);
-         }
+//         }
 
          // is the current write to big to ever fit into the buffer?
          int notBuffer = writeSize > bufferSize;
@@ -566,7 +566,6 @@ namespace vlsv {
          else{
             // buffer the write
             addToBuffer(multiwriteOffsetPointer, writeSize, offset+unitOffset,outputType,comm);
-            
          }         
       }
 
@@ -718,23 +717,26 @@ namespace vlsv {
 
    void Writer::emptyBuffer(MPI_Comm comm)
    {
-      // parameters for original file view
-      MPI_Datatype originalView;
-      MPI_Datatype originalEType;
-      MPI_Offset originalOffset;
-      char rep[128];
-    
-      // save original view
-      MPI_File_get_view(fileptr, &originalOffset, &originalEType, &originalView, rep);
-      // write out contents of buffer
       if(bufferTop!= 0)
       {
-         std::cout << "emptying buffer" << std::endl;
+
+         // parameters for original file view
+         MPI_Datatype originalView;
+         MPI_Datatype originalEType;
+         MPI_Offset originalOffset;
+         char rep[128];
+    
+         // save original view
+         MPI_File_get_view(fileptr, &originalOffset, &originalEType, &originalView, rep);
+         // write out contents of buffer
+
+
+         std::cout << myrank << " emptying buffer" << std::endl;
          MPI_Datatype viewType;
          int *len = new int[fileOffsets.size()];
          MPI_Aint *disp = new MPI_Aint[fileOffsets.size()];
          MPI_Datatype *typs = new MPI_Datatype[fileOffsets.size()];
-         
+
          for(int i = 0; i < fileOffsets.size(); i++)
          {
             len[i] = startSize[i].second;
@@ -752,13 +754,13 @@ namespace vlsv {
          // write out buffer
          MPI_File_write_at(fileptr, 0, outputBuffer, bufferTop, MPI_BYTE, MPI_STATUS_IGNORE);
         
+         // put old view back
+         MPI_File_set_view(fileptr, originalOffset, originalEType, originalView, "native", MPI_INFO_NULL );
       }
 
       bufferTop = 0;
       startSize.clear();
       fileOffsets.clear();
-      // put old view back
-      MPI_File_set_view(fileptr, originalOffset, originalEType, originalView, "native", MPI_INFO_NULL );
       
    }
 
