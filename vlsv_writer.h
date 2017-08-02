@@ -101,9 +101,17 @@ namespace vlsv {
       }
       void setBuffer(uint64_t bSize)
       {
+
         if(bufferSize > 0)
         {
           delete outputBuffer;
+        }
+        if(bSize >= std::numeric_limits<int >::max())
+        {
+          std::cout << "buffered I/O not supported for larger than 2GB buffers" << std::endl;
+          bufferTop = 0;
+          bufferSize = 0;
+          return;
         }
         bufferTop = 0;
         bufferSize = bSize;

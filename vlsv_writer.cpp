@@ -737,7 +737,7 @@ namespace vlsv {
          MPI_Aint *disp = new MPI_Aint[fileOffsets.size()];
          MPI_Datatype *typs = new MPI_Datatype[fileOffsets.size()];
 
-         for(int i = 0; i < fileOffsets.size(); i++)
+         for(size_t i = 0; i < fileOffsets.size(); i++)
          {
             len[i] = startSize[i].second;
             // assuming file offsets are given from current view start
@@ -752,7 +752,7 @@ namespace vlsv {
          MPI_File_set_view(fileptr, 0, MPI_BYTE, viewType, "native", MPI_INFO_NULL );
 
          // write out buffer
-         MPI_File_write_at(fileptr, 0, outputBuffer, bufferTop, MPI_BYTE, MPI_STATUS_IGNORE);
+         MPI_File_write_at_all(fileptr, 0, outputBuffer, bufferTop, MPI_BYTE, MPI_STATUS_IGNORE);
         
          // put old view back
          MPI_File_set_view(fileptr, originalOffset, originalEType, originalView, "native", MPI_INFO_NULL );
@@ -787,7 +787,7 @@ namespace vlsv {
       startSize.push_back(std::pair<int,int>(bufferTop, size));
       fileOffsets.push_back(fileOffset);
       // pack the data for the write into the buffer
-      int err = MPI_Pack(data, 1, datatype,outputBuffer,bufferSize,&bufferTop, comm);
+      MPI_Pack(data, 1, datatype,outputBuffer,bufferSize,&bufferTop, comm);
    }
 
 } // namespace vlsv
