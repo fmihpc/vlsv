@@ -155,7 +155,6 @@ namespace vlsv {
    
    template<typename T> T convertFloat(const char* const ptr);
    template<typename T> T convertInteger(const char* const ptr,const bool& swapEndianness=false);
-   template<typename T> void convertValue(T& value,const char* const ptr,datatype::type dt,int dataSize,const bool& swapEndianness=false);
    
    /** Returns a string representation of a basic datatype that 
     * is to be written to an array in output file.

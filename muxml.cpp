@@ -225,7 +225,10 @@ bool MuXML::read(std::istream& in,XMLNode* parent,const int& level,const char& c
 	 while ((c == ' ' || c == '\t' || c == '\n') && in.good() == true) in >> c;
       }
       
-      if (in.good() == false) return false;
+      if (in.good() == false && in.eof() == false) return false;
+      if (in.eof() == true) {
+         return true;
+      }
    } while (success == true);
    return true;
 }
