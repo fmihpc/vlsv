@@ -428,6 +428,7 @@ namespace vlsv {
          return false;
       }
 
+      
       // Broadcast the array name to all processes:
       string outputArrayName;
       if (broadcast(tagName,outputArrayName,comm,masterRank) == false) {
@@ -715,54 +716,58 @@ namespace vlsv {
    }
 
 
-   void Writer::emptyBuffer(MPI_Comm comm)
-   {
-      if(bufferTop!= 0)
-      {
+  void Writer::emptyBuffer(MPI_Comm comm)
+  {
 
-         // parameters for original file view
-         MPI_Datatype originalView;
-         MPI_Datatype originalEType;
-         MPI_Offset originalOffset;
-         char rep[128];
+    // parameters for original file view
+    MPI_Datatype originalView;
+    MPI_Datatype originalEType;
+    MPI_Offset originalOffset;
+    char rep[128];
     
-         // save original view
-         MPI_File_get_view(fileptr, &originalOffset, &originalEType, &originalView, rep);
-         // write out contents of buffer
+    // save original view
+    MPI_File_get_view(fileptr, &originalOffset, &originalEType, &originalView, rep);
+    // write out contents of buffer
 
 
-         std::cout << myrank << " emptying buffer" << std::endl;
-         MPI_Datatype viewType;
-         int *len = new int[fileOffsets.size()];
-         MPI_Aint *disp = new MPI_Aint[fileOffsets.size()];
-         MPI_Datatype *typs = new MPI_Datatype[fileOffsets.size()];
+    MPI_Datatype viewType;
+    int *len = new int[fileOffsets.size()];
+    MPI_Aint *disp = new MPI_Aint[fileOffsets.size()];
+    MPI_Datatype *typs = new MPI_Datatype[fileOffsets.size()];
 
-         for(size_t i = 0; i < fileOffsets.size(); i++)
-         {
-            len[i] = startSize[i].second;
-            // assuming file offsets are given from current view start
-            disp[i] = fileOffsets[i];
-            typs[i] = MPI_BYTE;
-            
-         }      
-         // create datatype based on what is in the buffer
-         MPI_Type_create_struct(fileOffsets.size(),len,disp,typs,&viewType);
-         MPI_Type_commit(&viewType);
-         // set view to the data contained in the buffer
-         MPI_File_set_view(fileptr, 0, MPI_BYTE, viewType, "native", MPI_INFO_NULL );
-
-         // write out buffer
-         MPI_File_write_at_all(fileptr, 0, outputBuffer, bufferTop, MPI_BYTE, MPI_STATUS_IGNORE);
+    for(size_t i = 0; i < fileOffsets.size(); i++)
+    {
+      len[i] = startSize[i].second;
+      // assuming file offsets are given from current view start
+      disp[i] = fileOffsets[i];
+      typs[i] = MPI_BYTE;
+    }      
+    // create datatype based on what is in the buffer
+    MPI_Type_create_struct(fileOffsets.size(),len,disp,typs,&viewType);
+    MPI_Type_commit(&viewType);
+    std::cout << myrank << " emptying buffer" << std::endl;
+    
+    // write out buffer
+    if(bufferTop!=0)
+    {
+      // set view to the data contained in the buffer      
+      MPI_File_set_view(fileptr, 0, MPI_BYTE, viewType, "native", MPI_INFO_NULL );
+      MPI_File_write_at_all(fileptr, 0, outputBuffer, bufferTop, MPI_BYTE, MPI_STATUS_IGNORE);
+    }
+    else
+    {
+      // write nothing if you have nothing buffered, needed due to set view and write at all being collective
+      MPI_File_set_view(fileptr, 0, MPI_BYTE, MPI_BYTE, "native", MPI_INFO_NULL );      
+      MPI_File_write_at_all(fileptr, 0, NULL, 0, MPI_BYTE, MPI_STATUS_IGNORE);
+    }
+    // put old view back
+    MPI_File_set_view(fileptr, originalOffset, originalEType, originalView, "native", MPI_INFO_NULL );
         
-         // put old view back
-         MPI_File_set_view(fileptr, originalOffset, originalEType, originalView, "native", MPI_INFO_NULL );
-      }
-
-      bufferTop = 0;
-      startSize.clear();
-      fileOffsets.clear();
+    bufferTop = 0;
+    startSize.clear();
+    fileOffsets.clear();
       
-   }
+  }
 
    void Writer::addToBuffer(char * data, int size,  MPI_Offset fileOffset, MPI_Datatype datatype, MPI_Comm comm)
    {
