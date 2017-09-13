@@ -531,12 +531,12 @@ namespace vlsv {
          int writeSize = 0;
          MPI_Datatype outputType;
          
-//         if (N_multiwriteUnits > 0) {
+         if (N_multiwriteUnits > 0) {
             // Create an MPI struct containing the multiwrite units:
             MPI_Type_create_struct(N_multiwriteUnits,blockLengths,displacements,types,&outputType);
             MPI_Type_commit(&outputType);
             MPI_Type_size(outputType, &writeSize);
-//         }
+         }
 
          // is the current write to big to ever fit into the buffer?
          int notBuffer = writeSize > bufferSize;
@@ -745,7 +745,6 @@ namespace vlsv {
     // create datatype based on what is in the buffer
     MPI_Type_create_struct(fileOffsets.size(),len,disp,typs,&viewType);
     MPI_Type_commit(&viewType);
-    std::cout << myrank << " emptying buffer" << std::endl;
     
     // write out buffer
     if(bufferTop!=0)
@@ -772,13 +771,11 @@ namespace vlsv {
    void Writer::addToBuffer(char * data, int size,  MPI_Offset fileOffset, MPI_Datatype datatype, MPI_Comm comm)
    {
       
-      std::cout << "adding to buffer " << myrank << std::endl;
       int bufferFull = 0;
       // would the new write fill the buffer
       if(bufferTop + size >= bufferSize)
       {
         bufferFull = 1;
-        std::cout << "buffer full @ " << myrank << std::endl;
       }
       int bufferFullGlobal = 0;
       // see if anyone else has a full buffer
@@ -792,7 +789,9 @@ namespace vlsv {
       startSize.push_back(std::pair<int,int>(bufferTop, size));
       fileOffsets.push_back(fileOffset);
       // pack the data for the write into the buffer
-      MPI_Pack(data, 1, datatype,outputBuffer,bufferSize,&bufferTop, comm);
+      // if there is data to pack
+      if(size > 0)
+        MPI_Pack(data, 1, datatype,outputBuffer,bufferSize,&bufferTop, comm);
    }
 
 } // namespace vlsv
