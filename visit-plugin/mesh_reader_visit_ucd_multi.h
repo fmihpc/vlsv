@@ -22,13 +22,8 @@
 #ifndef MESH_READER_VISIT_UCD_MULTI_H
 #define MESH_READER_VISIT_UCD_MULTI_H
 
-#include <unordered_map>
 #include <mesh_reader.h>
-#include <duplicate_node_elimination.h>
-#include <mesh_metadata_visit.h>
-
-#include <vtkCellData.h>
-#include <vtkUnstructuredGrid.h>
+#include <mesh_metadata.h>
 
 namespace vlsvplugin {
 

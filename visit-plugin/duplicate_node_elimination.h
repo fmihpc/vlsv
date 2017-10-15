@@ -24,6 +24,10 @@
 #include <functional>
 #include <tuple>
 #include <cmath>
+#include <vector>
+
+#include <vtkPoints.h>
+#include <vtkUnstructuredGrid.h>
 
 namespace vlsvplugin {
    
@@ -96,6 +100,192 @@ namespace vlsvplugin {
          crds[2] = R*cos(THETA);
       }
    };
+
+   /** Insert all nodes for the given cells to a VTK unstructured grid while simultaneously
+    *  eliminating duplicate node.
+    *
+    *  @tparam CONT Associative container that is used in duplicate node elimination.
+    *  @tparam GEOMETRY Class that calculates Cartesian xyz coordinates from given coordinates 
+    *          specified in another (Cartesian, Cylindrical, Spherical) coordinate system.
+    */
+   template<class CONT,class GEOMETRY> inline
+   vtkIdType insertNodes2D(const double* transform,
+                           const float* crds_node_x,const float* crds_node_y,
+                           const bool& yPeriodic,const uint64_t& N_nodes_y,
+					       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
+                           vtkUnstructuredGrid* ugrid,vtkPoints* coordinates) {
+
+      // Cartesian cells are technically VTK_PIXELs, but 
+      // VTK_QUAD happens to work all basic geometries
+      const int cellType = VTK_QUAD;
+      const int N_VERTICES = 4;
+
+      vtkIdType counter = 0;
+
+      GEOMETRY geometry;
+
+      const vtkIdType SX  = bbox[0]+1;
+
+      // Reserving enough capacity in nodeMapping gives about 20% performance
+      // boost for large Cartesian grids. Preallocating vtkUnstructuredGrid or 
+      // vtkPoints doesn't seem to have any performance effects.
+      const vtkIdType initialCapacity = static_cast<vtkIdType>(ceil(1.1*N_totalBlocks));
+      CONT nodeMapping;
+      nodeMapping.reserve(initialCapacity);
+      ugrid->Allocate(initialCapacity,1000);
+      coordinates->Allocate(initialCapacity,1000);
+
+      auto nodeIndex = [&](const vtkIdType& i,const vtkIdType& j) {
+         return j*SX + i;
+      };
+
+      for (uint64_t block=0; block<N_totalBlocks; ++block) {
+         uint64_t i_block = blockGIDs[block];
+         vtkIdType j_block = i_block / bbox[0];
+         i_block -= j_block*bbox[0];
+
+         for (vtkIdType j=0; j<bbox[4]; ++j) {
+            const vtkIdType j_cell = j_block*bbox[4] + j;
+            for (vtkIdType i=0; i<bbox[3]; ++i) {
+               const vtkIdType i_cell = i_block*bbox[3] + i;
+
+               vtkIdType vertices[N_VERTICES];
+               int count=0;
+
+               for (int n=0; n<4; ++n) {
+                  const vtkIdType in = min(1,n%3);
+                  vtkIdType jn = n/2;
+
+                  // Take (possible) periodicity into account:
+                  if (yPeriodic == true) if (j_cell+jn >= N_nodes_y-1) jn = -j_cell;
+
+                  // Global ID of the node we're looking for:
+                  const vtkIdType node_index = nodeIndex(i_cell+in,j_cell+jn);
+
+                  // If the node already exists, store it's position to vertices.
+                  // Otherwise it needs to be created. 
+                  // Note: old version of this code attempted to insert all nodes, 
+                  // the new version here is 100% faster!
+                  const auto result = nodeMapping.find(node_index);
+                  if (result != nodeMapping.end()) {
+                     vertices[count] = result->second;
+                  } else {
+                     nodeMapping.emplace(make_pair(node_index,counter));
+                     vertices[count] = counter;
+                     ++counter;
+                     float crds[3];
+                     geometry(crds_node_x,crds_node_y,crds,i_cell+in,j_cell+jn);
+                     vlsvplugin::applyTransform(crds,transform);
+                     coordinates->InsertNextPoint(crds);                           
+                  }
+
+                  ++count;
+               }
+               ugrid->InsertNextCell(cellType,N_VERTICES,vertices);
+            }
+         }
+      }
+
+      return counter;
+   }
+
+   /** Insert all nodes for the given cells to a VTK unstructured grid while simultaneously
+    *  eliminating duplicate node.
+    *
+    *  @tparam CONT Associative container that is used in duplicate node elimination.
+    *  @tparam GEOMETRY Class that calculates Cartesian xyz coordinates from given coordinates 
+    *          specified in another (Cartesian, Cylindrical, Spherical) coordinate system.
+    */
+   template<class CONT,class GEOMETRY> inline
+   vtkIdType insertNodes3D(const double* transform,
+                           const float* crds_node_x,const float* crds_node_y,const float* crds_node_z,
+                           const bool& yPeriodic,const bool& zPeriodic,const uint64_t& N_nodes_y,const uint64_t& N_nodes_z,
+					       uint64_t N_totalBlocks,const uint64_t* blockGIDs,const std::vector<uint64_t>& bbox,
+                           vtkUnstructuredGrid* ugrid,vtkPoints* coordinates) {
+
+      // Cartesian cells are technically VTK_VOXELs, but 
+      // VTK_HEXAHEDRON happens to work all basic geometries
+      const int cellType = VTK_HEXAHEDRON;
+      
+      GEOMETRY geometry;      
+
+      // Reserving enough capacity in nodeMapping gives about 15% performance
+      // boost for large Cartesian grids. Preallocating vtkUnstructuredGrid or 
+      // vtkPoints doesn't seem to have any performance effects.
+      const vtkIdType initialCapacity = static_cast<vtkIdType>(ceil(1.1*N_totalBlocks));
+      CONT nodeMapping;
+      nodeMapping.reserve(initialCapacity);
+      ugrid->Allocate(initialCapacity,1000);
+      coordinates->Allocate(initialCapacity,1000);
+
+      const vtkIdType SX  = bbox[0]+1;
+      const vtkIdType SY  = bbox[1]+1;
+      const vtkIdType SXY = SX*SY;
+      auto nodeIndex = [&](const vtkIdType& i,const vtkIdType& j,const vtkIdType& k) {
+         return k*SXY + j*SX + i;
+      };
+
+      // The counter 'counter' counts the number of nodes inserted to nodeMapping
+      vtkIdType counter = 0;
+      for (uint64_t block=0; block<N_totalBlocks; ++block) {
+         uint64_t i_block = blockGIDs[block];
+         vtkIdType k_block = i_block / (bbox[1]*bbox[0]);
+         i_block -= k_block*(bbox[1]*bbox[0]);
+         vtkIdType j_block = i_block / bbox[0];
+         i_block -= j_block*bbox[0];
+
+         for (vtkIdType k=0; k<bbox[5]; ++k) {
+            const vtkIdType k_cell = k_block*bbox[5] + k;
+            for (vtkIdType j=0; j<bbox[4]; ++j) {
+               const vtkIdType j_cell = j_block*bbox[4] + j;
+               for (vtkIdType i=0; i<bbox[3]; ++i) {
+                  // Calculate cell's bounding box global indices:
+                  const vtkIdType i_cell = i_block*bbox[3] + i;
+
+                  vtkIdType vertices[8];
+                  int count=0;
+                  for (vtkIdType z=0; z<2; ++z) {
+                     vtkIdType kn = z;
+                     //for (vtkIdType jn=0; jn<2; ++jn) for (vtkIdType in=0; in<2; ++in) {
+                     for (int n=0; n<4; ++n) {
+                        const vtkIdType in = min(1,n%3);
+                        vtkIdType jn = n/2;
+
+                        // Take (possible) periodicity into account:
+                        if (yPeriodic == true) if (j_cell+jn >= N_nodes_y-1) jn = -j_cell;
+                        if (zPeriodic == true) if (k_cell+kn >= N_nodes_z-1) kn = -k_cell;
+                       
+                        // Global ID of the node we're looking for:
+                        const vtkIdType node_index = nodeIndex(i_cell+in,j_cell+jn,k_cell+kn);
+
+                        // If the node already exists, store it's position to vertices.
+                        // Otherwise it needs to be created. 
+                        // Note: old version of this code attempted to insert all nodes, 
+                        // the new version here is 100% faster!
+                        const auto result = nodeMapping.find(node_index);
+                        if (result != nodeMapping.end()) {
+                           vertices[count] = result->second;
+                        } else {
+                           nodeMapping.emplace(make_pair(node_index,counter));
+                           vertices[count] = counter;
+                           ++counter;
+                           float crds[3];
+                           geometry(crds_node_x,crds_node_y,crds_node_z,crds,i_cell+in,j_cell+jn,k_cell+kn);
+                           vlsvplugin::applyTransform(crds,transform);
+                           coordinates->InsertNextPoint(crds);                           
+                        }
+                        ++count;
+                     }
+                  }
+                  ugrid->InsertNextCell(cellType,8,vertices);
+               }
+            }
+         }
+
+      }
+      return counter;
+   }
+
 
    template<class T> inline 
    void hash_combine(std::size_t& seed,const T& v) {
