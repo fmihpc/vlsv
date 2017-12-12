@@ -50,6 +50,7 @@ namespace vlsv {
       comm = MPI_COMM_NULL;
       writeUsingMasterOnly = false;
       bufferSize = 0;
+      outputBuffer = NULL;
       bufferTop = 0;
    }
 
@@ -524,50 +525,47 @@ namespace vlsv {
       }
 
       // Write data to file:
-      if (dryRunning == false) {
-         // if size > buffer size
-         // empty buffer 
-         // write normally
-         int writeSize = 0;
-         MPI_Datatype outputType;
-         
+      // if size > buffer size
+      // empty buffer 
+      // write normally
+      int writeSize = 0;
+      MPI_Datatype outputType;
+      
+      if (N_multiwriteUnits > 0) {
+         // Create an MPI struct containing the multiwrite units:
+         MPI_Type_create_struct(N_multiwriteUnits,blockLengths,displacements,types,&outputType);
+         MPI_Type_commit(&outputType);
+         MPI_Type_size(outputType, &writeSize);
+      }
+      // is the current write to big to ever fit into the buffer?
+      int notBuffer = writeSize > bufferSize;
+      int notBufferGlobal = 0;
+      // is everyones write small enough to fit their buffers
+      MPI_Allreduce(&notBuffer, &notBufferGlobal, 1, MPI_INT, MPI_SUM, comm);
+      //
+      if(notBufferGlobal)
+      {
+         // empty the buffer before, might not be needed but lets be safe
+         emptyBuffer(comm);         
          if (N_multiwriteUnits > 0) {
-            // Create an MPI struct containing the multiwrite units:
-            MPI_Type_create_struct(N_multiwriteUnits,blockLengths,displacements,types,&outputType);
-            MPI_Type_commit(&outputType);
-            MPI_Type_size(outputType, &writeSize);
-         }
-
-         // is the current write to big to ever fit into the buffer?
-         int notBuffer = writeSize > bufferSize;
-         int notBufferGlobal = 0;
-         // is everyones write small enough to fit their buffers
-         MPI_Allreduce(&notBuffer, &notBufferGlobal, 1, MPI_INT, MPI_SUM, comm);
-         //
-         if(notBufferGlobal)
-         {
-            // empty the buffer before, might not be needed but lets be safe
-            emptyBuffer(comm);         
-            if (N_multiwriteUnits > 0) {
-
-               // Write data to output file with a single collective call:
-               const double t_start = MPI_Wtime();
-               std::cout << "normal write" << std::endl;
+            // Write data to output file with a single collective call:
+            const double t_start = MPI_Wtime();
+            if (dryRunning == false)
                MPI_File_write_at_all(fileptr,offset+unitOffset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
-               writeTime += (MPI_Wtime() - t_start);
-               MPI_Type_free(&outputType);
-
-            } else {
-               // Process has no data to write but needs to participate in the collective call to prevent deadlock:
-               const double t_start = MPI_Wtime();
+            writeTime += (MPI_Wtime() - t_start);
+            MPI_Type_free(&outputType);
+         } else {
+            // Process has no data to write but needs to participate in the collective call to prevent deadlock:
+            const double t_start = MPI_Wtime();
+            if (dryRunning == false)
                MPI_File_write_at_all(fileptr,offset+unitOffset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
-               writeTime += (MPI_Wtime() - t_start);
-            }
+            writeTime += (MPI_Wtime() - t_start);
          }
-         else{
-            // buffer the write
-            addToBuffer(multiwriteOffsetPointer, writeSize, offset+unitOffset,outputType,comm);
-         }         
+      }
+      else{
+         // buffer the write
+         addToBuffer(multiwriteOffsetPointer, writeSize, offset+unitOffset,outputType,comm);
+             
       }
 
       // Deallocate memory:
@@ -705,7 +703,8 @@ namespace vlsv {
       if (myrank == masterRank) {
          MPI_Status status;
          const double t_start = MPI_Wtime();
-         MPI_File_write_at(fileptr, offset, buffer.data(), totalBytes, MPI_Type<char>(), &status);
+         if(!dryRunning)
+            MPI_File_write_at(fileptr, offset, buffer.data(), totalBytes, MPI_Type<char>(), &status);
          writeTime += (MPI_Wtime() - t_start);
       }
 
@@ -719,52 +718,65 @@ namespace vlsv {
   void Writer::emptyBuffer(MPI_Comm comm)
   {
 
-    // parameters for original file view
-    MPI_Datatype originalView;
-    MPI_Datatype originalEType;
-    MPI_Offset originalOffset;
-    char rep[128];
+   // parameters for original file view
+   MPI_Datatype originalView;
+   MPI_Datatype originalEType;
+   MPI_Offset originalOffset;
+   char rep[128];
     
     // save original view
-    MPI_File_get_view(fileptr, &originalOffset, &originalEType, &originalView, rep);
+   if (dryRunning == false)
+   {
+      MPI_File_get_view(fileptr, &originalOffset, &originalEType, &originalView, rep);
+   }
+       
     // write out contents of buffer
 
 
-    MPI_Datatype viewType;
-    int *len = new int[fileOffsets.size()];
-    MPI_Aint *disp = new MPI_Aint[fileOffsets.size()];
-    MPI_Datatype *typs = new MPI_Datatype[fileOffsets.size()];
+   MPI_Datatype viewType;
+   int *len = new int[fileOffsets.size()];
+   MPI_Aint *disp = new MPI_Aint[fileOffsets.size()];
+   MPI_Datatype *typs = new MPI_Datatype[fileOffsets.size()];
 
-    for(size_t i = 0; i < fileOffsets.size(); i++)
-    {
+   for(size_t i = 0; i < fileOffsets.size(); i++)
+   {
       len[i] = startSize[i].second;
       // assuming file offsets are given from current view start
       disp[i] = fileOffsets[i];
       typs[i] = MPI_BYTE;
-    }      
-    // create datatype based on what is in the buffer
-    MPI_Type_create_struct(fileOffsets.size(),len,disp,typs,&viewType);
-    MPI_Type_commit(&viewType);
-    
-    // write out buffer
-    if(bufferTop!=0)
-    {
-      // set view to the data contained in the buffer      
-      MPI_File_set_view(fileptr, 0, MPI_BYTE, viewType, "native", MPI_INFO_NULL );
-      MPI_File_write_at_all(fileptr, 0, outputBuffer, bufferTop, MPI_BYTE, MPI_STATUS_IGNORE);
-    }
-    else
-    {
+   }      
+   // create datatype based on what is in the buffer
+   MPI_Type_create_struct(fileOffsets.size(),len,disp,typs,&viewType);
+   MPI_Type_commit(&viewType);
+   
+   // write out buffer
+   if(bufferTop!=0)
+   {
+     // set view to the data contained in the buffer      
+     if (dryRunning == false)
+     {
+         MPI_File_set_view(fileptr, 0, MPI_BYTE, viewType, "native", MPI_INFO_NULL );
+         MPI_File_write_at_all(fileptr, 0, outputBuffer, bufferTop, MPI_BYTE, MPI_STATUS_IGNORE);
+      }
+   }
+   else
+   {
       // write nothing if you have nothing buffered, needed due to set view and write at all being collective
-      MPI_File_set_view(fileptr, 0, MPI_BYTE, MPI_BYTE, "native", MPI_INFO_NULL );      
-      MPI_File_write_at_all(fileptr, 0, NULL, 0, MPI_BYTE, MPI_STATUS_IGNORE);
-    }
+      if (dryRunning == false)
+      {
+         MPI_File_set_view(fileptr, 0, MPI_BYTE, MPI_BYTE, "native", MPI_INFO_NULL );      
+         MPI_File_write_at_all(fileptr, 0, NULL, 0, MPI_BYTE, MPI_STATUS_IGNORE);
+      }
+   }
     // put old view back
-    MPI_File_set_view(fileptr, originalOffset, originalEType, originalView, "native", MPI_INFO_NULL );
-        
-    bufferTop = 0;
-    startSize.clear();
-    fileOffsets.clear();
+   if (dryRunning == false)
+   {
+      MPI_File_set_view(fileptr, originalOffset, originalEType, originalView, "native", MPI_INFO_NULL );
+   }
+
+   bufferTop = 0;
+   startSize.clear();
+   fileOffsets.clear();
       
   }
 
@@ -794,4 +806,30 @@ namespace vlsv {
         MPI_Pack(data, 1, datatype,outputBuffer,bufferSize,&bufferTop, comm);
    }
 
+   int Writer::getBuffer()
+   {
+     return bufferSize;
+   }
+
+   void Writer::setBuffer(uint64_t bSize)
+   {
+
+     if(bufferSize > 0)
+     {
+       delete outputBuffer;
+     }
+     if(bSize >= std::numeric_limits<int >::max())
+     {
+       std::cout << "buffered I/O not supported for larger than 2GB buffers" << std::endl;
+       bufferTop = 0;
+       bufferSize = 0;
+       return;
+     }
+     bufferTop = 0;
+     bufferSize = bSize;
+     outputBuffer = new char[bufferSize];
+   }
+
 } // namespace vlsv
+
+
