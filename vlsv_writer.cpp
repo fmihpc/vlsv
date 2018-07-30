@@ -790,7 +790,8 @@ namespace vlsv {
       
       int bufferFull = 0;
       // would the new write fill the buffer
-      if(bufferTop + size >= bufferSize)
+      uint64_t total_size = bufferTop + size;
+      if(total_size >= (uint64_t)bufferSize)
       {
         bufferFull = 1;
       }
