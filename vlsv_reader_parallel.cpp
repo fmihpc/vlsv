@@ -511,14 +511,16 @@ namespace vlsv {
          }
 
          // Check that we got everything we requested:
-         int bytesReceived;
-         MPI_Get_count(&status,MPI_BYTE,&bytesReceived);
-         if (bytesReceived != readSize) {
-            stringstream ss;
-            ss << "ERROR in vlsv::ParallelReader! I only got " << bytesReceived << "/" << readSize;
-            ss << " bytes in " << __FILE__ << ":" << __LINE__ << endl;
-            cerr << ss.str();
-            success = false;
+         if(readSize>0) {
+            int bytesReceived;
+            MPI_Get_count(&status,MPI_BYTE,&bytesReceived);
+            if (bytesReceived != readSize) {
+               stringstream ss;
+               ss << "ERROR in vlsv::ParallelReader! I only got " << bytesReceived << "/" << readSize;
+               ss << " bytes in " << __FILE__ << ":" << __LINE__ << endl;
+               cerr << ss.str();
+               success = false;
+            }
          }
 
          offset += readSize;
