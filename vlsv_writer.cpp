@@ -718,6 +718,11 @@ namespace vlsv {
   void Writer::emptyBuffer(MPI_Comm comm)
   {
 
+   // No need to do anything if we don't have a buffer.
+   if(bufferSize == 0) {
+      return;
+   }
+
    // parameters for original file view
    MPI_Datatype originalView;
    MPI_Datatype originalEType;
