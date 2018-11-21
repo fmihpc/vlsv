@@ -473,7 +473,9 @@ namespace vlsv {
       for (size_t i=0; i<multiwriteList.size(); ++i) {
          if (multiwriteFlush(i,unitOffset,multiwriteList[i].first,multiwriteList[i].second) == false) success = false;
          for (std::list<Multi_IO_Unit>::iterator it=multiwriteList[i].first; it!=multiwriteList[i].second; ++it) {
-            unitOffset += it->amount*dataSize;
+	    int datatypeBytesize;
+            MPI_Type_size(it->mpiType,&datatypeBytesize);
+            unitOffset += it->amount*datatypeBytesize;
          }
       }
 
