@@ -58,8 +58,9 @@ namespace vlsv {
    Writer::~Writer() {
       if (fileOpen == true) close();
       if (comm != MPI_COMM_NULL) MPI_Comm_free(&comm);
-      if (bufferSize != 0)
-      delete [] outputBuffer; outputBuffer = NULL; 
+      if (bufferSize != 0) {
+         delete [] outputBuffer; outputBuffer = NULL;
+      }
       delete [] blockLengths; blockLengths = NULL;
       delete [] bytesPerProcess; bytesPerProcess = NULL;
       delete [] displacements; displacements = NULL;
@@ -729,6 +730,17 @@ namespace vlsv {
    MPI_Offset originalOffset;
    char rep[128];
     
+   // See if *any* mpi task has anyhing in it's buffer
+   int globalBufferTop=0;
+   MPI_Allreduce(&bufferTop, &globalBufferTop, 1, MPI_INT, MPI_SUM, comm);
+   if(globalBufferTop == 0) {
+      // Nope. Let's just skip this write then.
+      bufferTop = 0;
+      startSize.clear();
+      fileOffsets.clear();
+      return;
+   }
+
     // save original view
    if (dryRunning == false)
    {
@@ -822,6 +834,8 @@ namespace vlsv {
 
      if(bufferSize > 0)
      {
+       // Flush the old buffer to disk before destroying it.
+       emptyBuffer(comm);
        delete outputBuffer;
      }
      if(bSize >= std::numeric_limits<int >::max())
