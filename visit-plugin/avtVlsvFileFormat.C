@@ -397,6 +397,7 @@ void avtVlsvFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData* md) {
 	    AddTensorVarToMetaData(md,(*var).name,it->second->getName(),centering,9);
 	    break;
 	  default:
+	    AddArrayVarToMetaData(md,(*var).name,(*var).vectorSize,it->second->getName(),centering);
 	    break;
 	 }
       }
