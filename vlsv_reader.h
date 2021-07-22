@@ -46,6 +46,8 @@ namespace vlsv {
       virtual bool open(const std::string& fname);
       virtual bool readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                              const uint64_t& begin,const uint64_t& amount,char* buffer);
+      bool readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
+                             const uint64_t& begin,const uint64_t& amount,double* buffer);
 
       template<typename T>
       bool read(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,

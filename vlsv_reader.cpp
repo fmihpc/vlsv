@@ -310,4 +310,39 @@ namespace vlsv {
       return true;
    }
 
+   /** Wrapper for readArray, converting floattype if necessary
+    * @param tagName Name of the XML tag.
+    * @param attribs List of attributes that uniquely determine the array.
+    * @param begin Index of the first read array element.
+    * @param amount How many array elements are read.
+    * @param buffer Buffer in which data is copied.
+    * @return If true, array was found and requested part was copied to buffer.*/
+   bool Reader::readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
+			  const uint64_t& begin,const uint64_t& amount, double* buffer) {
+      uint64_t arraySize, vectorSize, byteSize;
+      datatype::type dataType;
+
+      if (!getArrayInfo(tagName, attribs, arraySize, vectorSize, dataType, byteSize))
+         return false;
+
+      if (dataType != datatype::FLOAT) {
+         cerr << "vlsv::Reader ERROR: Data is not float!" << endl;
+         return false;
+      }
+
+      if (byteSize == sizeof(double)) {
+         return readArray(tagName, attribs, begin, amount, (char*) buffer);
+      } else {
+         cerr << "Converting floattype for " << tagName << endl;
+         float* readBuffer = new float[amount*vectorSize];
+         if (!readArray(tagName, attribs, begin, amount, (char*) readBuffer))
+            return false;
+         for (int i = 0; i < amount*vectorSize; ++i) {
+            buffer[i] = readBuffer[i];
+         }
+         delete[] readBuffer;
+         return true;
+      }
+   }
+
 } // namespace vlsv
