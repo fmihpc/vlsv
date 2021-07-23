@@ -319,10 +319,10 @@ namespace vlsv {
     * @return If true, array was found and requested part was copied to buffer.*/
    bool Reader::readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
 			  const uint64_t& begin,const uint64_t& amount, double* buffer) {
-      uint64_t arraySize, vectorSize, byteSize;
+      uint64_t arraySize, vectorSize, dataSize;
       datatype::type dataType;
 
-      if (!getArrayInfo(tagName, attribs, arraySize, vectorSize, dataType, byteSize))
+      if (!getArrayInfo(tagName, attribs, arraySize, vectorSize, dataType, dataSize))
          return false;
 
       if (dataType != datatype::FLOAT) {
@@ -330,14 +330,13 @@ namespace vlsv {
          return false;
       }
 
-      if (byteSize == sizeof(double)) {
+      if (dataSize == sizeof(double)) {
          return readArray(tagName, attribs, begin, amount, (char*) buffer);
       } else {
-         cerr << "Converting floattype for " << tagName << endl;
          float* readBuffer = new float[amount*vectorSize];
          if (!readArray(tagName, attribs, begin, amount, (char*) readBuffer))
             return false;
-         for (int i = 0; i < amount*vectorSize; ++i) {
+         for (uint64_t i = 0; i < amount*vectorSize; ++i) {
             buffer[i] = readBuffer[i];
          }
          delete[] readBuffer;
