@@ -332,15 +332,55 @@ namespace vlsv {
 
       if (dataSize == sizeof(double)) {
          return readArray(tagName, attribs, begin, amount, (char*) buffer);
-      } else {
+      } else if (dataSize == sizeof(float)) {
          float* readBuffer = new float[amount*vectorSize];
-         if (!readArray(tagName, attribs, begin, amount, (char*) readBuffer))
+         if (!readArray(tagName, attribs, begin, amount, readBuffer))
             return false;
          for (uint64_t i = 0; i < amount*vectorSize; ++i) {
             buffer[i] = readBuffer[i];
          }
          delete[] readBuffer;
          return true;
+      } else {
+         cerr << "vlsv::Reader ERROR: Unrecognized data size!" << endl;
+         return false;
+      }
+   }
+
+   /** Wrapper for readArray, converting floattype if necessary
+    * @param tagName Name of the XML tag.
+    * @param attribs List of attributes that uniquely determine the array.
+    * @param begin Index of the first read array element.
+    * @param amount How many array elements are read.
+    * @param buffer Buffer in which data is copied.
+    * @return If true, array was found and requested part was copied to buffer.*/
+   bool Reader::readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
+			  const uint64_t& begin,const uint64_t& amount, float* buffer) {
+      uint64_t arraySize, vectorSize, dataSize;
+      datatype::type dataType;
+
+      if (!getArrayInfo(tagName, attribs, arraySize, vectorSize, dataType, dataSize))
+         return false;
+
+      if (dataType != datatype::FLOAT) {
+         cerr << "vlsv::Reader ERROR: Data is not float!" << endl;
+         return false;
+      }
+
+      if (dataSize == sizeof(float)) {
+         return readArray(tagName, attribs, begin, amount, (char*) buffer);
+      } else if (dataSize == sizeof(double)) {
+         double* readBuffer = new double[amount*vectorSize];
+         if (!readArray(tagName, attribs, begin, amount, readBuffer))
+            return false;
+         for (uint64_t i = 0; i < amount*vectorSize; ++i) {
+            buffer[i] = readBuffer[i];
+         }
+         delete[] readBuffer;
+         return true;
+      } else {
+         cerr << "vlsv::Reader ERROR: Unrecognized data size!" << endl;
+         return false;
       }
    }
 
