@@ -3,15 +3,17 @@
     <CXXFLAGS>
       -std=c++0x
       -I/home/sandroos/codes/vlsv
-      -DNEW_VTK_API
+      -DVTK_API=81
     </CXXFLAGS>
     <LDFLAGS>
       -L/home/sandroos/codes/vlsv
     </LDFLAGS>
     <LIBS>
       -lvlsv
-      -lmpi
     </LIBS>
+    <DEFINES>
+      -lvlsv
+    </DEFINES>
     <FilePatterns>
       *.vlsv
     </FilePatterns>

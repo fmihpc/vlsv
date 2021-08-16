@@ -31,6 +31,7 @@
 #include <vtkPoints.h>
 #include <vtkFloatArray.h>
 #include <vtkDoubleArray.h>
+#include <vtkInformation.h>
 #include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkIdList.h>
 #include <vtkSmartPointer.h>
@@ -404,10 +405,12 @@ namespace vlsvplugin {
 
       // Copy ghost cell information to vtkUnstructuredGrid:
       ugrid->GetCellData()->AddArray(ghostZones);
-      #ifdef NEW_VTK_API
-      vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(ugrid->GetInformation(), 0);
+      #if VTK_API >= 71
+         ugrid->GetInformation()->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0);
+      #elif VTK_API >= 50
+         vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(ugrid->GetInformation(), 0);
       #else
-      ugrid->SetUpdateGhostLevel(0);
+         ugrid->SetUpdateGhostLevel(0);
       #endif
       ghostZones->Delete();
 
