@@ -101,7 +101,7 @@ namespace vlsv {
     * @return If true, all processes read their data successfully.
     * @see startMultiread.
     * @see addMultireadUnit.*/
-   bool ParallelReader::endMultiread(const uint64_t& arrayOffset) {
+   bool ParallelReader::endMultiread(const uint64_t& arrayOffset, const bool provideManualOffsets) {
       bool success = true;
       if (multireadStarted == false) success = false;
       if (checkSuccess(success,comm) == false) return false;
@@ -116,7 +116,8 @@ namespace vlsv {
       auto first = multiReadUnits.begin();
       auto last  = multiReadUnits.begin();
       for (auto it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
-         if (inputBytesize + it->amount*arrayOpen.dataSize > getMaxBytesPerRead()) {
+         if ( (inputBytesize + it->amount*arrayOpen.dataSize > getMaxBytesPerRead()) ||
+	      (provideManualOffsets) /* per-unit offset activated, don't group multireads */ ){
             multireadList.push_back(make_pair(first,last));
             first = it; last = it;
 
@@ -149,7 +150,7 @@ namespace vlsv {
       for (size_t i=0; i<multireadList.size(); ++i) {
          if (flushMultiread(i,unitOffset+multireadList[i].first->offset,multireadList[i].first,multireadList[i].second) == false) success = false;
          for (auto it=multireadList[i].first; it!=multireadList[i].second; ++it) {
-            unitOffset += it->amount*arrayOpen.dataSize;
+            if (!provideManualOffsets) unitOffset += it->amount*arrayOpen.dataSize;
          }
       }
 
