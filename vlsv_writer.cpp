@@ -193,7 +193,6 @@ namespace vlsv {
       // Wait for master process to finish:
       MPI_Barrier(comm);
       fileOpen = false;
-      MPI_Comm_free(&comm);
       return true;
    }
    
