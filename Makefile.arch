@@ -14,7 +14,7 @@
 
 # Name of MPI compiler and its flags:
 CMP = mpic++
-CXXFLAGS = -O3 -std=c++0x -Wall
+CXXFLAGS = -O3 -std=c++17 -Wall
 FLAGS =
 
 # Name of archiver:

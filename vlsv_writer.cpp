@@ -57,7 +57,6 @@ namespace vlsv {
    /** Destructor for Writer. Deallocates XML writer.*/
    Writer::~Writer() {
       if (fileOpen == true) close();
-      if (comm != MPI_COMM_NULL) MPI_Comm_free(&comm);
       if (bufferSize != 0) {
          delete [] outputBuffer; outputBuffer = NULL;
       }
