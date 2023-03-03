@@ -164,7 +164,11 @@ namespace vlsv {
          parallelFileOpen = false;
       }
 
-      if (myRank == masterRank) filein.close();
+      if (myRank == masterRank) { 
+         filein.close();
+         xmlReader.clear();
+         fileOpen = false;
+      }
       return true;
    }
 
@@ -434,9 +438,11 @@ namespace vlsv {
       // Only master process reads file footer and endianness. This is done using 
       // VLSVReader open() member function:
       if (myRank == masterRank) {
-         if (Reader::open(fname) == false) success = false;
+         if (Reader::open(fname) == false) {
+             success = false;
+             cerr << "MASTER failed to open VLSV file, error " << Reader::getErrorString() << endl;
+         }
       }
-      if (success == false) cerr << "MASTER failed to open VLSV file" << endl;
 
       // Broadcast file endianness to all processes:
       MPI_Bcast(&endiannessFile,1,MPI_Type<unsigned char>(),masterRank,comm);

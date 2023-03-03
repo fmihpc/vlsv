@@ -303,8 +303,9 @@ namespace vlsv {
             cerr << '\t' << it->first << " = " << it->second << endl;
          }
          cerr << "array offset string '" << node->value.c_str() << "'" << endl;
-         cerr << "start=" << start << " readBytes=" << readBytes << endl;
+         cerr << "start=" << start << " readBytes=" << readBytes << " gcount()=" << filein.gcount() << endl;
          cerr << "offset=" << arrayOpen.offset << " vectorsize=" << arrayOpen.vectorSize << " dataSize=" << arrayOpen.dataSize << endl;
+         cerr << "eof=" << filein.eof() << ", fail=" << filein.fail() << ", bad=" << filein.bad() << ", good=" << filein.good() << endl;
          return false;
       }
       return true;

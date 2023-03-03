@@ -61,7 +61,7 @@ namespace vlsv {
       unsigned char endiannessFile;   /**< Endianness in VLSV file.*/
       unsigned char endiannessReader; /**< Endianness of computer which reads the data.*/
       error::type lastErrorCode;      /**< Code indicating last error that has occurred, if any.*/
-      std::fstream filein;            /**< Input file stream.*/
+      std::ifstream filein;            /**< Input file stream.*/
       std::string fileName;           /**< Name of the input file.*/
       bool fileOpen;                  /**< If true, a file is currently open.*/
       bool swapIntEndianness;         /**< If true, endianness should be swapped on read data (not implemented yet).*/
