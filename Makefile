@@ -80,3 +80,6 @@ vlsv2silo: ${DEPS_VLSV2SILO}
 
 conv_mtx_vlsv: conv_mtx_vlsv.cpp $(lib)
 	${CMP} ${CXXFLAGS} ${FLAGS} -o conv_mtx_vlsv conv_mtx_vlsv.cpp -L${CURDIR} -lvlsv
+
+timed_test: timed_test.cpp
+	${CMP} ${CXXFLAGS} ${FLAGS} -o timed_test timed_test.cpp -L${CURDIR} -lvlsv
