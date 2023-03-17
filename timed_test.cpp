@@ -42,7 +42,7 @@ int main(int argc,char* argv[]) {
 
 	if (argc < 6 || (argc >= 6 && argc % 2 != 0))
 	{
-		std::cout << "usage : srun timed_test buffer_size min_rank_part_size max_rank_part_size min_rank_part_count max_rank_part_count [mpiio_hint mpiio key]" << std::endl;
+		std::cout << "usage : srun timed_test buffer_size min_rank_part_size max_rank_part_size min_rank_part_count max_rank_part_count [mpiio_hint mpiio_value]" << std::endl;
 	}
 
         // Init MPI:
