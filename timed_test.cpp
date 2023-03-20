@@ -54,9 +54,9 @@ void readNint(vlsv::ParallelReader &vlsv, int chunkSize, int chunkCount, uint64_
 int main(int argc,char* argv[]) {
    	bool success = true;
 
-	if (argc < 6 || (argc >= 6 && argc % 2 != 0))
+	if (argc < 6)
 	{
-		std::cout << "usage : srun timed_test buffer_size min_rank_chunk_size max_rank_chunk_size min_rank_chunk_count max_rank_chunk_count [mpiio_hint mpiio_value]" << std::endl;
+		std::cout << "usage : srun timed_test buffer_size min_rank_chunk_size max_rank_chunk_size min_rank_chunk_count max_rank_chunk_count [WR mpiio_hint mpiio_value] [RD mpiio_hint mpiio_value]" << std::endl;
 	}
 
         // Init MPI:
@@ -72,14 +72,36 @@ int main(int argc,char* argv[]) {
         int minChunkCount = std::atoi(argv[4]);
         int maxChunkCount = std::atoi(argv[5]);
 
-	MPI_Info MPIinfo;
+	MPI_Info MPIinfo_wr, MPIinfo_rd;
 	if (argc == 6) {
- 		MPIinfo = MPI_INFO_NULL;
+ 		MPIinfo_wr = MPIinfo_rd = MPI_INFO_NULL;
 	} else {
-		MPI_Info_create(&MPIinfo);
-		for (int i=6; i<argc; i+=2)
-		{
-			MPI_Info_set(MPIinfo, argv[i], argv[i+1]);
+		int i=6, wr_count=0, rd_count=0;
+		MPI_Info_create(&MPIinfo_wr);
+		MPI_Info_create(&MPIinfo_rd);
+		MPI_Info * MPIinfo_ptr;
+		while(true) {
+			if(i >= argc) {
+				break;
+			}
+			if(argv[i] == std::string("WR")) {
+				MPIinfo_ptr = &MPIinfo_wr;
+				i++;
+				wr_count++;
+			}
+			if(argv[i] == std::string("RD")) {
+				MPIinfo_ptr = &MPIinfo_rd;
+				i++;
+				rd_count++;
+			}
+			MPI_Info_set(*MPIinfo_ptr, argv[i], argv[i+1]);
+			i += 2;
+		}
+		if(wr_count == 0) {
+			MPIinfo_wr = MPI_INFO_NULL;
+		}
+		if(rd_count == 0) {
+			MPIinfo_rd = MPI_INFO_NULL;
 		}
 	}
 	if(myRank == 0) {
@@ -108,7 +130,7 @@ int main(int argc,char* argv[]) {
 	
 	vlsv::Writer vlsvWriter;
 	vlsvWriter.setBuffer(bufferSize);
-	if (vlsvWriter.open("file.out",MPI_COMM_WORLD,0, MPIinfo) == false) {
+	if (vlsvWriter.open("file.out",MPI_COMM_WORLD,0, MPIinfo_wr) == false) {
 		success = false;
 		MPI_Finalize();
 		return 1;
@@ -153,7 +175,7 @@ int main(int argc,char* argv[]) {
 	intData.resize(chunkSizes[myRank]*chunkCounts[myRank]);
 	
 	vlsv::ParallelReader vlsvReader;
-	if (vlsvReader.open("file.out",MPI_COMM_WORLD,0, MPIinfo) == false) {
+	if (vlsvReader.open("file.out",MPI_COMM_WORLD,0, MPIinfo_rd) == false) {
 		success = false;
 		MPI_Finalize();
 		return 1;
