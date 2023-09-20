@@ -34,6 +34,7 @@ namespace vlsv {
     * from file is to be read.
     * @param mpiType MPI datatype defining the I/O operation.
     * @param amount Amount of data to be written or read, in units of mpiType.*/
-   Multi_IO_Unit::Multi_IO_Unit(char* array,const MPI_Datatype& mpiType,const uint64_t& amount): array(array),mpiType(mpiType),amount(amount) { }
+   Multi_IO_Unit::Multi_IO_Unit(char* array,const MPI_Datatype& mpiType,const uint64_t& amount): array(array),mpiType(mpiType),amount(amount) { offset=0; }
+   Multi_IO_Unit::Multi_IO_Unit(char* array,const MPI_Datatype& mpiType,const uint64_t& amount, const uint64_t& offset): array(array),mpiType(mpiType),amount(amount),offset(offset) { }
    
 } // namespace vlsv

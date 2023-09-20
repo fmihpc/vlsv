@@ -49,8 +49,8 @@ namespace vlsv {
       bool readArray(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                      const uint64_t& begin,const uint64_t& amount,char* buffer);
 
-      bool addMultireadUnit(char* buffer,const uint64_t& amount);
-      bool endMultiread(const uint64_t& arrayOffset);
+      bool addMultireadUnit(char* buffer,const uint64_t& amount,const uint64_t& offset=0);
+      bool endMultiread(const uint64_t& arrayOffset, const bool provideManualOffsets=false);
       bool startMultiread(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs);
 
       template<typename T>

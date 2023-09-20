@@ -32,10 +32,12 @@ namespace vlsv {
    struct Multi_IO_Unit {
     public:
       Multi_IO_Unit(char* array,const MPI_Datatype& mpiType,const uint64_t& amount);
+      Multi_IO_Unit(char* array,const MPI_Datatype& mpiType,const uint64_t& amount,const uint64_t& offset);
       
       char* array;              /**< Pointer to data to be written.*/
       MPI_Datatype mpiType;     /**< MPI datatype of data that is written.*/
       uint64_t amount;          /**< How many elements of type mpiType are to be written.*/
+      uint64_t offset;
 
     private:
       
