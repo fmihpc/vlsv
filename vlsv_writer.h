@@ -88,7 +88,7 @@ namespace vlsv {
 		      const uint64_t& arraySize,const uint64_t& vectorSize,const T* array);
       
       template<typename T>
-      bool writeParameter(const std::string& parameterName,const T* const array);
+      bool writeParameter(const std::string& parameterName,const T* const array, uint64_t vectorSize=1);
       
       template<typename T>
       bool writeWithReduction(const std::string& arrayName,const std::map<std::string,std::string>& attribs,
@@ -206,12 +206,12 @@ namespace vlsv {
     * @param array Pointer to array containing the parameter value. Only significant at master process.
     * @return If true, parameter was written successfully.*/
    template<typename T> inline
-   bool Writer::writeParameter(const std::string& parameterName,const T* const array) {
+   bool Writer::writeParameter(const std::string& parameterName,const T* const array,uint64_t vectorSize) {
       std::map<std::string,std::string> attributes;
       attributes["name"] = parameterName;
    
       if (myrank == masterRank)
-        return writeArray("PARAMETER",attributes,1,1,array);
+        return writeArray("PARAMETER",attributes,1,vectorSize,array);
       else
         return writeArray("PARAMETER",attributes,0,0,array);
    }
