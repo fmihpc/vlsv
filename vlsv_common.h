@@ -329,6 +329,8 @@ namespace vlsv {
    double convReal8(const char* const ptr,const bool& swapEndian=false);
 
    std::string printDataRate(const uint64_t& bytes,const double& t);
+
+   const std::string getMPIErrorString(const int err);
 } // namespace vlsv
    
 #endif

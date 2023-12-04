@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <mpi.h>
 
 #include "vlsv_common.h"
 
@@ -151,6 +152,13 @@ namespace vlsv {
          return "Unknown or unsupported error code";
          break;
       }
+   }
+
+   const std::string getMPIErrorString(const int err) {
+      char s[MPI_MAX_ERROR_STRING];
+      int len;
+      MPI_Error_string(err, s, &len);
+      return std::string(s, len);
    }
    
 } // namespace vlsv
