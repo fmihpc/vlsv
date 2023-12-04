@@ -417,7 +417,8 @@ namespace vlsv {
     * @param mpiInfo Additional MPI info for optimizing file I/O. Must be the same value on all processes.
     * @return If true, VLSV file was opened successfully. All processes return the same value.*/
    bool ParallelReader::open(const std::string& fname,MPI_Comm comm,const int& masterRank,MPI_Info mpiInfo) {
-      bool success = true;
+      bool success {true};
+      int error {MPI_SUCCESS};
       this->comm = comm;
       this->masterRank = masterRank;
       MPI_Comm_rank(comm,&myRank);
@@ -430,10 +431,13 @@ namespace vlsv {
       // Attempt to open the given input file using MPI:
       fileName = fname;
       int accessMode = MPI_MODE_RDONLY;
-      if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&filePtr) != MPI_SUCCESS) success = false;
-      else parallelFileOpen = true;
-      
-      if (success == false) cerr << "Failed to open parallel file" << endl;
+      error = MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&filePtr);
+      if (error == MPI_SUCCESS) {
+         parallelFileOpen = true;
+      } else {
+         success = false;
+         cerr << "Failed to open parallel file with MPI error " << error << endl;
+      }
       
       // Only master process reads file footer and endianness. This is done using 
       // VLSVReader open() member function:
