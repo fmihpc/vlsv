@@ -421,7 +421,7 @@ namespace vlsv {
     * @param mpiInfo Additional MPI info for optimizing file I/O. Must be the same value on all processes.
     * @return If true, VLSV file was opened successfully. All processes return the same value.*/
    bool ParallelReader::open(const std::string& fname,MPI_Comm comm,const int& masterRank,MPI_Info mpiInfo) {
-      bool success = true;
+      bool success {true};
       this->comm = comm;
       this->masterRank = masterRank;
       MPI_Comm_rank(comm,&myRank);
@@ -434,10 +434,13 @@ namespace vlsv {
       // Attempt to open the given input file using MPI:
       fileName = fname;
       int accessMode = MPI_MODE_RDONLY;
-      if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&filePtr) != MPI_SUCCESS) success = false;
-      else parallelFileOpen = true;
-      
-      if (success == false) cerr << "Failed to open parallel file" << endl;
+      int err {MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&filePtr)};
+      if (err == MPI_SUCCESS) {
+         parallelFileOpen = true;
+      } else {
+         success = false;
+         cerr << "Failed to open parallel file with MPI error " << getMPIErrorString(err) << endl;
+      }
       
       // Only master process reads file footer and endianness. This is done using 
       // VLSVReader open() member function:
@@ -516,7 +519,9 @@ namespace vlsv {
          }
 
          MPI_Status status;
-         if (MPI_File_read_at_all(filePtr,start+counter*maxBytes,pos,readSize,MPI_BYTE,&status) != MPI_SUCCESS) {
+         int err {MPI_File_read_at_all(filePtr,start+counter*maxBytes,pos,readSize,MPI_BYTE,&status)};
+         if (err != MPI_SUCCESS) {
+            cerr << "Failed to read data with MPI error " << getMPIErrorString(err) << endl;
             success = false;
          }
 

@@ -253,10 +253,14 @@ namespace vlsv {
       // possibly caused by MPI_File_delete call, that's the reason for the barrier.
       int accessMode = (MPI_MODE_WRONLY | MPI_MODE_CREATE);
       if (dryRunning == false) {
-         if (myrank == masterRank && append == false) MPI_File_delete(const_cast<char*>(fname.c_str()),mpiInfo);
+         if (myrank == masterRank && append == false) {
+            MPI_File_delete(const_cast<char*>(fname.c_str()),mpiInfo);
+         }
          MPI_Barrier(comm);
-         if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&fileptr) != MPI_SUCCESS) {
+         int err {MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&fileptr)};
+         if (err != MPI_SUCCESS) {
             fileOpen = false;
+            cerr << "Failed to open parallel file with MPI error " << getMPIErrorString(err) << endl;
             return fileOpen;
          }
       }
@@ -311,8 +315,16 @@ namespace vlsv {
             ptr[0] = detectEndianness();
             const double t_start = MPI_Wtime();
             if (dryRunning == false) {
-               if (MPI_File_write_at(fileptr,0,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) success = false;
-               if (MPI_File_write_at(fileptr,8,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) success = false;
+               int err {MPI_File_write_at(fileptr,0,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE)};
+               if (err != MPI_SUCCESS) {
+                  cerr << "Failed to write endianness MPI error " << getMPIErrorString(err) << endl;
+                  success = false;
+               }
+               err = MPI_File_write_at(fileptr,8,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE);
+               if (err != MPI_SUCCESS) {
+                  cerr << "Failed to write endianness MPI error " << getMPIErrorString(err) << endl;
+                  success = false;
+               }
             }
             writeTime += (MPI_Wtime() - t_start);
             offset += 2*sizeof(uint64_t); //only master rank keeps a running count
@@ -344,9 +356,13 @@ namespace vlsv {
     * @param newSize New size.
     * @return If true, output file was successfully resized.*/
    bool Writer::setSize(MPI_Offset newSize) {
-      int rvalue = MPI_File_set_size(fileptr,newSize);
-      if (rvalue == MPI_SUCCESS) return true;
-      return false;
+      int err = MPI_File_set_size(fileptr,newSize);
+      if (err != MPI_SUCCESS) {
+         cerr << "Failed to resize output with MPI error " << getMPIErrorString(err) << endl;
+         return false;
+      } else {
+         return true;
+      }
    }
 
    /** Start dry run mode. In this mode no file I/O is performed, but getBytesWritten() 
