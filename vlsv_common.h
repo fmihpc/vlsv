@@ -280,7 +280,7 @@ namespace vlsv {
                case sizeof(double):
                   value = convertFloat<double>(buffer);
                   break;
-#ifndef _WINDOWS
+#if !(defined(_WINDOWS) || defined(__clang__))
                case sizeof(long double):
 #endif
                   value = convertFloat<long double>(buffer);
