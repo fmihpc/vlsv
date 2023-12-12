@@ -118,7 +118,7 @@ namespace vlsv {
       for (auto it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
          if ( (inputBytesize + it->amount*arrayOpen.dataSize > getMaxBytesPerRead()) ||
 	      (provideManualOffsets) /* per-unit offset activated, don't group multireads */ ){
-            multireadList.push_back(make_pair(first,last));
+            multireadList.push_back(make_pair(it,std::next(it)));
             first = it; last = it;
 
             inputBytesize = 0;
