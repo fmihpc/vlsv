@@ -108,26 +108,38 @@ namespace vlsv {
 
       // Calculate how many collective MPI calls are needed to 
       // read all the data from input file:
-      size_t inputBytesize    = 0;
       size_t myCollectiveCalls = 0;
-      if (multiReadUnits.size() > 0) myCollectiveCalls = 1;
-
       vector<pair<list<Multi_IO_Unit>::iterator,list<Multi_IO_Unit>::iterator> > multireadList;
-      auto first = multiReadUnits.begin();
-      auto last  = multiReadUnits.begin();
-      for (auto it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
-         if ( (inputBytesize + it->amount*arrayOpen.dataSize > getMaxBytesPerRead()) ||
-	      (provideManualOffsets) /* per-unit offset activated, don't group multireads */ ){
-            multireadList.push_back(make_pair(first,last));
-            first = it; last = it;
 
-            inputBytesize = 0;
-            ++myCollectiveCalls;
+      if (provideManualOffsets) {
+         // per-unit offset activated, don't group multireads
+         for (auto it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
+            multireadList.push_back(make_pair(it,std::next(it)));
          }
-         inputBytesize += it->amount*arrayOpen.dataSize;
-         ++last;
+         myCollectiveCalls = multiReadUnits.size();
+      } else {
+         // Group multireads
+         size_t inputBytesize    = 0;
+         if (multiReadUnits.size() > 0) {
+            myCollectiveCalls = 1;
+         }
+         auto first = multiReadUnits.begin();
+         auto last  = multiReadUnits.begin();
+         for (auto it=multiReadUnits.begin(); it!=multiReadUnits.end(); ++it) {
+            if (inputBytesize + it->amount*arrayOpen.dataSize > getMaxBytesPerRead()) {
+               // IF we've reached max allowed read, push it to the list
+               multireadList.push_back(make_pair(first,last));
+               ++myCollectiveCalls;
+               // Start gathering new group of reads
+               first = it; last = it;
+               inputBytesize = 0;
+            }
+            // Push final dangling reads to the list
+            inputBytesize += it->amount*arrayOpen.dataSize;
+            ++last;
+         }
+         multireadList.push_back(make_pair(first,last));
       }
-      multireadList.push_back(make_pair(first,last));
       
       // Reduce the maximum number of needed collective reads to all processes:
       size_t N_collectiveCalls;
