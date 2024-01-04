@@ -81,5 +81,5 @@ avtDatabase* VlsvCommonPluginInfo::SetupDatabase(const char *const *list,int nLi
    }
    avtSTMDFileFormatInterface *inter
      = new avtSTMDFileFormatInterface(ffl, nList);
-   return new avtVlsvDatabase(inter);
+   return new avtGenericDatabase(inter);
 }
