@@ -41,6 +41,7 @@
 // ************************************************************************* //
 
 #include <avtVlsvFileFormat.h>
+#include <avtIntervalTree.h>
 
 #include <string>
 
@@ -662,6 +663,39 @@ vtkDataArray* avtVlsvFileFormat::GetVar(int domain,const char* varname) {
    vtkDataArray* rv = ReadVariable(domain,varname);
    if (rv == NULL) EXCEPTION1(InvalidVariableException, varname);
    return rv;
+}
+
+
+
+// ****************************************************************************
+//  Method: avtSTMDFileFormat::GetAuxiliaryData
+//
+//  Purpose:
+//      Gets the auxiliary data specified.
+//
+//  Arguments:
+//      <unnamed>  The variable of interest.
+//      <unnamed>  The domain of interest.
+//      <unnamed>  The type of auxiliary data.
+//      <unnamed>  The arguments for that type.
+//
+//  Returns:    The auxiliary data.  Throws an exception if this is not a
+//              supported data type.
+//
+//  Programmer: Hank Childs
+//  Creation:   February 23, 2001
+//
+// ****************************************************************************
+
+void *
+avtVlsvFileFormat::GetAuxiliaryData(const char *var, int domain, const char *type,
+                                     void *args, DestructorFunction &)
+{
+    //
+    // This is defined only so the simple file formats that have no auxiliary
+    // data don't have to define this.
+    //
+    return NULL;
 }
 
 

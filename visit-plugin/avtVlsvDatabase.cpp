@@ -128,7 +128,8 @@ void avtVlsvDatabase::SetDatabaseMetaData(avtDatabaseMetaData *md, int timeState
 {
     debug2 << "VLSV\t SetDataBaseMetaData called\n";
     int t0 = visitTimer->StartTimer();
-    Interface->SetDatabaseMetaData(md, timeState, true);
+    // Interface->SetDatabaseMetaData(md, timeState, true);    // This will force the read even when loading the database. Performance impact is significant, not worth it.
+    Interface->SetDatabaseMetaData(md, timeState, forceReadAllCyclesTimes);
     md->ReplaceForbiddenCharacters();
     visitTimer->StopTimer(t0, "Getting database meta data");
 }
