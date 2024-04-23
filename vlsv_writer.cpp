@@ -122,8 +122,12 @@ namespace vlsv {
     * @return If true, the file was closed successfully. If false, a file may not 
     * have been opened successfully by Writer::open.*/
    bool Writer::close() {
+      bool success {true};
+
       // If a file was never opened, exit immediately:
-      if (fileOpen == false) return false;
+      if (fileOpen == false) {
+         return false;
+      }
       
       // empty the buffer if there is still data in it
       emptyBuffer(comm);
@@ -142,7 +146,9 @@ namespace vlsv {
       if (myrank != masterRank) {
          if (dryRunning == false) {
             //Write zero length data
-            MPI_File_write_at_all(fileptr,0,NULL,0,MPI_BYTE,MPI_STATUSES_IGNORE);
+            if (MPI_File_write_at_all(fileptr,0,NULL,0,MPI_BYTE,MPI_STATUSES_IGNORE) != MPI_SUCCESS) {
+               success = false;
+            }
          }
       } else {
          if (dryRunning == false) {
@@ -159,7 +165,9 @@ namespace vlsv {
          
          double t_start = MPI_Wtime();
          if (dryRunning == false) {
-            MPI_File_write_at_all(fileptr,endOffset,(char*)footerString.c_str(),footerString.size(),MPI_BYTE,MPI_STATUSES_IGNORE);
+            if (MPI_File_write_at_all(fileptr,endOffset,(char*)footerString.c_str(),footerString.size(),MPI_BYTE,MPI_STATUSES_IGNORE) != MPI_SUCCESS) {
+               success = false;
+            }
          }
          writeTime += (MPI_Wtime() - t_start);
          bytesWritten += footerStream.str().size();
@@ -167,7 +175,9 @@ namespace vlsv {
 
       // Close MPI file:
       MPI_Barrier(comm);
-      if (dryRunning == false) MPI_File_close(&fileptr);
+      if (dryRunning == false) {
+         MPI_File_close(&fileptr);
+      }
 
       // Master process writes footer offset to the start of file
       if (myrank == masterRank && dryRunning == false) {
@@ -193,7 +203,7 @@ namespace vlsv {
       MPI_Barrier(comm);
       fileOpen = false;
       MPI_Comm_free(&comm);
-      return true;
+      return success;
    }
    
    void Writer::endDryRunning() {
@@ -311,8 +321,12 @@ namespace vlsv {
             ptr[0] = detectEndianness();
             const double t_start = MPI_Wtime();
             if (dryRunning == false) {
-               if (MPI_File_write_at(fileptr,0,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) success = false;
-               if (MPI_File_write_at(fileptr,8,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) success = false;
+               if (MPI_File_write_at(fileptr,0,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+                  success = false;
+               }
+               if (MPI_File_write_at(fileptr,8,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+                  success = false;
+               }
             }
             writeTime += (MPI_Wtime() - t_start);
             offset += 2*sizeof(uint64_t); //only master rank keeps a running count
@@ -543,29 +557,35 @@ namespace vlsv {
       // is everyones write small enough to fit their buffers
       MPI_Allreduce(&notBuffer, &notBufferGlobal, 1, MPI_INT, MPI_SUM, comm);
       //
-      if(notBufferGlobal)
-      {
+      if(notBufferGlobal) {
          // empty the buffer before, might not be needed but lets be safe
          emptyBuffer(comm);         
+         // Write data to output file with a single collective call:
+         const double t_start = MPI_Wtime();
          if (N_multiwriteUnits > 0) {
             // Write data to output file with a single collective call:
             const double t_start = MPI_Wtime();
-            if (dryRunning == false)
-               MPI_File_write_at_all(fileptr,offset+unitOffset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE);
+            if (dryRunning == false) {
+               if (MPI_File_write_at_all(fileptr,offset+unitOffset,multiwriteOffsetPointer,1,outputType,MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+                  success = false;
+               }
+            }
             writeTime += (MPI_Wtime() - t_start);
             MPI_Type_free(&outputType);
          } else {
             // Process has no data to write but needs to participate in the collective call to prevent deadlock:
             const double t_start = MPI_Wtime();
-            if (dryRunning == false)
-               MPI_File_write_at_all(fileptr,offset+unitOffset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE);
+            if (dryRunning == false) {
+               if (MPI_File_write_at_all(fileptr,offset+unitOffset,NULL,0,MPI_BYTE,MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+                  success = false;
+               }
+            }
             writeTime += (MPI_Wtime() - t_start);
          }
       }
       else{
          // buffer the write
          addToBuffer(multiwriteOffsetPointer, writeSize, offset+unitOffset,outputType,comm);
-             
       }
 
       // Deallocate memory:
@@ -633,21 +653,33 @@ namespace vlsv {
       
       // Check that everything is OK before continuing:
       bool success = true;
-      if (initialized == false) success = false;
-      if (fileOpen == false) success = false;
-      if (checkSuccess(success,comm) == false) return false;
-
-      if (startMultiwrite(dataType,arraySize,vectorSize,dataSize) == false) {
-         success = false; return success;
+      if (initialized == false) {
+         success = false; 
       }
-
-      char* arrayPtr = const_cast<char*>(array);
-      if (addMultiwriteUnit(arrayPtr,arraySize) == false) success = false;
+      if (fileOpen == false) {
+         success = false;
+      }
       if (checkSuccess(success,comm) == false) {
          return false;
       }
 
-      if (endMultiwrite(arrayName,attribs) == false) success = false;
+      if (startMultiwrite(dataType,arraySize,vectorSize,dataSize) == false) {
+         success = false; 
+         return success;
+      }
+
+      char* arrayPtr = const_cast<char*>(array);
+      if (addMultiwriteUnit(arrayPtr,arraySize) == false) {
+         success = false;
+      }
+
+      if (checkSuccess(success,comm) == false) {
+         return false;
+      }
+
+      if (endMultiwrite(arrayName,attribs) == false) {
+         success = false;
+      }
       return success;
    }
    
@@ -701,10 +733,12 @@ namespace vlsv {
 
       // Write data at master
       if (myrank == masterRank) {
-         MPI_Status status;
          const double t_start = MPI_Wtime();
-         if(!dryRunning)
-            MPI_File_write_at(fileptr, offset, buffer.data(), totalBytes, MPI_Type<char>(), &status);
+         if(!dryRunning) {
+            if (MPI_File_write_at(fileptr, offset, buffer.data(), totalBytes, MPI_Type<char>(), MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+               success = false;
+            }
+         }
          writeTime += (MPI_Wtime() - t_start);
       }
 
@@ -766,17 +800,13 @@ namespace vlsv {
    MPI_Type_commit(&viewType);
    
    // write out buffer
-   if(bufferTop!=0)
-   {
-     // set view to the data contained in the buffer      
-     if (dryRunning == false)
-     {
+   if(bufferTop!=0) {
+      // set view to the data contained in the buffer      
+      if (dryRunning == false) {
          MPI_File_set_view(fileptr, 0, MPI_BYTE, viewType, "native", MPI_INFO_NULL );
          MPI_File_write_at_all(fileptr, 0, outputBuffer, bufferTop, MPI_BYTE, MPI_STATUS_IGNORE);
       }
-   }
-   else
-   {
+   } else {
       // write nothing if you have nothing buffered, needed due to set view and write at all being collective
       if (dryRunning == false)
       {
@@ -809,8 +839,7 @@ namespace vlsv {
       int bufferFullGlobal = 0;
       // see if anyone else has a full buffer
       MPI_Allreduce(&bufferFull, &bufferFullGlobal, 1, MPI_INT, MPI_SUM, comm);
-      if (bufferFullGlobal>0)
-      {
+      if (bufferFullGlobal>0) {
          // if any buffer is full everyone empties theirs
          emptyBuffer(comm);      
       }
@@ -831,8 +860,7 @@ namespace vlsv {
    void Writer::setBuffer(uint64_t bSize)
    {
 
-     if(bufferSize > 0)
-     {
+     if(bufferSize > 0) {
        // Flush the old buffer to disk before destroying it.
        emptyBuffer(comm);
        delete outputBuffer;
