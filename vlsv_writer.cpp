@@ -733,10 +733,9 @@ namespace vlsv {
 
       // Write data at master
       if (myrank == masterRank) {
-         MPI_Status status;
          const double t_start = MPI_Wtime();
          if(!dryRunning) {
-            if (MPI_File_write_at(fileptr, offset, buffer.data(), totalBytes, MPI_Type<char>(), &status) != MPI_SUCCESS) {
+            if (MPI_File_write_at(fileptr, offset, buffer.data(), totalBytes, MPI_Type<char>(), MPI_STATUS_IGNORE) != MPI_SUCCESS) {
                success = false;
             }
          }
