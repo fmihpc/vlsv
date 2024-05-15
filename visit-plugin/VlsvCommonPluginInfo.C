@@ -40,6 +40,7 @@
 #include <avtVlsvFileFormat.h>
 #include <avtSTMDFileFormatInterface.h>
 #include <avtGenericDatabase.h>
+#include <avtVlsvDatabase.h>
 
 // ****************************************************************************
 //  Method:  VlsvCommonPluginInfo::GetDatabaseType
@@ -51,8 +52,7 @@
 //  Creation:    omitted
 //
 // ****************************************************************************
-DatabaseType
-VlsvCommonPluginInfo::GetDatabaseType()
+DatabaseType VlsvCommonPluginInfo::GetDatabaseType()
 {
     return DB_TYPE_STMD;
 }
@@ -81,5 +81,5 @@ avtDatabase* VlsvCommonPluginInfo::SetupDatabase(const char *const *list,int nLi
    }
    avtSTMDFileFormatInterface *inter
      = new avtSTMDFileFormatInterface(ffl, nList);
-   return new avtGenericDatabase(inter);
+   return new avtVlsvDatabase(inter);
 }
