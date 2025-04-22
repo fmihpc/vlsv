@@ -145,7 +145,7 @@ bool MuXML::read(std::istream& in,XMLNode* parent,const int& level,const char& c
    do {
       // Skip empty chars:
       while ((c == ' ' || c == '\t' || c == '\n') && in.good() == true) in >> c;
-	  if(in.good() == false){ return false;}
+      if(in.good() == false){ return false;}
       // Start to read tag name and its attributes:
       if (c == '<') {
 	 xml_found = true;
