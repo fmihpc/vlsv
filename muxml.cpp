@@ -139,14 +139,16 @@ bool MuXML::read(std::istream& in,XMLNode* parent,const int& level,const char& c
    
    int index = 0;
    bool success = true;
+   bool xml_found = false;
    char c = currentChar;
    char buffer[1024];
    do {
       // Skip empty chars:
       while ((c == ' ' || c == '\t' || c == '\n') && in.good() == true) in >> c;
-      
+      if(in.good() == false){ return false;}
       // Start to read tag name and its attributes:
       if (c == '<') {
+	 xml_found = true;
 	 in >> c;
 	 while ((c == ' ' || c == '\t' || c == '\n') && in.good() == true) in >> c;
 	 
@@ -227,7 +229,7 @@ bool MuXML::read(std::istream& in,XMLNode* parent,const int& level,const char& c
       
       if (in.good() == false && in.eof() == false) return false;
       if (in.eof() == true) {
-         return true;
+        return xml_found;
       }
    } while (success == true);
    return true;

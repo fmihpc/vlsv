@@ -218,6 +218,13 @@ namespace vlsv {
       }
       footerOffset = convUInt64(buffer,swapIntEndianness);
 
+      filein.seekg(0, filein.end);
+      uint64_t filein_length = filein.tellg();
+      if (filein_length < footerOffset){
+         std::cerr << "Footer offset beyond EOF. VLSV file truncated?\n";
+         return false;
+      }
+
       // Read footer XML tree:
       filein.seekg(footerOffset);
       if (filein.tellg() != footerOffset) {
