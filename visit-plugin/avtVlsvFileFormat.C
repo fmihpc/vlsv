@@ -41,6 +41,7 @@
 // ************************************************************************* //
 
 #include <avtVlsvFileFormat.h>
+#include <avtIntervalTree.h>
 
 #include <string>
 
@@ -266,17 +267,23 @@ void avtVlsvFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData* md) {
    debug2 << "VLSV\t file'" << inputFile << "' timestep: " << timestep << endl;
    debug3 << "VLSV\t object " << objectNumber << " / " << objectCounter << endl;
 
+   string dummy;
    // ActivateTimeStep should get called prior to this function.
    // Check that a VLSV file is open:
    if (vlsvReader == NULL) {
       debug2 << "VLSV\t VLSVReader in NULL, calling ActivateTimestep()." << endl;
       ActivateTimestep();
    }
-   string dummy;
-   if (vlsvReader->getFileName(dummy) == false) {
-      debug2 << "VLSV\t ERROR: Input file has not been opened." << endl;
-      return;
-   }
+   // debug2 << "VLSV\t checking for VLSVReader filename mismatch." << endl;
+   // vlsvReader->getFileName(dummy);
+   // if (dummy.compare(inputFile) != 0) {
+   //    debug2 << "VLSV\t VLSVReader filename mismatch, calling ActivateTimestep()." << endl;
+   //    ActivateTimestep();
+   // }
+   // if (vlsvReader->getFileName(dummy) == false) {
+   //    debug2 << "VLSV\t ERROR: Input file has not been opened." << endl;
+   //    return;
+   // }
    
    // Read simulation time and time step.
    // Add them to metadata if they were found:
@@ -659,6 +666,39 @@ vtkDataArray* avtVlsvFileFormat::GetVar(int domain,const char* varname) {
 }
 
 
+
+// ****************************************************************************
+//  Method: avtSTMDFileFormat::GetAuxiliaryData
+//
+//  Purpose:
+//      Gets the auxiliary data specified.
+//
+//  Arguments:
+//      <unnamed>  The variable of interest.
+//      <unnamed>  The domain of interest.
+//      <unnamed>  The type of auxiliary data.
+//      <unnamed>  The arguments for that type.
+//
+//  Returns:    The auxiliary data.  Throws an exception if this is not a
+//              supported data type.
+//
+//  Programmer: Hank Childs
+//  Creation:   February 23, 2001
+//
+// ****************************************************************************
+
+void *
+avtVlsvFileFormat::GetAuxiliaryData(const char *var, int domain, const char *type,
+                                     void *args, DestructorFunction &)
+{
+    //
+    // This is defined only so the simple file formats that have no auxiliary
+    // data don't have to define this.
+    //
+    return NULL;
+}
+
+
 // ****************************************************************************
 //  Method: avtVlsvFileFormat::GetVectorVar
 //
@@ -688,8 +728,10 @@ int avtVlsvFileFormat::GetCycle(void) {
 
    // Check that VLSVReader is not NULL:
    if (vlsvReader == NULL) {
-      debug1 << "VLSV\t ERROR: VLSVReader is NULL." << endl;
-      return INVALID_CYCLE;
+      // debug1 << "VLSV\t ERROR: VLSVReader is NULL." << endl;
+      // return INVALID_CYCLE;
+      debug2 << "VLSV\t VLSVReader in NULL, calling ActivateTimestep()." << endl;
+      ActivateTimestep();
    }
    
    // Read simulation timestep:
@@ -711,8 +753,10 @@ double avtVlsvFileFormat::GetTime(void) {
 
    // Check that VLSVReader is not NULL:
    if (vlsvReader == NULL) {
-      debug1 << "VLSV\t ERROR: VLSVReader is NULL." << endl;
-      return INVALID_TIME;
+      // debug1 << "VLSV\t ERROR: VLSVReader is NULL." << endl;
+      // return INVALID_TIME;
+      debug2 << "VLSV\t VLSVReader in NULL, calling ActivateTimestep()." << endl;
+      ActivateTimestep();
    }
    
    // Read simulation time:

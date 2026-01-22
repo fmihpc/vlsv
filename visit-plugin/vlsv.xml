@@ -2,11 +2,11 @@
   <Plugin name="Vlsv" type="database" label="VLSV parallel file format" version="1.0" enabled="true" mdspecificcode="false" engspecificcode="false" onlyengine="false" noengine="false" dbtype="STMD" haswriter="false" hasoptions="false" filePatternsStrict="false" opensWholeDirectory="false">
     <CXXFLAGS>
       -std=c++0x
-      -I/home/sandroos/codes/vlsv
+      -I/home/mjalho/Vlasiator/lib/vlsv
       -DVTK_API=81
     </CXXFLAGS>
     <LDFLAGS>
-      -L/home/sandroos/codes/vlsv
+      -L/home/mjalho/Vlasiator/lib/vlsv
     </LDFLAGS>
     <LIBS>
       -lvlsv
@@ -19,6 +19,7 @@
     </FilePatterns>
     <Files components="M">
       duplicate_node_elimination.cpp
+      avtVlsvDatabase.cpp
       avtVlsvFileFormat.C
       mesh_metadata.cpp
       mesh_reader.cpp
@@ -37,6 +38,7 @@
     </Files>
     <Files components="E">
       duplicate_node_elimination.cpp
+      avtVlsvDatabase.cpp
       avtVlsvFileFormat.C
       mesh_metadata.cpp
       mesh_reader.cpp
