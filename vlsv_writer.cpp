@@ -525,7 +525,6 @@ namespace vlsv {
 
       // Copy pointers etc. to MPI struct:
       uint64_t i=0;
-      uint64_t amount = 0;
       for (list<Multi_IO_Unit>::iterator it=start; it!=stop; ++it) {
          blockLengths[i]  = (*it).amount;
          displacements[i] = (*it).array - multiwriteOffsetPointer;
@@ -533,7 +532,6 @@ namespace vlsv {
 
          int datatypeBytesize;
          MPI_Type_size(it->mpiType,&datatypeBytesize);
-         amount += (*it).amount * datatypeBytesize;
          
          ++i;
       }
