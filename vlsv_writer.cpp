@@ -561,7 +561,6 @@ namespace vlsv {
          // empty the buffer before, might not be needed but lets be safe
          emptyBuffer(comm);         
          // Write data to output file with a single collective call:
-         const double t_start = MPI_Wtime();
          if (N_multiwriteUnits > 0) {
             // Write data to output file with a single collective call:
             const double t_start = MPI_Wtime();
