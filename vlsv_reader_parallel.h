@@ -42,6 +42,7 @@ namespace vlsv {
       uint64_t getBytesRead();
       double getReadTime() const;
       bool getUniqueAttributeValues(const std::string& tagName,const std::string& attribName,std::set<std::string>& output) const;
+      using Reader::open;
       bool open(const std::string& fname,MPI_Comm comm,const int& masterRank,MPI_Info mpiInfo=MPI_INFO_NULL);
       bool readArrayMaster(const std::string& tagName,const std::list<std::pair<std::string,std::string> >& attribs,
                            const uint64_t& begin,const uint64_t& amount,char* buffer);
