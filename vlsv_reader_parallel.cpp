@@ -497,7 +497,6 @@ namespace vlsv {
 
       // Read data:
       const auto t_start = MPI_Wtime();
-      uint64_t offset = 0;
       for (uint64_t counter=0; counter<globalExtraCollectiveReads; ++counter) {
          char*  pos;
          uint64_t readSize;
@@ -532,8 +531,6 @@ namespace vlsv {
                success = false;
             }
          }
-
-         offset += readSize;
       }
       readTime  += (MPI_Wtime() - t_start);
       bytesRead += amount*arrayOpen.vectorSize*arrayOpen.dataSize;
