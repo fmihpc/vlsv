@@ -38,19 +38,8 @@ def load_metadata(filename):
 
 	# read footer
 	with open(filename, 'rb') as infile:
-		footer_start = -1
-		while footer_start < 0:
-			pos = infile.tell()
-			# don't load entire file into memory
-			part = infile.read(1000000)
-			if len(part) == 0:
-				break
-			index = part.find(b'<VLSV>')
-			if index > 0:
-				footer_start = pos + index
-				break
-		if footer_start < 0:
-			exit('Footer not found in ' + filename)
+		infile.seek(8)
+		footer_start = fromfile(infile, dtype = 'uint64', count = 1)[0]
 		infile.seek(footer_start)
 		footer = infile.read().decode('ascii')
 
