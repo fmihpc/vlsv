@@ -81,15 +81,21 @@ namespace vlsv {
                              const uint64_t& begin,const uint64_t& amount,T*& outBuffer,bool allocateMemory) {
       // Get array info to all processes:
       if (ParallelReader::getArrayInfo(tagName,attribs) == false) {
+         std::cerr << "Failure in ParallelReader::getArrayInfo\n";
          return false;
       }
 
       // Check that requested read is inside the array:
-      if (begin > arrayOpen.arraySize || (begin+amount) > arrayOpen.arraySize) return false;
+      if (begin > arrayOpen.arraySize || (begin+amount) > arrayOpen.arraySize){
+         std::cerr << "Failure in ParallelReader::read, trying to read out of bounds.\n";
+         std::cerr << "begin: " << begin << ", amount " << amount <<", arrayOpen.arraySize " << arrayOpen.arraySize << "\n";
+         return false;
+      } 
 
       char* buffer = new char[amount*arrayOpen.vectorSize*arrayOpen.dataSize];
       if (ParallelReader::readArray(tagName,attribs,begin,amount,buffer) == false) {
          delete [] buffer; buffer = NULL;
+         std::cerr << "Failure in ParallelReader::readArray\n";
          return false;
       }
 
