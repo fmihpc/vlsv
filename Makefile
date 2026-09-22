@@ -82,4 +82,4 @@ conv_mtx_vlsv: conv_mtx_vlsv.cpp $(lib)
 	${CMP} ${CXXFLAGS} ${FLAGS} -o conv_mtx_vlsv conv_mtx_vlsv.cpp -L${CURDIR} -lvlsv
 
 timed_test: timed_test.cpp
-	${CMP} ${CXXFLAGS} ${FLAGS} -o timed_test timed_test.cpp -L${CURDIR} -lvlsv
+	${CMP} ${CXXFLAGS} ${FLAGS} -fopenmp -o timed_test timed_test.cpp -L${CURDIR} -lvlsv
