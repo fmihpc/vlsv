@@ -207,7 +207,7 @@ namespace vlsv {
       if (endiannessFile != endiannessReader) swapIntEndianness = true;
 
       // Read footer offset:
-      uint64_t footerOffset;
+      std::streamoff footerOffset;
       char buffer[16];
       filein.seekg(8);
       filein.read(buffer,8);
@@ -216,7 +216,11 @@ namespace vlsv {
          success = false;
          return success;
       }
-      footerOffset = convUInt64(buffer,swapIntEndianness);
+      footerOffset = (std::streamoff)convUInt64(buffer,swapIntEndianness);
+      if (footerOffset < 0){
+         std::cerr << "Negative footerOffset extracted - possibly overflow, is this file too large for your system?";
+         return false;
+      }
 
       filein.seekg(0, filein.end);
       uint64_t filein_length = filein.tellg();
@@ -227,7 +231,7 @@ namespace vlsv {
 
       // Read footer XML tree:
       filein.seekg(footerOffset);
-      if (filein.tellg() != (int)footerOffset) {
+      if (filein.tellg() != footerOffset) {
          lastErrorCode = error::READ_NO_FOOTER;
          success = false;
       }
