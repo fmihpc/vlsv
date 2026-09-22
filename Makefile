@@ -58,7 +58,7 @@ muxml.o: ${DEPS_MUXML}
 	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -c muxml.cpp
 
 vlsv_amr.o: ${DEPS_AMR}
-	${CMP} ${CXXFLAGS} -ffast-math -fPIC ${FLAGS} -c vlsv_amr.cpp
+	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -c vlsv_amr.cpp
 
 vlsv_common.o: ${DEPS_VLSVCOMMON}
 	${CMP} ${CXXFLAGS} -fPIC ${FLAGS} -c vlsv_common.cpp
