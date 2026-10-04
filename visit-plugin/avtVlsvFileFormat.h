@@ -72,8 +72,8 @@ class avtVlsvFileFormat: public avtSTMDFileFormat {
     // This is used to return unconvention data -- ranging from material
     // information to information about block connectivity.
     //
-    // virtual void      *GetAuxiliaryData(const char *var, const char *type,
-    //                                  void *args, DestructorFunction &);
+    virtual void      *GetAuxiliaryData(const char *var, int someInt, const char *type,
+                                     void *args, DestructorFunction &);
     //
 
     //
