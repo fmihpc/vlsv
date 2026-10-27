@@ -20,6 +20,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
+#include <filesystem>
 
 #include "mpiconversion.h"
 #include "vlsv_common_mpi.h"
@@ -251,7 +253,12 @@ namespace vlsv {
       writeTime = 0;
 
       // Broadcast output file name to all processes:
-      if (broadcast(fname,fileName,this->comm,masterRank) == false) return false;
+      if (broadcast(fname,fileName,this->comm,masterRank) == false) {
+         if (std::getenv("VLSV_ERRORS_ARE_FATAL") != nullptr){
+            throw std::runtime_error("filename broadcast failed");
+         }
+         return false;
+      }
 
       // Allocate per-thread storage:
       multiwriteOffsets.resize(1);
@@ -265,8 +272,16 @@ namespace vlsv {
       if (dryRunning == false) {
          if (myrank == masterRank && append == false) MPI_File_delete(const_cast<char*>(fname.c_str()),mpiInfo);
          MPI_Barrier(comm);
-         if (MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&fileptr) != MPI_SUCCESS) {
+         int mpie;
+         mpie = MPI_File_open(comm,const_cast<char*>(fileName.c_str()),accessMode,mpiInfo,&fileptr);
+         if (mpie != MPI_SUCCESS) {
             fileOpen = false;
+            if (std::getenv("VLSV_ERRORS_ARE_FATAL") != nullptr){
+               char mpierr[MPI_MAX_ERROR_STRING];
+               int rlen;
+               MPI_Error_string(mpie, mpierr, &rlen);
+               throw std::runtime_error("MPI_File_open failed for file " + fileName + ", cwd: " + filesystem::current_path().string() + ", MPI error: " + std::string(mpierr));
+            }
             return fileOpen;
          }
       }
@@ -298,6 +313,9 @@ namespace vlsv {
             if (values[0] != detectEndianness()) {
                if (dryRunning == false) MPI_File_close(&fileptr);
                fileOpen = false;
+               if (std::getenv("VLSV_ERRORS_ARE_FATAL") != nullptr){
+                  throw std::runtime_error("Endianness mismatch");
+               }
                return false;
             }
 
@@ -322,9 +340,11 @@ namespace vlsv {
             const double t_start = MPI_Wtime();
             if (dryRunning == false) {
                if (MPI_File_write_at(fileptr,0,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+                  std::cerr << __FILE__ << ":" << __LINE__ << " MPI_File_write_at failed" << std::endl;
                   success = false;
                }
                if (MPI_File_write_at(fileptr,8,&endianness,1,MPI_Type<uint64_t>(),MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+                  std::cerr << __FILE__ << ":" << __LINE__ << " MPI_File_write_at failed" << std::endl;
                   success = false;
                }
             }
@@ -351,6 +371,11 @@ namespace vlsv {
 
       initialized = true;
       fileOpen    = success;
+      if (success == false){
+         if (std::getenv("VLSV_ERRORS_ARE_FATAL") != nullptr){
+            throw std::runtime_error("filename broadcast failed");
+         }
+      }
       return fileOpen;
    }
 
@@ -651,31 +676,52 @@ namespace vlsv {
       // Check that everything is OK before continuing:
       bool success = true;
       if (initialized == false) {
-         success = false; 
+         success = false;
+         if (std::getenv("VLSV_ERRORS_ARE_FATAL") != nullptr){
+            throw std::runtime_error("Initialization failed");
+         }
       }
       if (fileOpen == false) {
          success = false;
+         if (std::getenv("VLSV_ERRORS_ARE_FATAL") != nullptr){
+            throw std::runtime_error("fileOpen failed");
+         }
       }
       if (checkSuccess(success,comm) == false) {
+         if (std::getenv("VLSV_ERRORS_ARE_FATAL") != nullptr){
+            throw std::runtime_error("Success failed");
+         }
          return false;
       }
 
       if (startMultiwrite(dataType,arraySize,vectorSize,dataSize) == false) {
          success = false; 
+         if (std::getenv("VLSV_ERRORS_ARE_FATAL") == nullptr){
+            throw std::runtime_error("startMultiwrite failed");
+         }
          return success;
       }
 
       char* arrayPtr = const_cast<char*>(array);
-      if (addMultiwriteUnit(arrayPtr,arraySize) == false) {
+      if (addMultiwriteUnit(arrayPtr,arraySize) != false) {
          success = false;
+         if (std::getenv("VLSV_ERRORS_ARE_FATAL") == nullptr){
+            throw std::runtime_error("addMultiwriteUnit failed");
+         }
       }
 
       if (checkSuccess(success,comm) == false) {
+         if (std::getenv("VLSV_ERRORS_ARE_FATAL") != nullptr){
+            throw std::runtime_error("Success failed");
+         }
          return false;
       }
 
       if (endMultiwrite(arrayName,attribs) == false) {
          success = false;
+         if (std::getenv("VLSV_ERRORS_ARE_FATAL") != nullptr){
+            throw std::runtime_error("endMultiwrite failed");
+         }
       }
       return success;
    }
@@ -734,6 +780,9 @@ namespace vlsv {
          if(!dryRunning) {
             if (MPI_File_write_at(fileptr, offset, buffer.data(), totalBytes, MPI_Type<char>(), MPI_STATUS_IGNORE) != MPI_SUCCESS) {
                success = false;
+               if (std::getenv("VLSV_ERRORS_ARE_FATAL") != nullptr){
+                  throw std::runtime_error("Initialization failed");
+               }
             }
          }
          writeTime += (MPI_Wtime() - t_start);
