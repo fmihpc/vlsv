@@ -24,6 +24,7 @@
 #include <functional>
 #include <tuple>
 #include <cmath>
+#include <algorithm>
 
 namespace vlsvplugin {
    
